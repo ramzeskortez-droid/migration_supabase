@@ -1,0 +1,17 @@
+{
+  "chrome-devtools-mcp": {
+    "overrides": [
+      "/C:/Users/Dima/*"
+    ]
+  },
+  "ComputerUse": {
+    "overrides": [
+      "/C:/Users/Dima/*"
+    ]
+  },
+  "conductor": {
+    "overrides": [
+      "/C:/Users/Dima/*"
+    ]
+  }
+}

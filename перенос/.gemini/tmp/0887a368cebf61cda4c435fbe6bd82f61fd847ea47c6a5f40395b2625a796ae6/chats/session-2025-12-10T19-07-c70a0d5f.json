@@ -1,0 +1,26 @@
+{
+  "sessionId": "c70a0d5f-f041-4c5e-b057-74ad34e15580",
+  "projectHash": "0887a368cebf61cda4c435fbe6bd82f61fd847ea47c6a5f40395b2625a796ae6",
+  "startTime": "2025-12-10T19:07:25.954Z",
+  "lastUpdated": "2025-12-10T19:07:53.038Z",
+  "messages": [
+    {
+      "id": "1ace221f-9fea-4636-b72a-f33974a79ae5",
+      "timestamp": "2025-12-10T19:07:25.954Z",
+      "type": "info",
+      "content": "\n\nCode Assist login required.\nAttempting to open authentication page in your browser.\nOtherwise navigate to:\n\nhttps://accounts.google.com/o/oauth2/v2/auth?redirect_uri=http%3A%2F%2Flocalhost%3A54176%2Foauth2callback&access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&state=005b99cedc559f2cd78a63f554e7b6564bc20c7b5713b80394c4aa4bfe06d555&response_type=code&client_id=681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com\n\n\n"
+    },
+    {
+      "id": "1ddcca82-0c9f-4ade-b10d-9802a7d8525f",
+      "timestamp": "2025-12-10T19:07:25.957Z",
+      "type": "info",
+      "content": "Waiting for authentication...\n"
+    },
+    {
+      "id": "b25f7ad2-6222-4372-8d96-d5e78c9e2142",
+      "timestamp": "2025-12-10T19:07:53.038Z",
+      "type": "info",
+      "content": "Authentication succeeded\n"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "general": {
+    "previewFeatures": true,
+    "vimMode": false
+  },
+  "ui": {
+    "footer": {
+      "hideModelInfo": true
+    }
+  }
+}
