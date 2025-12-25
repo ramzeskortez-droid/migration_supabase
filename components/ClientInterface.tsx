@@ -222,8 +222,8 @@ export const ClientInterface: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!isFormValid) {
-      e.preventDefault();
       setValidationAttempted(true);
       return;
     }
