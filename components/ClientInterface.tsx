@@ -85,7 +85,9 @@ export const ClientInterface: React.FC = () => {
   const [refuseModalOrder, setRefuseModalOrder] = useState<Order | null>(null);
   
   const [vanishingIds, setVanishingIds] = useState<Set<string>>(new Set());
-  const [highlightedId, setHighlightedId] = useState<string | null>(null); 
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [showValidationHighlight, setShowValidationHighlight] = useState(false); 
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -201,14 +203,30 @@ export const ClientInterface: React.FC = () => {
       return !!car.brand && FULL_BRAND_SET.has(car.brand);
   }, [car.brand]);
 
+  const showBrandError = validationAttempted && !car.brand;
+  const showItemNameError = validationAttempted && items.some(i => !i.name.trim());
+
   const isFormValid = useMemo(() => {
       const hasItems = items.length > 0 && items.every(i => i.name.trim().length > 0);
       return isValidBrand && hasItems;
   }, [isValidBrand, items]);
 
+  const handleButtonHover = () => {
+    if (!isFormValid) {
+      setValidationAttempted(true);
+      setShowValidationHighlight(true);
+      setTimeout(() => setShowValidationHighlight(false), 1000);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      setValidationAttempted(true);
+      setShowValidationHighlight(true);
+      setTimeout(() => setShowValidationHighlight(false), 1000);
+      return;
+    }
 
     const finalCar = { ...car, model: `${car.brand} ${car.model}`.trim() };
     const tempId = `temp-${Date.now()}`;
@@ -508,8 +526,7 @@ export const ClientInterface: React.FC = () => {
                   <div className="space-y-1 relative">
                       <label className="text-[8px] font-bold text-slate-400 uppercase ml-1">Марка (Бренд)</label>
                       <div className="relative">
-                          {/* Brand input with stronger validation style: Red if empty */}
-                          <input ref={brandInputRef} value={car.brand} onChange={(e) => { setCar({...car, brand: e.target.value}); setIsBrandOpen(true); }} onFocus={() => setIsBrandOpen(true)} className={`w-full px-3 py-1.5 bg-white border rounded-md text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-colors ${!car.brand ? 'border-red-400 bg-red-50/30 ring-1 ring-red-100' : 'border-slate-300'}`} placeholder="Введите марку..." />
+                          <input ref={brandInputRef} value={car.brand} onChange={(e) => { setCar({...car, brand: e.target.value}); setIsBrandOpen(true); }} onFocus={() => setIsBrandOpen(true)} className={`w-full px-3 py-1.5 bg-white border rounded-md text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-colors ${showBrandError || showValidationHighlight ? 'border-red-400 bg-red-50/30 ring-1 ring-red-100' : 'border-slate-300'}`} placeholder="Введите марку..." />
                           <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
                       </div>
                       {isBrandOpen && (<div ref={brandListRef} className="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl divide-y divide-slate-50 animate-in fade-in zoom-in-95 duration-100">{filteredBrands.length > 0 ? (filteredBrands.map((brand, idx) => (<div key={brand} onClick={() => { setCar({...car, brand}); setIsBrandOpen(false); }} className="px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer uppercase">{brand}</div>))) : (<div className="px-3 py-2 text-[10px] text-slate-400 italic">Ничего не найдено</div>)}</div>)}
@@ -526,7 +543,7 @@ export const ClientInterface: React.FC = () => {
               <div key={idx} className="flex gap-2 items-start group">
                 <div className="flex-grow bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <div className="md:col-span-2"><input value={item.name} maxLength={90} onChange={e => updateItem(idx, 'name', e.target.value)} className={`w-full px-2 py-1 bg-slate-50 border rounded text-[10px] font-bold outline-none focus:border-indigo-300 transition-colors ${!item.name.trim() ? 'border-red-300 bg-red-50' : 'border-slate-100'}`} placeholder="Название детали (макс. 90 симв.)" /></div>
+                    <div className="md:col-span-2"><input value={item.name} maxLength={90} onChange={e => updateItem(idx, 'name', e.target.value)} className={`w-full px-2 py-1 bg-slate-50 border rounded text-[10px] font-bold outline-none focus:border-indigo-300 transition-colors ${(showItemNameError || showValidationHighlight) && !item.name.trim() ? 'border-red-300 bg-red-50' : 'border-slate-100'}`} placeholder="Название детали (макс. 90 симв.)" /></div>
                     <div className="relative"><select value={item.category} onChange={e => updateItem(idx, 'category', e.target.value as PartCategory)} className="w-full appearance-none px-2 py-1 bg-slate-50 border border-slate-100 rounded text-[9px] font-black uppercase pr-8 outline-none"><option>Оригинал</option><option>Б/У</option><option>Аналог</option></select><ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" /></div>
                     <div className="flex items-center gap-1"><input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value))} className="w-full px-1 py-1 bg-slate-50 border border-slate-100 rounded text-[10px] text-center font-black" /></div>
                   </div>
@@ -536,7 +553,7 @@ export const ClientInterface: React.FC = () => {
             ))}
             <button type="button" onClick={() => setItems([...items, { name: '', quantity: 1, color: '', category: 'Оригинал', refImage: '' }])} className="text-[9px] font-bold text-indigo-600 uppercase hover:underline flex items-center gap-1"><Plus size={10}/> Добавить деталь</button>
           </div>
-          <button type="submit" disabled={!isFormValid} className={`w-full py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 ${isFormValid ? 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}><Send className="w-4 h-4" /> Отправить запрос</button>
+          <button type="submit" disabled={!isFormValid} onMouseEnter={handleButtonHover} className={`w-full py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 ${isFormValid ? 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}><Send className="w-4 h-4" /> Отправить запрос</button>
         </form>
       </section>
 
