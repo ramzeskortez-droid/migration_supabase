@@ -219,7 +219,7 @@ export class SheetService {
   }
 
   static async createOffer(orderId: string, sellerName: string, items: any[], vin: string, sellerPhone?: string): Promise<void> {
-    const offerId = `OFF-${Math.floor(Math.random() * 100000)}`;
+    // ID generates on Server Side: OrderID-N
     
     // Привязываем телефон поставщика к первому элементу JSON для истории
     const itemsWithPhone = items.map((item, idx) => {
@@ -230,7 +230,7 @@ export class SheetService {
     const payload = {
       action: 'create',
       order: {
-        id: offerId,
+        id: "PENDING", // Server will generate format: OrderID-1
         parentId: orderId,
         type: 'OFFER',
         status: 'ОТКРЫТ',

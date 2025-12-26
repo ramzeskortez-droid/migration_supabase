@@ -94,18 +94,27 @@ function doPost(e) {
     // --- CREATE OFFER ---
     else if (body.action === 'create' && body.order.type === 'OFFER') {
       const o = body.order;
+      
+      // GENERATE SEQUENTIAL OFFER ID: OrderID-N
+      const offerNum = countOffersForOrder(sheet, o.parentId) + 1;
+      const newOfferId = `${o.parentId}-${offerNum}`;
+      o.id = newOfferId;
+
       const itemsJson = JSON.stringify(o.items);
       const rowData = [o.id, o.parentId, 'OFFER', o.status, o.vin, o.clientName, 'Предложение', itemsJson, generateOfferSummary(o.items), (o.createdAt || '').replace(', ', '\n'), o.location, 'N', 'N', 'N'];
       const insertionIndex = findBlockEndIndex(sheet, o.parentId);
       sheet.insertRowAfter(insertionIndex);
       sheet.getRange(insertionIndex + 1, 1, 1, rowData.length).setValues([rowData]);
       
-      const offerNum = countOffersForOrder(sheet, o.parentId);
       const subSheet = doc.getSheetByName('Subscribers');
       
       const parentRow = findOrderRowById(sheet, o.parentId);
       const msg = formatNewOfferMessage(o, offerNum, parentRow);
       broadcastMessage(msg, subSheet);
+
+      formatSheetStyles(sheet);
+      formatRows(sheet); 
+      return response({status: 'ok', offerId: newOfferId});
     }
     // --- FORM CP ---
     else if (body.action === 'form_cp') {
