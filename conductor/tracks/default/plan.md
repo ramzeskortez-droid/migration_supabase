@@ -31,3 +31,9 @@
 - [ ] Тестирование интерфейса Поставщика (Login, List, Offer) -> скриншоты
 - [ ] Тестирование интерфейса Админа (Login, List, Approve) -> скриншоты
 
+## Routing Verification (New)
+- [x] Start server on port 3000
+- [x] Verify redirect from `/` to `/client`
+- [x] Verify navigation to `/supplier` via button
+- [x] Verify navigation to `/admin` via button
+

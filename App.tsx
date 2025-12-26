@@ -1,20 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ClientInterface } from './components/ClientInterface';
 import { SellerInterface } from './components/SellerInterface';
 import { AdminInterface } from './components/AdminInterface';
 import { Users, ShoppingBag, ShieldCheck, Phone, Send } from 'lucide-react';
 
-enum AppView {
-  CLIENT = 'CLIENT',
-  SELLER = 'SELLER',
-  ADMIN = 'ADMIN'
-}
-
 // Хардкодим URL по умолчанию
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxooqVnUce3SIllt2RUtG-KJ5EzNswyHqrTpdsTGhc6XOKW6qaUdlr6ld77LR2KQz0-/exec';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<AppView>(AppView.CLIENT);
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Инициализация URL API при первом запуске
   useEffect(() => {
@@ -23,17 +19,7 @@ const App: React.FC = () => {
      }
   }, []);
 
-  const renderContent = () => {
-    switch (currentView) {
-      case AppView.SELLER:
-        return <SellerInterface />;
-      case AppView.ADMIN:
-        return <AdminInterface />;
-      case AppView.CLIENT:
-      default:
-        return <ClientInterface />;
-    }
-  };
+  const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
@@ -50,20 +36,20 @@ const App: React.FC = () => {
           <div className="flex-grow flex justify-center overflow-x-auto no-scrollbar">
              <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
                 <button 
-                  onClick={() => setCurrentView(AppView.CLIENT)} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${currentView === AppView.CLIENT ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                  onClick={() => navigate('/client')} 
+                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/client') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   <Users size={14}/> <span>Клиент</span>
                 </button>
                 <button 
-                  onClick={() => setCurrentView(AppView.SELLER)} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${currentView === AppView.SELLER ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                  onClick={() => navigate('/supplier')} 
+                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/supplier') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   <ShoppingBag size={14}/> <span>Поставщик</span>
                 </button>
                 <button 
-                  onClick={() => setCurrentView(AppView.ADMIN)} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${currentView === AppView.ADMIN ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                  onClick={() => navigate('/admin')} 
+                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/admin') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   <ShieldCheck size={14}/> <span>Админ</span>
                 </button>
@@ -84,7 +70,15 @@ const App: React.FC = () => {
       </header>
 
       <main>
-        {renderContent()}
+        <Routes>
+          <Route path="/client" element={<ClientInterface />} />
+          <Route path="/supplier" element={<SellerInterface />} />
+          <Route path="/admin" element={<AdminInterface />} />
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/client" replace />} />
+          {/* Catch all redirect */}
+          <Route path="*" element={<Navigate to="/client" replace />} />
+        </Routes>
       </main>
     </div>
   );
