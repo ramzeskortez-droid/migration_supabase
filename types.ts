@@ -16,6 +16,7 @@ export type Currency = 'RUB' | 'USD' | 'CNY';
 export type WorkflowStatus = 
   | 'В обработке' 
   | 'КП готово' 
+  | 'КП отправлено'
   | 'Готов купить' 
   | 'Подтверждение от поставщика' 
   | 'Ожидает оплаты' 
@@ -85,10 +86,17 @@ export interface Order {
   items: OrderItem[];
   status: OrderStatus;
   createdAt: string; 
+  location: string;
   clientName: string;
   clientPhone?: string; // Добавлено поле телефона
   visibleToClient?: 'Y' | 'N';
   offers?: Order[];
+  
+  // Система трех статусов
+  statusAdmin?: string;
+  statusClient?: string;
+  statusSeller?: string;
+
   // Добавлено для устранения ошибок Property 'isProcessed' does not exist on type 'Order'
   isProcessed?: boolean | 'Y' | 'N';
   // Добавлено для типизации оптимистичных обновлений в интерфейсе поставщика

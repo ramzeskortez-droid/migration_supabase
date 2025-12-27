@@ -601,16 +601,43 @@ export const ClientInterface: React.FC = () => {
             
             const visibleOffers = (order.offers || []).filter(off => off.visibleToClient === 'Y');
             const winningItems = visibleOffers.flatMap(off => off.items.filter(i => i.rank === 'ЛИДЕР' || i.rank === 'LEADER'));
-            const hasWinning = winningItems.length > 0;
+            
+            // НОВАЯ ЛОГИКА: КП готово, если статус клиента соответствующий
+            const isCPReady = order.statusClient === 'КП готово' || order.statusClient === 'КП ГОТОВО';
+            const hasWinning = isCPReady && winningItems.length > 0;
+
             const totalSum = winningItems.reduce((acc, item) => acc + ((item.adminPrice ?? item.sellerPrice ?? 0) * (item.offeredQuantity || item.quantity)), 0);
             const totalDelivery = winningItems.reduce((acc, item) => acc + ((item.deliveryRate || 0) * (item.offeredQuantity || item.quantity)), 0);
+            const maxDeliveryWeeks = Math.max(...winningItems.map(i => i.deliveryWeeks || 0), 0);
             const symbol = getCurrencySymbol(winningItems[0]?.adminCurrency || winningItems[0]?.sellerCurrency || 'RUB');
 
             const orderDate = order.createdAt ? order.createdAt.split(/[\n,]/)[0] : '';
             const itemsCount = order.items.length;
             const displayModel = order.car?.AdminModel || order.car?.model || 'БЕЗ МОДЕЛИ';
             
-            const containerStyle = isVanishing ? "opacity-0 max-h-0 py-0 overflow-hidden" : isHighlighted ? "bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200" : order.isRefused ? "bg-red-50 border-red-200 opacity-60 grayscale-[0.5] border-b-4 md:border-b border-slate-300 last:border-0" : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-3' : 'hover:bg-slate-50/30 border-l-transparent border-b-4 md:border-b border-slate-100 last:border-0';
+            // Color Coding Logic
+            const status = order.workflowStatus || 'В обработке';
+            let statusBorderColor = 'border-l-transparent';
+            let statusBgColor = 'hover:bg-slate-50/30';
+
+            if (status === 'Готов купить' || status === 'Выполнен') {
+               statusBorderColor = 'border-l-emerald-500';
+               statusBgColor = 'bg-emerald-50/30 hover:bg-emerald-50/50';
+            } else if (status === 'Аннулирован' || status === 'Отказ' || order.isRefused) {
+               statusBorderColor = 'border-l-red-500';
+               statusBgColor = 'bg-red-50/30 hover:bg-red-50/50 grayscale-[0.5]';
+            } else if (status === 'Подтверждение от поставщика' || status === 'КП отправлено') {
+               statusBorderColor = 'border-l-amber-400';
+               statusBgColor = 'bg-amber-50/30 hover:bg-amber-50/50';
+            } else if (status === 'В пути' || status === 'Ожидает оплаты') {
+               statusBorderColor = 'border-l-blue-500';
+               statusBgColor = 'bg-blue-50/30 hover:bg-blue-50/50';
+            }
+
+            const containerStyle = isVanishing ? "opacity-0 max-h-0 py-0 overflow-hidden" 
+                : isHighlighted ? "bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200" 
+                : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-3' 
+                : `${statusBorderColor} ${statusBgColor} border-b-4 md:border-b border-slate-100 last:border-0`;
 
             return (
               <div key={order.id} className={`transition-all duration-700 border-l-4 ${containerStyle}`}>
@@ -766,17 +793,30 @@ export const ClientInterface: React.FC = () => {
                               )}
                               
                               <div className="bg-slate-900 text-white p-4 flex flex-wrap md:flex-nowrap justify-between items-center gap-4">
-                                  <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 w-full md:w-auto">
+                                  <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-6 w-full md:w-auto">
                                       {hasWinning && (
-                                          <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
-                                              <div className="flex items-center gap-2"><Calculator size={14} className="text-emerald-400"/><span className="font-black text-[10px] uppercase tracking-widest">Итого к оплате:</span></div>
-                                              <div className="flex items-baseline gap-2">
-                                                  <span className="text-lg font-black tracking-tight">{totalSum.toLocaleString()} {symbol}</span>
-                                                  {totalDelivery > 0 && (
-                                                      <span className="text-xs font-bold text-slate-400 uppercase">+ {totalDelivery.toLocaleString()} ₽ (Доставка)</span>
-                                                  )}
-                                              </div>
-                                          </div>
+                                          <>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2 text-emerald-400">
+                                                    <Calculator size={14}/>
+                                                    <span className="font-black text-[10px] uppercase tracking-widest">Итого к оплате</span>
+                                                </div>
+                                                <div className="text-xl font-black tracking-tight leading-none">{totalSum.toLocaleString()} {symbol}</div>
+                                            </div>
+
+                                            <div className="h-8 w-px bg-slate-700 hidden md:block"></div>
+
+                                            <div className="grid grid-cols-2 md:flex gap-4 md:gap-6">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase">Доставка</span>
+                                                    <span className="text-xs font-black text-slate-200">{totalDelivery.toLocaleString()} ₽</span>
+                                                </div>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase">Срок (макс)</span>
+                                                    <span className="text-xs font-black text-slate-200">{maxDeliveryWeeks} нед.</span>
+                                                </div>
+                                            </div>
+                                          </>
                                       )}
                                       
                                       {order.isRefused && (
@@ -804,7 +844,9 @@ export const ClientInterface: React.FC = () => {
                                       !order.isRefused && (
                                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-emerald-500/20 border-emerald-500/30 text-emerald-400 w-full md:w-auto justify-center md:justify-start">
                                             <Archive size={14}/>
-                                            <span className="text-[9px] font-black uppercase whitespace-nowrap">В Архиве (Оплачено)</span>
+                                            <span className="text-[9px] font-black uppercase whitespace-nowrap">
+                                                {order.statusClient === 'Подтверждение от поставщика' ? 'Ожидание подтверждения' : 'В Архиве (Оплачено)'}
+                                            </span>
                                         </div>
                                       )
                                   )}

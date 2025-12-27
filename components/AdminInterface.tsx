@@ -322,6 +322,9 @@ export const AdminInterface: React.FC = () => {
       form[`car_year`] = order.car?.AdminYear || order.car?.year || '';
       form[`car_body`] = order.car?.AdminBodyType || order.car?.bodyType || '';
       
+      // Global delivery weeks (taken from first item or default)
+      form[`delivery_weeks`] = order.items[0]?.deliveryWeeks?.toString() || '';
+
       // Items fields
       order.items.forEach((item, idx) => {
           form[`item_${idx}_name`] = item.AdminName || item.name;
@@ -337,6 +340,7 @@ export const AdminInterface: React.FC = () => {
           ...item,
           AdminName: editForm[`item_${idx}_name`],
           AdminQuantity: Number(editForm[`item_${idx}_qty`]),
+          deliveryWeeks: Number(editForm[`delivery_weeks`]),
           car: {
               ...order.car,
               AdminModel: editForm[`car_model`],
@@ -484,8 +488,27 @@ export const AdminInterface: React.FC = () => {
                  const carYear = order.car?.AdminYear || order.car?.year;
                  const isVanishing = vanishingIds.has(order.id);
 
+                 // Color Coding Logic
+                 const status = order.workflowStatus || 'В обработке';
+                 let statusBorderColor = 'border-l-transparent';
+                 let statusBgColor = 'hover:bg-slate-50';
+
+                 if (status === 'Готов купить' || status === 'Выполнен') {
+                    statusBorderColor = 'border-l-emerald-500';
+                    statusBgColor = 'bg-emerald-50/30 hover:bg-emerald-50/50';
+                 } else if (status === 'Аннулирован' || status === 'Отказ') {
+                    statusBorderColor = 'border-l-red-500';
+                    statusBgColor = 'bg-red-50/30 hover:bg-red-50/50';
+                 } else if (status === 'Подтверждение от поставщика' || status === 'КП отправлено') {
+                    statusBorderColor = 'border-l-amber-400';
+                    statusBgColor = 'bg-amber-50/30 hover:bg-amber-50/50';
+                 } else if (status === 'В пути' || status === 'Ожидает оплаты') {
+                    statusBorderColor = 'border-l-blue-500';
+                    statusBgColor = 'bg-blue-50/30 hover:bg-blue-50/50';
+                 }
+
                  return (
-                 <div key={order.id} className={`transition-all duration-500 border-l-4 ${isVanishing ? 'opacity-0 scale-95 h-0 overflow-hidden' : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4' : 'border-l-transparent border-b-4 md:border-b border-slate-100 hover:bg-slate-50'}`}>
+                 <div key={order.id} className={`transition-all duration-500 border-l-4 ${isVanishing ? 'opacity-0 scale-95 h-0 overflow-hidden' : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4' : `${statusBorderColor} ${statusBgColor} border-b-4 md:border-b border-slate-100`}`}>
                      {/* ROW - Responsive Grid */}
                      <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px]`} onClick={() => !isEditing && setExpandedId(expandedId === order.id ? null : order.id)}>
                          
@@ -583,6 +606,15 @@ export const AdminInterface: React.FC = () => {
                                         <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Марка/Модель</label><input value={editForm['car_model']} onChange={e => setEditForm({...editForm, 'car_model': e.target.value})} className="w-full p-2 border rounded text-xs font-bold uppercase"/></div>
                                         <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Год</label><input value={editForm['car_year']} onChange={e => setEditForm({...editForm, 'car_year': e.target.value})} className="w-full p-2 border rounded text-xs font-bold"/></div>
                                         <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Кузов</label><input value={editForm['car_body']} onChange={e => setEditForm({...editForm, 'car_body': e.target.value})} className="w-full p-2 border rounded text-xs font-bold uppercase"/></div>
+                                        <div className="col-span-1 space-y-1">
+                                            <label className="text-[8px] font-bold text-indigo-400 uppercase">Срок (нед)</label>
+                                            <input 
+                                                type="number" 
+                                                value={editForm['delivery_weeks']} 
+                                                onChange={e => setEditForm({...editForm, 'delivery_weeks': e.target.value})} 
+                                                className="w-full p-2 border-2 border-indigo-100 rounded text-xs font-black text-indigo-600 focus:border-indigo-300"
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 md:grid-cols-7 gap-3 md:gap-6 text-[10px]">

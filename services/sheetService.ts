@@ -1,4 +1,3 @@
-
 import { Order, OrderStatus, OrderItem, RowType, Currency } from '../types';
 
 // Default URL provided by configuration
@@ -7,22 +6,23 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxooqVnUce3SIll
 // Helper to handle API URL from localStorage or fallback to default
 const getApiUrl = () => localStorage.getItem('GAS_API_URL') || DEFAULT_API_URL;
 
-// New JSON-oriented structure matching Version 3.0 Backend
+// Version 5.0 Grouped Statuses Structure
 interface SheetRow {
   id: string;      // Col A (0)
   parentId: string;// Col B (1)
   type: string;    // Col C (2)
-  status: string;  // Col D (3)
-  vin: string;     // Col E (4)
-  clientName: string; // Col F (5)
-  summary: string; // Col G (6)
-  json: string;    // Col H (7) - The source of truth for app logic
-  rank: string;    // Col I (8) - Now "Readable Status" string (e.g. "✅ Item | 5000")
-  createdAt: string; // Col J (9)
-  processed: string; // Col K (10) (Y/N)
-  readyToBuy?: string; // Col L (11) (Y/N)
-  refusal?: string; // Col M (12) (Y/N) - Cancellation flag
-  workflowStatus?: string; // Col N (13) - Status String
+  statusAdmin: string; // Col D (3)
+  statusClient: string; // Col E (4)
+  statusSeller: string; // Col F (5)
+  workflowStatus: string; // Col G (6)
+  vin: string;     // Col H (7)
+  clientName: string; // Col I (8)
+  summary: string; // Col J (9)
+  json: string;    // Col K (10)
+  rank: string;    // Col L (11)
+  createdAt: string; // Col M (12)
+  location: string; // Col N (13)
+  refusal?: string; // Col O (14) (Y/N)
 }
 
 export class SheetService {
@@ -44,7 +44,7 @@ export class SheetService {
       if (!str) return 0;
       try {
           const clean = str.replace(/\n/g, ' ').replace(/\s+/g, ' ').split(/[\s,]/)[0];
-          const parts = clean.split(/[\.\-\/]/);
+          const parts = clean.split(/[\.\/]/);
           if (parts.length === 3) {
               const [d, m, y] = parts[0].length === 4 ? [parts[2], parts[1], parts[0]] : [parts[0], parts[1], parts[2]];
               return new Date(Number(y), Number(m) - 1, Number(d)).getTime();
@@ -71,7 +71,7 @@ export class SheetService {
       
       if (!response.ok) throw new Error(`Network error: ${response.status}`);
       
-      let rows: SheetRow[];
+      let rows: any[];
       try {
         rows = await response.json();
       } catch (e) {
@@ -82,6 +82,19 @@ export class SheetService {
 
       const ordersMap = new Map<string, Order>();
       const offersList: { row: SheetRow, items: OrderItem[] }[] = [];
+
+      // Helper to derive unified status
+      const deriveWorkflowStatus = (sAdmin: string, sClient: string): string => {
+          if (sAdmin === 'Аннулирован') return 'Аннулирован';
+          if (sAdmin === 'Отказ' || sClient === 'Отказ') return 'Отказ';
+          if (sAdmin === 'Выполнен' || sClient === 'Выполнен') return 'Выполнен';
+          if (sAdmin === 'В пути') return 'В пути';
+          if (sAdmin === 'Ожидает оплаты') return 'Ожидает оплаты';
+          if (sAdmin === 'Готов купить') return 'Готов купить'; // Client confirmed
+          if (sClient === 'Подтверждение от поставщика') return 'Подтверждение от поставщика';
+          if (sAdmin === 'КП отправлено' || sClient === 'КП готово') return 'КП отправлено';
+          return 'В обработке';
+      };
 
       rows.forEach(row => {
         let parsedItems: OrderItem[] = [];
@@ -98,30 +111,41 @@ export class SheetService {
           }
         } catch (e) {}
 
+        // Backend returns statusSupplier, map it correctly
+        const rawStatusSupplier = (row as any).statusSupplier || row.statusSeller || '';
+
         if (row.type === 'ORDER') {
-          const isProcessed = row.processed === 'Y';
+          const sAdmin = row.statusAdmin || '';
+          const sClient = row.statusClient || '';
+          const derivedWorkflow = deriveWorkflowStatus(sAdmin, sClient);
+
+          const isCPReady = sAdmin === 'КП отправлено' || sClient === 'КП готово';
           const carDetails = parsedItems.length > 0 ? (parsedItems[0] as any).car : undefined;
 
           ordersMap.set(String(row.id), {
             id: String(row.id),
             type: RowType.ORDER,
             vin: row.vin,
-            status: row.status as OrderStatus,
+            status: row.statusAdmin as any,
+            statusAdmin: sAdmin,
+            statusClient: sClient,
+            statusSeller: rawStatusSupplier, // Correctly mapped
             clientName: row.clientName,
             clientPhone: clientPhone, 
             refusalReason: refusalReason,
             createdAt: row.createdAt,
-            visibleToClient: isProcessed ? 'Y' : 'N',
+            location: row.location,
+            visibleToClient: isCPReady ? 'Y' : 'N',
             items: parsedItems,
             offers: [],
             car: carDetails,
-            isProcessed: isProcessed,
-            readyToBuy: row.readyToBuy === 'Y',
-            isRefused: row.refusal === 'Y',
-            workflowStatus: row.workflowStatus as any // New Field
+            isProcessed: isCPReady, // Used for locking edits
+            readyToBuy: sAdmin === 'Готов купить' || sClient === 'Подтверждение от поставщика',
+            isRefused: sAdmin === 'Аннулирован' || sAdmin === 'Отказ' || sClient === 'Отказ',
+            workflowStatus: derivedWorkflow as any
           });
         } else if (row.type === 'OFFER') {
-          offersList.push({ row: {...row, id: String(row.id), parentId: String(row.parentId)}, items: parsedItems });
+          offersList.push({ row: {...row, statusSeller: rawStatusSupplier, id: String(row.id), parentId: String(row.parentId)}, items: parsedItems });
         }
       });
 
@@ -134,9 +158,10 @@ export class SheetService {
             parentId: row.parentId,
             type: RowType.OFFER,
             vin: row.vin,
-            status: row.status as OrderStatus,
+            status: row.statusAdmin as any,
             clientName: row.clientName,
             createdAt: row.createdAt,
+            location: row.location,
             visibleToClient: parentOrder.isProcessed ? 'Y' : 'N',
             items: items,
             isProcessed: true
@@ -185,7 +210,6 @@ export class SheetService {
   }
 
   static async createOrder(vin: string, items: any[], clientName: string, car: any, clientPhone?: string): Promise<string> {
-    // ID generates on Server Side now
     const itemsWithPhone = items.map((item, idx) => {
         if (idx === 0) {
             return { ...item, clientPhone, car };
@@ -196,12 +220,13 @@ export class SheetService {
     const payload = {
       action: 'create',
       order: {
-        id: "PENDING", // Server will ignore this and generate new ID
+        id: "PENDING", 
         type: 'ORDER',
         status: 'ОТКРЫТ',
         vin,
         clientName,
         createdAt: new Date().toLocaleString('ru-RU'),
+        location: 'РФ',
         items: itemsWithPhone,
         visibleToClient: 'N'
       }
@@ -217,9 +242,6 @@ export class SheetService {
   }
 
   static async createOffer(orderId: string, sellerName: string, items: any[], vin: string, sellerPhone?: string): Promise<void> {
-    // ID generates on Server Side: OrderID-N
-    
-    // Привязываем телефон поставщика к первому элементу JSON для истории
     const itemsWithPhone = items.map((item, idx) => {
         if (idx === 0) return { ...item, sellerPhone };
         return item;
@@ -228,13 +250,14 @@ export class SheetService {
     const payload = {
       action: 'create',
       order: {
-        id: "PENDING", // Server will generate format: OrderID-1
+        id: "PENDING", 
         parentId: orderId,
         type: 'OFFER',
         status: 'ОТКРЫТ',
         vin,
         clientName: sellerName,
         createdAt: new Date().toLocaleString('ru-RU'),
+        location: 'РФ',
         items: itemsWithPhone,
         visibleToClient: 'N'
       }
@@ -252,9 +275,9 @@ export class SheetService {
       leadOfferId: offerId,
       adminPrice,
       adminCurrency,
-      actionType, // New parameter to support unselecting leader
-      adminComment, // New: Comment why not selected or additional info
-      deliveryRate // New: Selected delivery tariff
+      actionType, 
+      adminComment, 
+      deliveryRate 
     });
     this.lastFetch = 0;
   }
@@ -280,7 +303,7 @@ export class SheetService {
       action: 'refuse_order',
       orderId,
       reason,
-      source // 'ADMIN' or 'CLIENT'
+      source 
     });
     this.lastFetch = 0;
   }

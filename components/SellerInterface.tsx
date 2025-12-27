@@ -241,7 +241,7 @@ export const SellerInterface: React.FC = () => {
     let result = rawOrders.filter(o => {
       const isSentByMe = hasSentOfferByMe(o);
       const isRelevant = activeTab === 'new' 
-        ? (o.status === OrderStatus.OPEN && !o.isProcessed && !isSentByMe && !o.isRefused)
+        ? ((o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !isSentByMe && !o.isRefused)
         : isSentByMe;
       
       if (!isRelevant) return false;
@@ -477,7 +477,7 @@ export const SellerInterface: React.FC = () => {
 
       <div className="flex justify-between items-end border-b border-slate-200">
          <div className="flex gap-4">
-            <button onClick={() => setActiveTab('new')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'new' ? 'text-slate-900' : 'text-slate-400'}`}>Новые <span className="ml-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px]">{rawOrders.filter(o => !hasSentOfferByMe(o) && o.status === OrderStatus.OPEN && !o.isProcessed && !o.isRefused).length}</span>{activeTab === 'new' && <span className="absolute bottom-[-2px] left-0 right-0 h-1 bg-slate-900 rounded-full"></span>}</button>
+            <button onClick={() => setActiveTab('new')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'new' ? 'text-slate-900' : 'text-slate-400'}`}>Новые <span className="ml-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px]">{rawOrders.filter(o => !hasSentOfferByMe(o) && (o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !o.isRefused).length}</span>{activeTab === 'new' && <span className="absolute bottom-[-2px] left-0 right-0 h-1 bg-slate-900 rounded-full"></span>}</button>
             <button onClick={() => setActiveTab('processed')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'processed' ? 'text-indigo-600' : 'text-slate-400'}`}>Отправленные <span className="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[9px]">{rawOrders.filter(o => hasSentOfferByMe(o)).length}</span>{activeTab === 'processed' && <span className="absolute bottom-[-2px] left-0 right-0 h-1 bg-indigo-600 rounded-full"></span>}</button>
          </div>
          <button onClick={() => fetchData(false)} className="mb-2 p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all flex items-center gap-2"><RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''}/></button>
