@@ -496,11 +496,6 @@ export const ClientInterface: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4 relative">
-      {/* TEMP DEBUG STRIP */}
-      <div className="bg-slate-800 text-white p-2 text-[10px] font-mono rounded mb-2">
-         DEBUG: Orders: {orders.length} | Filtered: {filteredOrders.length} | Raw: {Array.isArray(debugRawData) ? debugRawData.length : 0} | Auth: {clientAuth?.name} | RenderFilt: {renderFilteredCount}
-      </div>
-
       {successToast && (
           <div className="fixed top-6 right-6 z-[250] animate-in slide-in-from-top-4 fade-in duration-300">
               <div className="bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700">
@@ -909,63 +904,6 @@ export const ClientInterface: React.FC = () => {
         </div>
       </div>
 
-      {/* DEBUG PANEL - RESTORED */}
-      {clientAuth && (
-        <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-slate-700 text-xs font-mono text-slate-300 overflow-x-auto">
-            <div className="flex justify-between items-center border-b border-slate-700 pb-2 mb-2">
-                <h3 className="text-white font-bold uppercase">🔧 DIAGNOSTICS V2</h3>
-                <button 
-                    onClick={() => setForceShowAll(!forceShowAll)}
-                    className={`px-3 py-1 rounded uppercase font-black text-[10px] ${forceShowAll ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-400'}`}
-                >
-                    {forceShowAll ? 'DISABLE GOD MODE' : 'ENABLE GOD MODE (SHOW ALL)'}
-                </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <p className="text-slate-500 font-bold mb-1">MY AUTH & LOCAL:</p>
-                    <div className="pl-2 border-l-2 border-slate-700">
-                        <p>Name: <span className="text-yellow-400">"{clientAuth.name}"</span></p>
-                        <p>Phone: <span className="text-yellow-400">"{clientAuth.phone}"</span></p>
-                        <p>NormPhone: <span className="text-yellow-400">"{clientAuth.phone?.replace(/\D/g, '')}"</span></p>
-                        <p className="mt-2 text-slate-500">Tracked Local IDs: <span className="text-indigo-400">[{Array.from(localOrderIds).join(', ')}]</span></p>
-                    </div>
-                </div>
-                <div>
-                    <p className="text-slate-500 font-bold mb-1">RAW SERVER DATA (Top 10):</p>
-                    <div className="space-y-1">
-                    {Array.isArray(debugRawData) && debugRawData.slice(0, 10).map((o, idx) => {
-                        const safePhone = o.clientPhone ? String(o.clientPhone) : '';
-                        const normClientPhone = safePhone.replace(/\D/g, '');
-                        const normAuthPhone = clientAuth.phone ? clientAuth.phone.replace(/\D/g, '') : '';
-                        const safeName = o.clientName ? String(o.clientName).trim().toUpperCase() : '';
-                        const authName = clientAuth.name ? clientAuth.name.trim().toUpperCase() : '';
-                        
-                        const nameMatch = safeName === authName;
-                        const phoneMatch = normClientPhone === normAuthPhone;
-                        const isLocal = localOrderIds.has(String(o.id));
-                        const isVisible = (nameMatch && phoneMatch) || isLocal;
-                        
-                        return (
-                            <div key={o.id || idx} className="border-b border-slate-800 pb-1 flex items-center gap-2">
-                                <span className="text-indigo-400 w-10">#{o.id}</span>
-                                <div className="flex flex-col">
-                                    <span className={nameMatch ? "text-emerald-400" : "text-red-400"}>N: "{o.clientName}"</span>
-                                    <span className={phoneMatch ? "text-emerald-400" : "text-red-400"}>P: "{o.clientPhone}"</span>
-                                </div>
-                                <div className="ml-auto flex items-center gap-2">
-                                    {isLocal && <span className="bg-indigo-900 text-indigo-300 px-1 rounded text-[9px]">LOCAL</span>}
-                                    {!isVisible && <span className="text-red-600 font-bold">HIDDEN</span>}
-                                    {isVisible && <span className="text-emerald-600 font-bold">VISIBLE</span>}
-                                </div>
-                            </div>
-                        );
-                    })}
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
     </div>
   );
 };
