@@ -3,23 +3,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { SheetService } from '../services/sheetService';
 import { Order, OrderStatus, PartCategory } from '../types';
 import { Pagination } from './Pagination';
+import { POPULAR_BRANDS, ALL_BRANDS } from '../constants/cars';
 import { 
   Send, Plus, Trash2, Zap, CheckCircle2, Car, MoreHorizontal, Calculator, Search, Loader2, ChevronDown, ShoppingCart, Archive, UserCircle2, LogOut, ShieldCheck, Phone, X, Calendar, Clock, Hash, Package, Ban, RefreshCw, AlertCircle, ArrowUp, ArrowDown, ArrowUpDown, FileText
 } from 'lucide-react';
 
 // --- DATA CONSTANTS ---
 
-const POPULAR_BRANDS_LIST = [
-  "Lada (ВАЗ)", "Audi", "BMW", "Changan", "Chery", "Chevrolet", "Daewoo", "Ford", "Geely", "Haval", "Honda", "Hyundai", 
-  "Jaecoo", "JETOUR", "Kia", "Land Rover", "Lexus", "Mazda", "Mercedes-Benz", "Mitsubishi", "Nissan", "Omoda", "Opel", 
-  "Peugeot", "Renault", "Skoda", "Subaru", "TENET", "Toyota", "Volkswagen"
-];
-
-const ALL_BRANDS_LIST = [
-  "Abarth", "AC", "Acura", "Adam", "Adler", "Aito", "Aiways", "Aixam", "Alfa Romeo", "Alpina", "Alpine", "AM General", "Ambertruck", "AMC", "Apal", "Arcfox", "Ariel", "Aro", "Asia", "Aston Martin", "Auburn", "Audi", "Aurus", "Austin", "Austin Healey", "Auto Union", "Autobianchi", "Avatr", "BAIC", "Bajaj", "Baltijas Dzips", "Baojun", "Batmobile", "BAW", "Belgee", "Bentley", "Bertone", "Bestune", "Bilenkin", "Bio Auto", "Bitter", "Blaval", "BMW", "Borgward", "Brabus", "Brilliance", "Bristol", "Bufori", "Bugatti", "Buick", "BYD", "Byvin", "Cadillac", "Callaway", "Carbodies", "Caterham", "Chana", "Changan", "Changfeng", "Changhe", "Chery", "Chevrolet", "Chrysler", "Ciimo (Dongfeng-Honda)", "Citroen", "Cizeta", "Coda", "Coggiola", "Cord", "Cowin", "Cupra", "Dacia", "Dadi", "Daewoo", "Daihatsu", "Daimler", "Dallara", "Datsun", "Dayun", "De Tomaso", "Deco Rides", "Delage", "DeLorean", "Denza", "Derways", "DeSoto", "DKW", "Dodge", "Dongfeng", "Doninvest", "Donkervoort", "DR", "DS", "DW Hower", "E-Car", "Eagle", "Eagle Cars", "Enovate (Enoreve)", "Eonyx", "Everus", "Evolute", "Excalibur", "Exeed", "Facel Vega", "FAW", "Ferrari", "Fiat", "Fisker", "Flanker", "Ford", "Forthing", "Foton", "Franklin", "FSO", "FSR", "Fuqi", "GAC", "GAC Aion", "GAC Trumpchi", "Geely", "Genesis", "Geo", "GMA", "GMC", "Goggomobil", "Gonow", "Gordon", "GP", "Great Wall", "Hafei", "Haima", "Hanomag", "Hanteng", "Haval", "Hawtai", "Hedmos", "Heinkel", "Hennessey", "Hindustan", "HiPhi", "Hispano-Suiza", "Holden", "Honda", "Hongqi", "Horch", "Hozon", "HSV", "Huaihai (Hoann)", "HuangHai", "Huazi", "Hudson", "Humber", "Hummer", "Hycan", "Hyperion", "Hyundai", "iCar", "iCaur", "IM Motors (Zhiji)", "Ineos", "Infiniti", "Innocenti", "International Harvester", "Invicta", "Iran Khodro", "Isdera", "Isuzu", "Iveco", "JAC", "Jaecoo", "Jaguar", "Jeep", "Jensen", "JETOUR", "Jetta", "Jiangnan", "Jidu", "Jinbei", "JMC", "JMEV", "Jonway", "Kaiyi", "Karma", "Kawei", "KGM", "Kia", "Knewstar", "Koenigsegg", "KTM AG", "KYC", "Lada (ВАЗ)", "Lamborghini", "Lancia", "Land Rover", "Landwind", "Leapmotor", "Letin", "LEVC", "Lexus", "Li Auto (Lixiang)", "Liebao Motor", "Lifan", "Ligier", "Lincoln", "Lingxi", "Livan", "Logem", "Lotus", "LTI", "Lucid", "Luxeed", "Luxgen", "Lynk & Co", "M-Hero", "Maextro", "Mahindra", "Maple", "Marcos", "Marlin", "Marussia", "Maruti", "Maserati", "Matra", "Maxus", "Maybach", "Mazda", "McLaren", "Mega", "Mercedes-Benz", "Mercury", "Merkur", "Messerschmitt", "Metrocab", "MG", "Micro", "Microcar", "Minelli", "Mini", "Mitsubishi", "Mitsuoka", "Mobilize", "Morgan", "Morris", "Nash", "Nio", "Nissan", "Noble", "Nordcross", "Oldsmobile", "Oltcit", "Omoda", "Opel", "Ora", "Orange", "Osca", "Oshan", "Oting", "Overland", "Packard", "Pagani", "Panoz", "Perodua", "Peugeot", "PGO", "Piaggio", "Pierce-Arrow", "Plymouth", "Polar Stone (Jishi)", "Polestar", "Pontiac", "Porsche", "Premier", "Proton", "Puch", "Puma", "Punk", "Qiantu", "Qingling", "Qoros", "Qvale", "Radar", "Radford", "Ram", "Ravon", "Rayton Fissore", "Reliant", "Renaissance", "Renault", "Renault Samsung", "Rezvani", "Rimac", "Rinspeed", "Rising Auto", "Rivian", "Roewe", "Rolls-Royce", "Ronart", "Rossa", "Rover", "Rox", "Saab", "SAIC", "Saipa", "Saleen", "Sandstorm", "Santana", "Saturn", "Scion", "Scout", "Sears", "SEAT", "Seres", "Shanghai Maple", "ShuangHuan", "Simca", "Skoda", "Skywell", "Skyworth", "Smart", "Solaris", "Sollers", "Soueast", "Spectre", "Spyker", "SsangYong", "Stelato", "Steyr", "Studebaker", "Subaru", "Suzuki", "SWM", "Talbot", "Tank", "Tata", "Tatra", "Tazzari", "TENET", "Tesla", "Thairung", "Think", "Tianma", "Tianye", "Tofas", "Toyota", "Trabant", "Tramontana", "Triumph", "TVR", "Ultima", "Vauxhall", "Vector", "Venturi", "Venucia", "VGV", "VinFast", "Volga", "Volkswagen", "Volvo", "Vortex", "Voyah", "VUHL", "W Motors", "Wanderer", "Wartburg", "Weltmeister", "Westfield", "Wey", "Wiesmann", "Willys", "Wuling", "Xcite", "XEV", "Xiaomi", "Xin Kai", "Xpeng", "Yema", "Yipai", "Yudo", "Yulon", "Zastava", "Zeekr", "Zenos", "Zenvo", "Zhido", "Zibar", "Zotye", "Zubr", "ZX", "Автокам", "Амберавто", "Атом", "ГАЗ", "ЗАЗ", "ЗИЛ", "ЗиС", "Иж", "Канонир", "Комбат", "ЛуАЗ", "Москвич", "Руссо-Балт", "СМЗ", "Спортивные авто и реплики", "ТагАЗ", "УАЗ", "Яндекс Ровер", "Ё-мобиль"
-];
-
-const FULL_BRAND_SET = new Set([...POPULAR_BRANDS_LIST, ...ALL_BRANDS_LIST]);
+const FULL_BRAND_SET = new Set([...POPULAR_BRANDS, ...ALL_BRANDS]);
 
 // Demo Data
 const DEMO_ITEMS_POOL = [
@@ -442,8 +433,8 @@ export const ClientInterface: React.FC = () => {
 
   const filteredBrands = useMemo(() => {
       const q = car.brand.toLowerCase();
-      if (!q) return POPULAR_BRANDS_LIST;
-      return ALL_BRANDS_LIST.filter(b => b.toLowerCase().includes(q));
+      if (!q) return POPULAR_BRANDS;
+      return ALL_BRANDS.filter(b => b.toLowerCase().includes(q));
   }, [car.brand]);
 
   // Helper for Sort Icons
