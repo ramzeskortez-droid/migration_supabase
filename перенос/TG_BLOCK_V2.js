@@ -1,4 +1,3 @@
-
 /**
  * КОНФИГУРАЦИЯ
  */
@@ -8,6 +7,12 @@ const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxooqVnUce3SIllt2RUt
 // URL вебхука Битрикс24
 const B24_WEBHOOK_URL = "https://drave5inb2.temp.swtest.ru/rest/1/zt6j93x9rzn0jhtc/";
 const B24_BASE_URL = "https://drave5inb2.temp.swtest.ru";
+
+// Список статусов для выпадающих списков
+const STATUS_LIST = [
+  "В обработке", "КП готово", "Готов купить", "Подтверждение от поставщика", 
+  "Ожидает оплаты", "В пути", "Выполнен", "Аннулирован", "Отказ", "ОТКРЫТ", "ЗАКРЫТ"
+];
 
 /**
  * ТОЧКА ВХОДА GET
@@ -23,12 +28,24 @@ function doGet(e) {
     const rows = data.slice(1);
     
     return response(rows.map(r => ({
-      id: r[0], parentId: r[1], type: r[2], status: r[3], vin: r[4], 
-      clientName: r[5], summary: r[6], json: r[7], rank: r[8], 
-      createdAt: r[9], processed: r[10], readyToBuy: r[11], refusal: r[12], workflowStatus: r[13]
+      id: r[0], 
+      parentId: r[1], 
+      type: r[2], 
+      statusAdmin: r[3], 
+      statusClient: r[4], 
+      statusSeller: r[5], 
+      workflowStatus: r[6],
+      vin: r[7], 
+      clientName: r[8], 
+      summary: r[9], 
+      json: r[10], 
+      rank: r[11], 
+      createdAt: r[12], 
+      location: r[13], 
+      refusal: r[14]
     })));
   }
-  return response({status: "alive", version: "4.9.2-admin-annul"});
+  return response({status: "alive", version: "5.0.0-triple-status"});
 }
 
 /**
@@ -51,22 +68,17 @@ function doPost(e) {
     }
 
     const sheet = getOrCreateSheet(doc, 'MarketData', [
-      'ID', 'Parent ID', 'Тип', 'Статус', 'VIN', 'Имя', 'Сводка', 'JSON', 'Детали/Цены', 'Дата', 'ОБРАБОТАН', 'ГОТОВ КУПИТЬ', 'ОТКАЗ', 'Workflow'
+      'ID', 'Parent ID', 'Тип', 'Статус Админ', 'Статус Клиент', 'Статус Поставщик', 'Workflow', 'VIN', 'Имя', 'Сводка', 'JSON', 'Детали/Цены', 'Дата', 'Локация', 'ОТКАЗ'
     ]);
     const body = contents;
 
     // --- CREATE ORDER ---
     if (body.action === 'create' && body.order.type === 'ORDER') {
       const o = body.order;
-      
-      // GENERATE NEW SEQUENTIAL ID
       const newId = String(getNextId(sheet));
-      o.id = newId; // Override client provided ID
+      o.id = newId;
 
-      // 1. Сначала создаем Лид в CRM, чтобы получить ID
       var b24Result = addLeadWithTg(o);
-      
-      // 2. Сохраняем ID лида в JSON (в первый элемент items), чтобы потом формировать ссылки
       if (b24Result && b24Result.id && o.items.length > 0) {
         o.items[0].bitrixId = b24Result.id;
       }
@@ -74,16 +86,16 @@ function doPost(e) {
       const itemsJson = JSON.stringify(o.items);
       const summary = (o.items || []).map(i => `${i.name} (${i.quantity} шт)`).join(', ');
       const formattedDate = (o.createdAt || '').replace(', ', '\n');
-      
       const readableStatus = generateOrderSummary(o.items);
 
-      // Col 14 (N) = WorkflowStatus ('В обработке')
+      // Col 4:Admin, 5:Client, 6:Seller, 7:Workflow
       const rowData = [
-        o.id, '', 'ORDER', o.status, o.vin, o.clientName, summary, itemsJson, readableStatus, formattedDate, 'N', 'N', 'N', 'В обработке'
+        o.id, '', 'ORDER', 'ОТКРЫТ', 'В обработке', 'В обработке', 'В обработке', o.vin, o.clientName, summary, itemsJson, readableStatus, formattedDate, o.location || 'РФ', 'N'
       ];
       
       sheet.insertRowAfter(1);
       sheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
+      applyStatusValidation(sheet, 2); 
       
       const subSheet = doc.getSheetByName('Subscribers');
       broadcastMessage(formatNewOrderMessage(o, b24Result), subSheet);
@@ -95,20 +107,17 @@ function doPost(e) {
     // --- CREATE OFFER ---
     else if (body.action === 'create' && body.order.type === 'OFFER') {
       const o = body.order;
-      
-      // GENERATE SEQUENTIAL OFFER ID: OrderID-N
       const offerNum = countOffersForOrder(sheet, o.parentId) + 1;
       const newOfferId = `${o.parentId}-${offerNum}`;
       o.id = newOfferId;
 
       const itemsJson = JSON.stringify(o.items);
-      const rowData = [o.id, o.parentId, 'OFFER', o.status, o.vin, o.clientName, 'Предложение', itemsJson, generateOfferSummary(o.items), (o.createdAt || '').replace(', ', '\n'), 'N', 'N', 'N', ''];
+      const rowData = [o.id, o.parentId, 'OFFER', 'ОТКРЫТ', '', '', '', o.vin, o.clientName, 'Предложение', itemsJson, generateOfferSummary(o.items), (o.createdAt || '').replace(', ', '\n'), o.location || 'РФ', 'N'];
       const insertionIndex = findBlockEndIndex(sheet, o.parentId);
       sheet.insertRowAfter(insertionIndex);
       sheet.getRange(insertionIndex + 1, 1, 1, rowData.length).setValues([rowData]);
       
       const subSheet = doc.getSheetByName('Subscribers');
-      
       const parentRow = findOrderRowById(sheet, o.parentId);
       const msg = formatNewOfferMessage(o, offerNum, parentRow);
       broadcastMessage(msg, subSheet);
@@ -119,17 +128,19 @@ function doPost(e) {
     }
     // --- FORM CP ---
     else if (body.action === 'form_cp') {
-      updateStatusById(sheet, body.orderId, 11, 'Y'); // Col K (11) = PROCESSED
-      updateStatusById(sheet, body.orderId, 14, 'КП отправлено'); // Col N (14) = Workflow
+      updateStatusById(sheet, body.orderId, 4, 'КП готово'); // Admin
+      updateStatusById(sheet, body.orderId, 5, 'КП готово'); // Client
+      updateStatusById(sheet, body.orderId, 7, 'КП отправлено'); // Workflow
       const orderRow = findOrderRowById(sheet, body.orderId);
       const subSheet = doc.getSheetByName('Subscribers');
-      
       broadcastMessage(orderRow ? formatCPMessage(body.orderId, orderRow) : `✅ <b>КП СФОРМИРОВАНО</b>\nЗаказ: <code>${body.orderId}</code>`, subSheet);
     }
     // --- CONFIRM PURCHASE ---
     else if (body.action === 'confirm_purchase') {
-      updateStatusById(sheet, body.orderId, 12, 'Y'); // Col L (12) = READY TO BUY
-      updateStatusById(sheet, body.orderId, 14, 'Готов купить'); // Col N (14)
+      updateStatusById(sheet, body.orderId, 4, 'Готов купить'); // Admin
+      updateStatusById(sheet, body.orderId, 5, 'Подтверждение от поставщика'); // Client
+      updateStatusById(sheet, body.orderId, 6, 'Подтверждение от поставщика'); // Seller
+      updateStatusById(sheet, body.orderId, 7, 'Готов купить'); // Workflow
       const orderRow = findOrderRowById(sheet, body.orderId);
       if (orderRow) {
         const subSheet = doc.getSheetByName('Subscribers');
@@ -138,26 +149,29 @@ function doPost(e) {
     }
     // --- UPDATE WORKFLOW STATUS ---
     else if (body.action === 'update_workflow_status') {
-       updateStatusById(sheet, body.orderId, 14, body.status); // Col N (14)
+       const s = body.status;
+       updateStatusById(sheet, body.orderId, 4, s); 
+       updateStatusById(sheet, body.orderId, 5, s); 
+       updateStatusById(sheet, body.orderId, 6, s); 
+       updateStatusById(sheet, body.orderId, 7, s); 
     }
     // --- REFUSE ORDER ---
     else if (body.action === 'refuse_order') {
-       updateStatusById(sheet, body.orderId, 13, 'Y'); // Col M (13) = REFUSAL
-       updateStatusById(sheet, body.orderId, 4, 'ЗАКРЫТ'); // Col D (4) = Status
-       
-       // Set status based on source
+       updateStatusById(sheet, body.orderId, 15, 'Y'); 
        const status = body.source === 'ADMIN' ? 'Аннулирован' : 'Отказ';
-       updateStatusById(sheet, body.orderId, 14, status); // Col N (14)
-
+       updateStatusById(sheet, body.orderId, 4, status);
+       updateStatusById(sheet, body.orderId, 5, status);
+       updateStatusById(sheet, body.orderId, 6, status);
+       updateStatusById(sheet, body.orderId, 7, status); 
        
        if (body.reason) {
           const orderRow = findOrderRowById(sheet, body.orderId);
           if (orderRow) {
              try {
-                const items = JSON.parse(orderRow[7]);
+                const items = JSON.parse(orderRow[10]); 
                 if (items.length > 0) {
                     items[0].refusalReason = body.reason;
-                    updateStatusById(sheet, body.orderId, 8, JSON.stringify(items));
+                    updateStatusById(sheet, body.orderId, 11, JSON.stringify(items));
                 }
              } catch(e) {}
           }
@@ -167,22 +181,17 @@ function doPost(e) {
        if (orderRow) {
          const subSheet = doc.getSheetByName('Subscribers');
          const allOffers = getAllOffersForOrder(sheet, body.orderId);
-         
-         // Logic separation based on SOURCE
          if (body.source === 'ADMIN') {
-             const message = formatAdminAnnulmentMessage(body.orderId, orderRow, body.reason);
-             broadcastMessage(message, subSheet);
+             broadcastMessage(formatAdminAnnulmentMessage(body.orderId, orderRow, body.reason), subSheet);
          } else {
-             // Default to Client Refusal template
-             const message = formatRefusalMessage(body.orderId, orderRow, allOffers);
-             broadcastMessage(message, subSheet);
+             broadcastMessage(formatRefusalMessage(body.orderId, orderRow, allOffers), subSheet);
          }
        }
     }
     else if (body.action === 'update_json') {
        const oldRow = findOrderRowById(sheet, body.orderId);
        let oldItems = [];
-       try { oldItems = JSON.parse(oldRow[7]); } catch(e){}
+       try { oldItems = JSON.parse(oldRow[10]); } catch(e){}
        
        if (oldItems.length > 0 && oldItems[0].bitrixId) {
            if (body.items.length > 0) {
@@ -190,14 +199,9 @@ function doPost(e) {
            }
        }
 
-       const newJson = JSON.stringify(body.items);
-       updateStatusById(sheet, body.orderId, 8, newJson);
-       
-       const summary = body.items.map(i => {
-         const name = i.AdminName || i.name;
-         return `${name} (${i.quantity} шт)`;
-       }).join(', ');
-       updateStatusById(sheet, body.orderId, 7, summary);
+       updateStatusById(sheet, body.orderId, 11, JSON.stringify(body.items));
+       const summary = body.items.map(i => `${i.AdminName || i.name} (${i.quantity} шт)`).join(', ');
+       updateStatusById(sheet, body.orderId, 10, summary);
        
        propagateEditsToOffers(sheet, body.orderId, body.items);
        recalculateSummaryOrReceipt(sheet, body.orderId, body.items);
@@ -220,6 +224,15 @@ function doPost(e) {
 }
 
 // --- HELPER FUNCTIONS ---
+
+function applyStatusValidation(sheet, rowIdx) {
+  const range = sheet.getRange(rowIdx, 4, 1, 4); // Columns 4, 5, 6, 7
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(STATUS_LIST)
+    .setAllowInvalid(false)
+    .build();
+  range.setDataValidation(rule);
+}
 
 function getCarHeader(car) {
     if (!car) return "Авто не указано";
@@ -254,7 +267,7 @@ function recalculateSummaryOrReceipt(sheet, orderId, orderItems) {
     for (let i = 1; i < data.length; i++) {
         if (String(data[i][1]) === String(orderId) && data[i][2] === 'OFFER') {
             try {
-                let oItems = JSON.parse(data[i][7] || '[]');
+                let oItems = JSON.parse(data[i][10] || '[]');
                 oItems.forEach(item => {
                     if (item.rank === 'ЛИДЕР') allLeaderItems.push(item);
                 });
@@ -266,9 +279,9 @@ function recalculateSummaryOrReceipt(sheet, orderId, orderItems) {
     if (orderItems.length > 0) carInfo = orderItems[0].car;
 
     if (allLeaderItems.length > 0) {
-        sheet.getRange(orderRowIndex + 1, 9).setValue(generateFinalOrderReceipt(carInfo, allLeaderItems));
+        sheet.getRange(orderRowIndex + 1, 12).setValue(generateFinalOrderReceipt(carInfo, allLeaderItems));
     } else {
-        sheet.getRange(orderRowIndex + 1, 9).setValue(generateOrderSummary(orderItems));
+        sheet.getRange(orderRowIndex + 1, 12).setValue(generateOrderSummary(orderItems));
     }
 }
 
@@ -288,7 +301,7 @@ function propagateEditsToOffers(sheet, orderId, newOrderItems) {
     for (let i = 1; i < data.length; i++) {
         if (String(data[i][1]) === String(orderId) && data[i][2] === 'OFFER') {
             let items = [];
-            try { items = JSON.parse(data[i][7] || '[]'); } catch(e) {}
+            try { items = JSON.parse(data[i][10] || '[]'); } catch(e) {}
             
             let changed = false;
             items = items.map(item => {
@@ -303,8 +316,8 @@ function propagateEditsToOffers(sheet, orderId, newOrderItems) {
             });
 
             if (changed) {
-                sheet.getRange(i + 1, 8).setValue(JSON.stringify(items));
-                sheet.getRange(i + 1, 9).setValue(generateOfferSummary(items));
+                sheet.getRange(i + 1, 11).setValue(JSON.stringify(items));
+                sheet.getRange(i + 1, 12).setValue(generateOfferSummary(items));
             }
         }
     }
@@ -331,7 +344,7 @@ function handleRankUpdate(sheet, body) {
     const rowParentId = String(data[i][1]).trim();
     if (rowParentId === parentId && data[i][2] === 'OFFER') {
         let items = [];
-        try { items = JSON.parse(data[i][7] || '[]'); } catch(e) {}
+        try { items = JSON.parse(data[i][10] || '[]'); } catch(e) {}
         
         let changed = false;
         items = items.map(item => {
@@ -355,7 +368,6 @@ function handleRankUpdate(sheet, body) {
                         item.adminComment = adminComment || ""; 
                         changed = true;
                     } else {
-                        // Reset other offers for the same item to RESERVE
                         if (item.rank === 'ЛИДЕР') {
                             item.rank = 'РЕЗЕРВ';
                             changed = true;
@@ -371,62 +383,53 @@ function handleRankUpdate(sheet, body) {
         });
 
         if (changed) {
-            sheet.getRange(i + 1, 8).setValue(JSON.stringify(items));
-            sheet.getRange(i + 1, 9).setValue(generateOfferSummary(items));
+            sheet.getRange(i + 1, 11).setValue(JSON.stringify(items));
+            sheet.getRange(i + 1, 12).setValue(generateOfferSummary(items));
         }
     }
   }
   
-  const currentItems = JSON.parse(findOrderRowById(sheet, parentId)[7]);
+  const currentItems = JSON.parse(findOrderRowById(sheet, parentId)[10]);
   recalculateSummaryOrReceipt(sheet, parentId, currentItems);
 }
 
-// NEW FUNCTION: Specific format for Admin Annulment
 function formatAdminAnnulmentMessage(orderId, row, reason) {
-  const clientName = row[5];
+  const clientName = row[8];
   let carStr = "Не указано";
   let itemsHtml = "";
   let b24Id = null;
   let leadTitle = clientName;
 
   try {
-      const json = JSON.parse(row[7]);
+      const json = JSON.parse(row[10]);
       const car = json[0]?.car;
       b24Id = json[0]?.bitrixId;
-      carStr = getExtendedCarTitle(car, ""); // Just car parts
+      carStr = getExtendedCarTitle(car, ""); 
       leadTitle = getExtendedCarTitle(car, clientName);
       
-      // Use original items from JSON for simplicity or parse summary
       if (json && json.length > 0) {
           json.forEach(i => {
-              itemsHtml += `• ${i.name} (${i.quantity} шт)\n`;
+              itemsHtml += `• ${i.AdminName || i.name} (${i.AdminQuantity || i.quantity} шт)\n`;
           });
       }
   } catch(e) {}
 
   let msg = `❌ <b>ЗАКАЗ ${orderId} был аннулирован</b>\n`;
   msg += `Заказ: <code>${orderId}</code>\n\n`;
-  
   msg += `🚘 <b>Машина:</b> ${carStr}\n`;
   msg += `👤 <b>Клиент:</b> ${clientName}\n`;
-  msg += `🔢 <b>VIN:</b> <code>${row[4]}</code>\n\n`;
-
+  msg += `🔢 <b>VIN:</b> <code>${row[7]}</code>\n\n`;
   msg += `📋 <b>ПОЗИЦИИ:</b>\n`;
   if (itemsHtml) msg += itemsHtml;
   else msg += `(Нет данных)\n`;
-  
   msg += `\n❗ <b>Причина:</b> ${reason || "Не указана"}\n`;
   
-  if (b24Id) {
-    msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${b24Id}/">${leadTitle}</a>`;
-  } else {
-    msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/list/">Открыть список лидов CRM</a>`;
-  }
+  if (b24Id) msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${b24Id}/">${leadTitle}</a>`;
   return msg;
 }
 
 function formatRefusalMessage(orderId, row, allOffers) {
-  const clientName = row[5];
+  const clientName = row[8];
   let carStr = "Не указано";
   let itemsHtml = "";
   let b24Id = null;
@@ -434,13 +437,13 @@ function formatRefusalMessage(orderId, row, allOffers) {
   let leadTitle = clientName;
 
   try {
-      const json = JSON.parse(row[7]);
+      const json = JSON.parse(row[10]);
       const car = json[0]?.car;
       b24Id = json[0]?.bitrixId;
       carStr = getCarHeader(car);
       leadTitle = getExtendedCarTitle(car, clientName);
       
-      const receiptText = String(row[8] || '');
+      const receiptText = String(row[11] || '');
       const lines = receiptText.split('\n');
       lines.forEach((line, idx) => {
           if (idx === 0) return;
@@ -450,10 +453,8 @@ function formatRefusalMessage(orderId, row, allOffers) {
                  const name = parts[1];
                  const qtyStr = parts[2];
                  const priceStr = parts[3];
-                 
                  const qty = parseInt(qtyStr.replace(/\D/g, '')) || 1;
                  const price = parseInt(priceStr.replace(/\D/g, '')) || 0;
-                 
                  totalSum += (price * qty);
                  itemsHtml += `• ${name} — <b>${priceStr}</b> x <b>${qty}шт</b>\n`;
              }
@@ -465,19 +466,13 @@ function formatRefusalMessage(orderId, row, allOffers) {
   msg += `Заказ: <code>${orderId}</code>\n\n`;
   msg += `🚘 <b>Машина:</b> ${carStr}\n`;
   msg += `👤 <b>Клиент:</b> ${clientName}\n`;
-  msg += `🔢 <b>VIN:</b> <code>${row[4]}</code>\n\n`;
-
+  msg += `🔢 <b>VIN:</b> <code>${row[7]}</code>\n\n`;
   msg += `📋 <b>ПОЗИЦИИ (Утверждено):</b>\n`;
   if (itemsHtml) msg += itemsHtml;
   else msg += `(Нет позиций)\n`;
-  
   msg += `\n💰 <b>ИТОГО: ${totalSum.toLocaleString()} руб.</b>\n`;
   
-  if (b24Id) {
-    msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${b24Id}/">${leadTitle}</a>`;
-  } else {
-    msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/list/">Открыть список лидов CRM</a>`;
-  }
+  if (b24Id) msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${b24Id}/">${leadTitle}</a>`;
   return msg;
 }
 
@@ -487,7 +482,7 @@ function getAllOffersForOrder(sheet, orderId) {
     for (let i = 1; i < data.length; i++) {
         if (String(data[i][1]) === String(orderId) && data[i][2] === 'OFFER') {
             try {
-                const items = JSON.parse(data[i][7]);
+                const items = JSON.parse(data[i][10]);
                 offers.push({ items });
             } catch(e) {}
         }
@@ -499,22 +494,19 @@ function formatCPMessage(orderId, row) {
   let carStr = "Авто не указано";
   let bitrixId = null;
   let itemsHtml = "";
-  let clientName = row[5];
+  let clientName = row[8];
   let leadTitle = clientName;
   let totalSum = 0;
   let currency = 'RUB';
   
   try {
-      const json = JSON.parse(row[7]);
+      const json = JSON.parse(row[10]);
       const car = json[0]?.car;
       bitrixId = json[0]?.bitrixId;
       carStr = getCarHeader(car);
       leadTitle = getExtendedCarTitle(car, clientName);
       
-      const doc = SpreadsheetApp.getActiveSpreadsheet();
-      const sheet = doc.getSheetByName('MarketData');
-      const allOffers = getAllOffersForOrder(sheet, orderId);
-      
+      const allOffers = getAllOffersForOrder(SpreadsheetApp.getActiveSpreadsheet().getSheetByName('MarketData'), orderId);
       allOffers.forEach(off => {
           off.items.forEach(item => {
               if (item.rank === 'ЛИДЕР') {
@@ -529,31 +521,21 @@ function formatCPMessage(orderId, row) {
               }
           });
       });
-      
   } catch(e) { console.error(e); }
 
   const curSymbol = currency === 'USD' ? '$' : (currency === 'CNY' ? '¥' : '₽');
-
   let msg = `✅ <b>КП СФОРМИРОВАНО</b>\n`;
   msg += `Заказ: <code>${orderId}</code>\n\n`;
-  
   msg += `🚘 <b>Машина:</b> ${carStr}\n`;
   msg += `👤 <b>Клиент:</b> ${clientName}\n`;
-  msg += `🔢 <b>VIN:</b> <code>${row[4]}</code>\n\n`;
-  
+  msg += `🔢 <b>VIN:</b> <code>${row[7]}</code>\n\n`;
   msg += `📋 <b>ПОЗИЦИИ (Утверждено):</b>\n`;
   if (itemsHtml) {
       msg += itemsHtml;
       msg += `\n💰 <b>ИТОГО: ${totalSum.toLocaleString()} ${curSymbol}</b>\n`;
-  }
-  else msg += `(Нет позиций)\n`;
+  } else msg += `(Нет позиций)\n`;
 
-  if (bitrixId) {
-      msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${bitrixId}/">${leadTitle}</a>`;
-  } else {
-      msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/list/">Открыть CRM</a>`;
-  }
-
+  if (bitrixId) msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${bitrixId}/">${leadTitle}</a>`;
   return msg;
 }
 
@@ -562,17 +544,17 @@ function formatPurchaseConfirmationMessage(orderId, row) {
   let bitrixId = null;
   let itemsHtml = "";
   let totalSum = 0;
-  let clientName = row[5];
+  let clientName = row[8];
   let leadTitle = clientName;
   
   try {
-      const json = JSON.parse(row[7]);
+      const json = JSON.parse(row[10]);
       const car = json[0]?.car;
       bitrixId = json[0]?.bitrixId;
       carStr = getCarHeader(car);
       leadTitle = getExtendedCarTitle(car, clientName);
       
-      const receiptText = String(row[8] || '');
+      const receiptText = String(row[11] || '');
       const lines = receiptText.split('\n');
       lines.forEach((line, idx) => {
           if (idx === 0) return;
@@ -582,50 +564,24 @@ function formatPurchaseConfirmationMessage(orderId, row) {
                  const name = parts[1];
                  const qtyStr = parts[2];
                  const priceStr = parts[3];
-                 
                  const qty = parseInt(qtyStr.replace(/\D/g, '')) || 1;
                  const price = parseInt(priceStr.replace(/\D/g, '')) || 0;
-                 
                  totalSum += (price * qty);
                  itemsHtml += `• ${name} — <b>${price}₽</b> x <b>${qty}шт</b>\n`;
              }
           }
       });
-      
-      if (totalSum === 0) {
-          const doc = SpreadsheetApp.getActiveSpreadsheet();
-          const sheet = doc.getSheetByName('MarketData');
-          const allOffers = getAllOffersForOrder(sheet, orderId);
-          allOffers.forEach(off => {
-              off.items.forEach(item => {
-                  if (item.rank === 'ЛИДЕР') {
-                      const price = item.adminPrice || item.sellerPrice || 0;
-                      const qty = item.AdminQuantity || item.quantity || 1;
-                      totalSum += (price * qty);
-                      itemsHtml += `• ${item.AdminName || item.name} — <b>${price}₽</b> x <b>${qty}шт</b>\n`;
-                  }
-              });
-          });
-      }
-
   } catch(e) {}
 
   let msg = `🛍 <b>КЛИЕНТ ГОТОВ КУПИТЬ</b>\n`;
   msg += `Заказ: <code>${orderId}</code>\n\n`;
-  
   msg += `🚘 <b>Машина:</b> ${carStr}\n`;
   msg += `👤 <b>Клиент:</b> ${clientName}\n\n`;
-  
   msg += `📋 <b>ПОЗИЦИИ:</b>\n`;
   msg += itemsHtml;
-  
   msg += `\n💰 <b>ИТОГО: ${totalSum.toLocaleString()} руб.</b>\n`;
 
-  if (bitrixId) {
-      msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${bitrixId}/">${leadTitle}</a>\nСконвертируйте в сделку!`;
-  } else {
-      msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/list/">Открыть CRM</a>`;
-  }
+  if (bitrixId) msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${bitrixId}/">${leadTitle}</a>\nСконвертируйте в сделку!`;
   return msg;
 }
 
@@ -642,8 +598,8 @@ function formatNewOfferMessage(offer, offerNum, parentRow) {
     
     if (parentRow) {
         try {
-            clientName = parentRow[5];
-            const json = JSON.parse(parentRow[7]);
+            clientName = parentRow[8];
+            const json = JSON.parse(parentRow[10]);
             const car = json[0]?.car;
             bitrixId = json[0]?.bitrixId;
             carStr = getCarHeader(car);
@@ -652,46 +608,32 @@ function formatNewOfferMessage(offer, offerNum, parentRow) {
     }
 
     if (offer.items) {
-        // Извлекаем телефон из первого элемента JSON
-        if (offer.items[0] && offer.items[0].sellerPhone) {
-            sellerPhone = offer.items[0].sellerPhone;
-        }
-
+        if (offer.items[0] && offer.items[0].sellerPhone) sellerPhone = offer.items[0].sellerPhone;
         offer.items.forEach(item => {
             if ((item.offeredQuantity || 0) > 0) {
                 const price = item.sellerPrice || 0;
                 const cur = (item.sellerCurrency === 'USD') ? '$' : (item.sellerCurrency === 'CNY' ? '¥' : '₽');
                 const qty = item.offeredQuantity || 1;
-                
                 const weight = item.weight ? ` | ⚖️ ${item.weight}кг` : "";
                 const term = item.deliveryWeeks ? ` | 📅 ${item.deliveryWeeks}н` : "";
-
                 itemsHtml += `• ${item.name} — <b>${price}${cur}</b> x <b>${qty}шт</b>${weight}${term}\n`;
                 totalSum += price * qty;
             }
         });
     }
 
-    const curSymbol = currency === 'USD' ? '$' : (currency === 'CNY' ? '¥' : '₽');
-
     let msg = `💰 <b>НОВОЕ ПРЕДЛОЖЕНИЕ (№${offerNum})</b>\n`;
     msg += `К заказу: <code>${offer.parentId}</code>\n`;
     msg += `Поставщик: <b>${offer.clientName}</b>\n`;
     msg += `📞 Тел: <code>${sellerPhone}</code>\n\n`;
-    
     msg += `🚘 <b>Машина:</b> ${carStr}\n`;
     msg += `👤 <b>Клиент:</b> ${clientName}\n`;
     msg += `🔢 <b>VIN:</b> <code>${vin}</code>\n\n`;
-    
     if (itemsHtml) {
         msg += `📋 <b>ПОЗИЦИИ:</b>\n${itemsHtml}\n`;
-        msg += `💰 <b>ИТОГО: ${totalSum.toLocaleString()} ${curSymbol}</b>\n`;
+        msg += `💰 <b>ИТОГО: ${totalSum.toLocaleString()}</b>\n`;
     }
-
-    if (bitrixId) {
-      msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${bitrixId}/">${leadTitle}</a>`;
-    }
-    
+    if (bitrixId) msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${bitrixId}/">${leadTitle}</a>`;
     return msg;
 }
 
@@ -704,30 +646,16 @@ function formatNewOrderMessage(order, b24Result) {
   msg += `ID: <code>${order.id}</code>\n`;
   msg += `Клиент: <b>${order.clientName}</b>\n`;
   msg += `VIN: <code>${order.vin}</code>\n\n`;
-  
   msg += `🚘 <b>Машина:</b> ${carStr}\n\n`;
-  
   msg += `📋 <b>ПОЗИЦИИ:</b>\n`;
-  if (order.items) {
-    order.items.forEach(i => msg += `• ${i.name} — ${i.quantity} шт\n`);
-  }
-  msg += `\n`;
-  
-  if (b24Result && b24Result.id) {
-    msg += `🔗 <a href="${B24_BASE_URL}/crm/lead/details/${b24Result.id}/">${leadTitle}</a>`;
-  } else if (b24Result && b24Result.error) {
-    msg += `⚠️ <b>ОШИБКА CRM:</b> <i>${b24Result.error}</i>`;
-  } else {
-    msg += `⚠️ <i>Лид в CRM не создан</i>`;
-  }
+  if (order.items) order.items.forEach(i => msg += `• ${i.name} — ${i.quantity} шт\n`);
+  if (b24Result && b24Result.id) msg += `\n🔗 <a href="${B24_BASE_URL}/crm/lead/details/${b24Result.id}/">${leadTitle}</a>`;
   return msg;
 }
 
 function addLeadWithTg(order) {
   var carModel = "Авто не указано";
-  if (order.items && order.items.length > 0 && order.items[0].car) { 
-    carModel = order.items[0].car.model || "Модель?"; 
-  }
+  if (order.items && order.items.length > 0 && order.items[0].car) carModel = order.items[0].car.model || "Модель?"; 
   var leadTitleText = carModel + " | " + (order.clientName || "Клиент");
   var rawTitle = leadTitleText + " | " + (order.vin || "Без VIN");
   var leadTitleEnc = encodeURIComponent(rawTitle);
@@ -736,7 +664,7 @@ function addLeadWithTg(order) {
 
   var options = { "method": "get", "validateHttpsCertificates": false, "muteHttpExceptions": true };
   try {
-    var leadUrl = B24_WEBHOOK_URL + "crm.lead.add?fields[TITLE]=" + leadTitleEnc + "&fields[NAME]=" + clientName + "&fields[COMMENTS]=" + comments + "&fields[STATUS_ID]=NEW&fields[OPENED]=Y"; 
+    var leadUrl = B24_WEBHOOK_URL + "crm.lead.add?fields[TITLE]=${leadTitleEnc}&fields[NAME]=${clientName}&fields[COMMENTS]=${comments}&fields[STATUS_ID]=NEW&fields[OPENED]=Y"; 
     var leadResponse = UrlFetchApp.fetch(leadUrl, options);
     var leadJson = JSON.parse(leadResponse.getContentText());
     if (!leadJson.result) return { error: leadJson.error_description || "Ошибка Б24" };
@@ -746,7 +674,7 @@ function addLeadWithTg(order) {
       var productParams = "?id=" + newLeadId;
       for (var i = 0; i < order.items.length; i++) {
         var item = order.items[i];
-        productParams += "&rows[" + i + "][PRODUCT_NAME]=" + encodeURIComponent(item.name) + "&rows[" + i + "][PRICE]=0&rows[" + i + "][QUANTITY]=" + (item.quantity || 1) + "&rows[" + i + "][CURRENCY_ID]=RUB&rows[" + i + "][PRODUCT_ID]=0";
+        productParams += "&rows[" + i + "][PRODUCT_NAME]="+ encodeURIComponent(item.name) + "&rows[" + i + "][PRICE]=0&rows[" + i + "][QUANTITY]=" + (item.quantity || 1) + "&rows[" + i + "][CURRENCY_ID]=RUB&rows[" + i + "][PRODUCT_ID]=0";
       }
       UrlFetchApp.fetch(B24_WEBHOOK_URL + "crm.lead.productrows.set" + productParams, options);
     }
@@ -815,28 +743,20 @@ function getOrCreateSheet(doc, name, headers) {
 function formatSheetStyles(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return;
-  sheet.setColumnWidth(9, 300);
-  sheet.getRange(2, 9, lastRow-1, 1).setWrap(true);
+  sheet.setColumnWidth(10, 300);
+  sheet.getRange(2, 10, lastRow-1, 1).setWrap(true);
 }
 
 function formatRows(sheet) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return;
-  
   for (let i = 1; i < data.length; i++) {
     const rowIdx = i + 1;
     const type = data[i][2];
-    const status = data[i][3];
-    const refusal = data[i][12]; 
-
-    const range = sheet.getRange(rowIdx, 1, 1, 14);
-
+    const refusal = data[i][14]; 
+    const range = sheet.getRange(rowIdx, 1, 1, 15);
     if (refusal === 'Y') {
         range.setBackground('#ffebee').setFontColor('#b71c1c');
-    } else if (status === 'ЗАКРЫТ') {
-        range.setBackground('#eeeeee').setFontColor('#999999');
-    } else if (type === 'ORDER' && data[i][10] === 'Y') { 
-        range.setBackground('#e8f5e9');
     } else if (type === 'OFFER') {
         range.setBackground('#fffde7');
     } else {
@@ -868,7 +788,9 @@ function broadcastMessage(html, subSheet) {
 
 function response(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
 function getNextId(sheet) {
-  const data = sheet.getRange(2, 1, sheet.getLastRow(), 1).getValues();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 1;
+  const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
   let max = 0;
   for (let i = 0; i < data.length; i++) {
     const val = parseInt(data[i][0]);
@@ -879,5 +801,10 @@ function getNextId(sheet) {
 
 function closeOrderInSheet(sheet, orderId) {
   const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) { if (String(data[i][0]) === String(orderId) || String(data[i][1]) === String(orderId)) { sheet.getRange(i + 1, 4).setValue('ЗАКРЫТ'); } }
+  for (let i = 1; i < data.length; i++) { if (String(data[i][0]) === String(orderId) || String(data[i][1]) === String(orderId)) { 
+    sheet.getRange(i + 1, 4).setValue('ЗАКРЫТ');
+    sheet.getRange(i + 1, 5).setValue('ЗАКРЫТ');
+    sheet.getRange(i + 1, 6).setValue('ЗАКРЫТ');
+    sheet.getRange(i + 1, 7).setValue('ЗАКРЫТ');
+  } }
 }

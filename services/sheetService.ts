@@ -17,12 +17,13 @@ interface SheetRow {
   workflowStatus: string; // Col G (6)
   vin: string;     // Col H (7)
   clientName: string; // Col I (8)
-  summary: string; // Col J (9)
-  json: string;    // Col K (10)
-  rank: string;    // Col L (11)
-  createdAt: string; // Col M (12)
-  location: string; // Col N (13)
-  refusal?: string; // Col O (14) (Y/N)
+  clientPhone: string; // Col J (9) - NEW
+  summary: string; // Col K (10)
+  json: string;    // Col L (11)
+  rank: string;    // Col M (12)
+  createdAt: string; // Col N (13)
+  location: string; // Col O (14)
+  refusal?: string; // Col P (15) (Y/N)
 }
 
 export class SheetService {
@@ -98,7 +99,6 @@ export class SheetService {
 
       rows.forEach(row => {
         let parsedItems: OrderItem[] = [];
-        let clientPhone = undefined;
         let refusalReason = undefined;
 
         try {
@@ -106,7 +106,6 @@ export class SheetService {
           parsedItems = parsed;
           if (parsedItems.length > 0) {
              const meta = parsedItems[0] as any;
-             if (meta.clientPhone) clientPhone = meta.clientPhone;
              if (meta.refusalReason) refusalReason = meta.refusalReason;
           }
         } catch (e) {}
@@ -131,7 +130,7 @@ export class SheetService {
             statusClient: sClient,
             statusSeller: rawStatusSupplier, // Correctly mapped
             clientName: row.clientName,
-            clientPhone: clientPhone, 
+            clientPhone: row.clientPhone, // Read from dedicated column
             refusalReason: refusalReason,
             createdAt: row.createdAt,
             location: row.location,
@@ -183,6 +182,7 @@ export class SheetService {
       return orders;
 
     } catch (error) {
+      console.error("SHEET FETCH ERROR:", error); // ADDED LOGGING
       if (this.cache.length > 0) return this.cache;
       throw error;
     }
@@ -225,6 +225,7 @@ export class SheetService {
         status: 'ОТКРЫТ',
         vin,
         clientName,
+        clientPhone,
         createdAt: new Date().toLocaleString('ru-RU'),
         location: 'РФ',
         items: itemsWithPhone,
@@ -256,6 +257,7 @@ export class SheetService {
         status: 'ОТКРЫТ',
         vin,
         clientName: sellerName,
+        sellerPhone,
         createdAt: new Date().toLocaleString('ru-RU'),
         location: 'РФ',
         items: itemsWithPhone,

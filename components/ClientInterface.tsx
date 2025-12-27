@@ -67,7 +67,6 @@ export const ClientInterface: React.FC = () => {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'processed' | 'archive'>('processed');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
@@ -83,26 +82,55 @@ export const ClientInterface: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // DEBUG & HYBRID SYSTEM STATE
+  const [debugRawData, setDebugRawData] = useState<any[]>([]);
+  const [forceShowAll, setForceShowAll] = useState(false);
+  const [localOrderIds, setLocalOrderIds] = useState<Set<string>>(() => {
+      const saved = localStorage.getItem('my_created_order_ids');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  // Helper to save local IDs
+  const trackLocalOrder = (id: string) => {
+      setLocalOrderIds(prev => {
+          const next = new Set(prev).add(String(id));
+          localStorage.setItem('my_created_order_ids', JSON.stringify(Array.from(next)));
+          return next;
+      });
+  };
 
   // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
 
-  const fetchOrders = async () => {
+  const fetchOrders = React.useCallback(async () => {
     setIsSyncing(true);
     try {
       const data = await SheetService.getOrders(true);
+      setDebugRawData(data); // STORE RAW
       
-      const myOrders = clientAuth?.name 
-        ? data.filter(o => o.clientName === clientAuth.name)
+      const normalizePhone = (p: string) => p ? p.replace(/\D/g, '') : '';
+      const authPhoneNorm = normalizePhone(clientAuth?.phone || '');
+
+      const myOrders = clientAuth?.name
+        ? data.filter(o => {
+            // HYBRID FILTER: Match Phone/Name OR Match Local ID
+            const nameMatch = String(o.clientName || '').trim().toUpperCase() === clientAuth.name.trim().toUpperCase();
+            const phoneMatch = authPhoneNorm && normalizePhone(o.clientPhone || '') === authPhoneNorm;
+            const isLocal = localOrderIds.has(String(o.id));
+            
+            return (nameMatch && phoneMatch) || isLocal;
+          })
         : [];
 
       setOrders(prev => {
          const optimisticPending = prev.filter(o => o.id.startsWith('temp-'));
-         return [...optimisticPending, ...myOrders];
+         const missingLocals = prev.filter(o => (o as any)._recentlyCreated && !myOrders.some(mo => mo.id === o.id));
+         return [...optimisticPending, ...missingLocals, ...myOrders];
       });
     } catch (e) { console.error(e); }
     finally { setIsSyncing(false); }
-  };
+  }, [clientAuth, localOrderIds]);
 
   useEffect(() => { 
     if (clientAuth) {
@@ -110,11 +138,11 @@ export const ClientInterface: React.FC = () => {
         const interval = setInterval(() => fetchOrders(), 15000);
         return () => clearInterval(interval);
     }
-  }, [clientAuth]);
+  }, [clientAuth, fetchOrders]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchQuery, sortConfig]);
+  }, [searchQuery, sortConfig]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -246,7 +274,8 @@ export const ClientInterface: React.FC = () => {
 
     try {
         const realId = await SheetService.createOrder(finalVin, items, clientAuth.name, finalCar, clientAuth.phone);
-        setOrders(prev => prev.map(o => o.id === tempId ? { ...o, id: realId } : o));
+        trackLocalOrder(realId); // TRACK LOCALLY
+        setOrders(prev => prev.map(o => o.id === tempId ? { ...o, id: realId, _recentlyCreated: true } : o));
         setHighlightedId(realId); 
         setSuccessToast({ message: `Заказ ${realId} успешно создан`, id: Date.now().toString() });
         setTimeout(() => setHighlightedId(null), 2000); 
@@ -349,18 +378,11 @@ export const ClientInterface: React.FC = () => {
       });
   };
 
-  const counts = useMemo(() => {
-    const processed = orders.filter(o => o.status === OrderStatus.OPEN && !o.readyToBuy && !o.isRefused).length;
-    const archive = orders.filter(o => o.status === OrderStatus.CLOSED || o.readyToBuy || o.isRefused).length;
-    return { processed, archive };
-  }, [orders]);
-
   const filteredOrders = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+    
     let result = orders.filter(o => {
-        let inTab = false;
-        if (activeTab === 'archive') inTab = o.status === OrderStatus.CLOSED || o.readyToBuy || o.isRefused;
-        else inTab = o.status === OrderStatus.OPEN && !o.readyToBuy && !o.isRefused;
-        if (!inTab) return false;
+        if (forceShowAll) return true;
 
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -369,6 +391,22 @@ export const ClientInterface: React.FC = () => {
         if (o.car?.model?.toLowerCase().includes(q)) return true;
         if (o.items.some(i => i.name.toLowerCase().includes(q))) return true;
         return false;
+    });
+
+    // DEFAULT SORT: Active First, Then Date
+    result.sort((a, b) => {
+        const isArchivedA = a.status === OrderStatus.CLOSED || a.readyToBuy || a.isRefused;
+        const isArchivedB = b.status === OrderStatus.CLOSED || b.readyToBuy || b.isRefused;
+        
+        if (isArchivedA && !isArchivedB) return 1; // B goes first
+        if (!isArchivedA && isArchivedB) return -1; // A goes first
+        
+        // If same status, sort by sortConfig or Date
+        if (sortConfig) {
+             // ... keep existing sort logic below if needed, or simplified date sort
+             return 0; // Let the next block handle specific sorts
+        }
+        return 0;
     });
 
     if (sortConfig) {
@@ -416,7 +454,7 @@ export const ClientInterface: React.FC = () => {
     }
 
     return result;
-  }, [orders, activeTab, searchQuery, sortConfig]);
+  }, [orders, searchQuery, sortConfig]);
 
   const paginatedOrders = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -443,8 +481,26 @@ export const ClientInterface: React.FC = () => {
       return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-indigo-600 ml-1" /> : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
   };
 
+  // RENDER-SIDE FILTER CHECK
+  const renderFilteredCount = useMemo(() => {
+     if (!clientAuth || !debugRawData.length) return 0;
+     const normalizePhone = (p: string) => p ? p.replace(/\D/g, '') : '';
+     const authPhoneNorm = normalizePhone(clientAuth.phone || '');
+     return debugRawData.filter(o => {
+        const nameMatch = String(o.clientName || '').trim().toUpperCase() === clientAuth.name.trim().toUpperCase();
+        const phoneMatch = authPhoneNorm && normalizePhone(o.clientPhone || '') === authPhoneNorm;
+        const isLocal = localOrderIds.has(String(o.id));
+        return (nameMatch && phoneMatch) || isLocal;
+     }).length;
+  }, [debugRawData, clientAuth, localOrderIds]);
+
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4 relative">
+      {/* TEMP DEBUG STRIP */}
+      <div className="bg-slate-800 text-white p-2 text-[10px] font-mono rounded mb-2">
+         DEBUG: Orders: {orders.length} | Filtered: {filteredOrders.length} | Raw: {Array.isArray(debugRawData) ? debugRawData.length : 0} | Auth: {clientAuth?.name} | RenderFilt: {renderFilteredCount}
+      </div>
+
       {successToast && (
           <div className="fixed top-6 right-6 z-[250] animate-in slide-in-from-top-4 fade-in duration-300">
               <div className="bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700">
@@ -561,12 +617,11 @@ export const ClientInterface: React.FC = () => {
 
       <div className="space-y-4">
         <div className="relative group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors"/><input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Поиск по VIN, номеру заказа или названию детали..." className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm" /></div>
-        <div className="flex justify-between items-end border-b border-slate-200">
-            <div className="flex gap-2 pb-1">
-              <button onClick={() => setActiveTab('processed')} className={`px-2 py-1 text-[10px] font-black uppercase transition-all ${activeTab === 'processed' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}>В обработке {counts.processed > 0 && <span className="ml-1 bg-indigo-50 text-indigo-700 px-1.5 rounded-sm">({counts.processed})</span>}</button>
-              <button onClick={() => setActiveTab('archive')} className={`px-2 py-1 text-[10px] font-black uppercase transition-all ${activeTab === 'archive' ? 'text-slate-900 border-b-2 border-slate-900' : 'text-slate-400'}`}>Архив {counts.archive > 0 && <span className="ml-1 opacity-40">({counts.archive})</span>}</button>
-            </div>
-            <button onClick={() => fetchOrders()} className="mb-1.5 p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"><RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''}/></button>
+        <div className="flex justify-between items-end border-b border-slate-200 pb-2">
+            <h2 className="text-sm font-black uppercase text-slate-900 tracking-tight flex items-center gap-2">
+                <Package size={18}/> Мои заявки <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{filteredOrders.length}</span>
+            </h2>
+            <button onClick={() => fetchOrders()} className="p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"><RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''}/></button>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -853,6 +908,64 @@ export const ClientInterface: React.FC = () => {
           <Pagination totalItems={filteredOrders.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
         </div>
       </div>
+
+      {/* DEBUG PANEL - RESTORED */}
+      {clientAuth && (
+        <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-slate-700 text-xs font-mono text-slate-300 overflow-x-auto">
+            <div className="flex justify-between items-center border-b border-slate-700 pb-2 mb-2">
+                <h3 className="text-white font-bold uppercase">🔧 DIAGNOSTICS V2</h3>
+                <button 
+                    onClick={() => setForceShowAll(!forceShowAll)}
+                    className={`px-3 py-1 rounded uppercase font-black text-[10px] ${forceShowAll ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-400'}`}
+                >
+                    {forceShowAll ? 'DISABLE GOD MODE' : 'ENABLE GOD MODE (SHOW ALL)'}
+                </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p className="text-slate-500 font-bold mb-1">MY AUTH & LOCAL:</p>
+                    <div className="pl-2 border-l-2 border-slate-700">
+                        <p>Name: <span className="text-yellow-400">"{clientAuth.name}"</span></p>
+                        <p>Phone: <span className="text-yellow-400">"{clientAuth.phone}"</span></p>
+                        <p>NormPhone: <span className="text-yellow-400">"{clientAuth.phone?.replace(/\D/g, '')}"</span></p>
+                        <p className="mt-2 text-slate-500">Tracked Local IDs: <span className="text-indigo-400">[{Array.from(localOrderIds).join(', ')}]</span></p>
+                    </div>
+                </div>
+                <div>
+                    <p className="text-slate-500 font-bold mb-1">RAW SERVER DATA (Top 10):</p>
+                    <div className="space-y-1">
+                    {Array.isArray(debugRawData) && debugRawData.slice(0, 10).map((o, idx) => {
+                        const safePhone = o.clientPhone ? String(o.clientPhone) : '';
+                        const normClientPhone = safePhone.replace(/\D/g, '');
+                        const normAuthPhone = clientAuth.phone ? clientAuth.phone.replace(/\D/g, '') : '';
+                        const safeName = o.clientName ? String(o.clientName).trim().toUpperCase() : '';
+                        const authName = clientAuth.name ? clientAuth.name.trim().toUpperCase() : '';
+                        
+                        const nameMatch = safeName === authName;
+                        const phoneMatch = normClientPhone === normAuthPhone;
+                        const isLocal = localOrderIds.has(String(o.id));
+                        const isVisible = (nameMatch && phoneMatch) || isLocal;
+                        
+                        return (
+                            <div key={o.id || idx} className="border-b border-slate-800 pb-1 flex items-center gap-2">
+                                <span className="text-indigo-400 w-10">#{o.id}</span>
+                                <div className="flex flex-col">
+                                    <span className={nameMatch ? "text-emerald-400" : "text-red-400"}>N: "{o.clientName}"</span>
+                                    <span className={phoneMatch ? "text-emerald-400" : "text-red-400"}>P: "{o.clientPhone}"</span>
+                                </div>
+                                <div className="ml-auto flex items-center gap-2">
+                                    {isLocal && <span className="bg-indigo-900 text-indigo-300 px-1 rounded text-[9px]">LOCAL</span>}
+                                    {!isVisible && <span className="text-red-600 font-bold">HIDDEN</span>}
+                                    {isVisible && <span className="text-emerald-600 font-bold">VISIBLE</span>}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

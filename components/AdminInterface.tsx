@@ -23,7 +23,7 @@ interface AdminModalState {
 }
 
 // UNIFIED GRID COLUMNS DEFINITION
-const GRID_COLS = "grid-cols-[80px_100px_1fr_60px_120px_110px_110px_90px_30px]";
+const GRID_COLS = "grid-cols-[80px_90px_1fr_50px_110px_100px_80px_100px_90px_30px]";
 
 type AdminTab = 
   | 'new' 
@@ -468,10 +468,8 @@ export const AdminInterface: React.FC = () => {
                  <div className="cursor-pointer flex items-center group" onClick={() => handleSort('year')}>Год <SortIcon column="year"/></div>
                  <div>VIN</div>
                  <div className="cursor-pointer flex items-center group" onClick={() => handleSort('client')}>Клиент</div>
-                 {/* DYNAMIC HEADER LABEL: OFFERS OR STATUS */}
-                 <div className="cursor-pointer flex items-center group" onClick={() => handleSort(activeTab === 'open' ? 'offers' : 'status')}>
-                     {activeTab === 'open' ? 'ОФФЕРЫ' : 'СТАТУС'} <SortIcon column={activeTab === 'open' ? 'offers' : 'status'}/>
-                 </div>
+                 <div className="cursor-pointer flex items-center group" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
+                 <div className="cursor-pointer flex items-center group" onClick={() => handleSort('status')}>СТАТУС <SortIcon column="status"/></div>
                  <div className="cursor-pointer flex items-center justify-end group" onClick={() => handleSort('date')}>Дата <SortIcon column="date"/></div>
                  <div></div> {/* Placeholder for Chevron */}
              </div>
@@ -564,7 +562,18 @@ export const AdminInterface: React.FC = () => {
                             {order.clientName}
                          </div>
                          
-                         {/* OFFERS / STATUS BADGE (Desktop Only) */}
+                         {/* OFFERS COLUMN (Desktop) */}
+                         <div className="hidden md:block">
+                             <span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-nowrap ${
+                                 offersCount === 0 ? 'bg-red-50 text-red-400' :
+                                 offersCount === 1 ? 'bg-amber-50 text-amber-600' :
+                                 'bg-emerald-50 text-emerald-600'
+                             }`}>
+                                 [{offersCount}] ОФФЕРОВ
+                             </span>
+                         </div>
+
+                         {/* STATUS COLUMN (Desktop) */}
                          <div className="hidden md:block">
                              {order.isRefused ? (
                                 <span className="inline-flex px-2 py-1 rounded bg-red-100 text-red-600 font-black uppercase text-[8px] whitespace-nowrap">АННУЛИРОВАН</span>
@@ -573,8 +582,8 @@ export const AdminInterface: React.FC = () => {
                              ) : order.isProcessed ? (
                                 <span className="inline-flex px-2 py-1 rounded bg-indigo-600 text-white font-black uppercase text-[8px] whitespace-nowrap">КП УТВЕРЖДЕНО</span>
                              ) : (
-                                <span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-nowrap ${hasOffers ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>
-                                    {offersCount} ОФФЕРОВ
+                                <span className="inline-flex px-2 py-1 rounded bg-slate-100 text-slate-500 font-black uppercase text-[8px] whitespace-nowrap">
+                                    {order.workflowStatus || 'В ОБРАБОТКЕ'}
                                 </span>
                              )}
                          </div>

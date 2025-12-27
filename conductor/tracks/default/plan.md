@@ -26,6 +26,9 @@
 - [x] Синхронизация UI/UX с логикой Google Script (Цвета, Статусы)
 - [x] Серверная генерация ID (последовательные + составные)
 - [x] Data Validation (Dropdowns) в Google Sheets
+- [x] Fix: ID generation ignores timestamps (>1M)
+- [x] Fix: Client order visibility (Strict Name + Phone filtering)
+- [x] Backend: Added 'Phone' column to Google Sheets
 
 ## Mobile Testing (Current Session)
 - [ ] Запуск сервера на порту 3000
