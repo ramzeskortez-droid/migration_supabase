@@ -24,6 +24,8 @@
 - [x] Исправить кодировку в `constants/cars.ts` (сейчас там кракозябры)
 - [x] Оптимизация списков автомобилей (перенос в constants)
 - [x] Синхронизация UI/UX с логикой Google Script (Цвета, Статусы)
+- [x] Серверная генерация ID (последовательные + составные)
+- [x] Data Validation (Dropdowns) в Google Sheets
 
 ## Mobile Testing (Current Session)
 - [ ] Запуск сервера на порту 3000
