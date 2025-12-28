@@ -526,7 +526,8 @@ export const AdminInterface: React.FC = () => {
                                <div className="mb-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                  <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Процесс выполнения</h3>
-                                    {currentStatus !== 'Выполнен' && (
+                                    {/* Hide Next Step if In Processing (Must use Form CP) or Completed */}
+                                    {currentStatus !== 'Выполнен' && currentStatus !== 'В обработке' && (
                                         <button onClick={() => handleNextStep(order)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-colors">
                                             Следующий шаг <ChevronRight size={12}/>
                                         </button>
@@ -538,9 +539,15 @@ export const AdminInterface: React.FC = () => {
                                          const currentStatusIdx = STATUS_STEPS.findIndex(s => s.id === currentStatus);
                                          const isPassed = idx <= currentStatusIdx;
                                          const isCurrent = idx === currentStatusIdx;
+                                         // Disable interaction if In Processing
+                                         const isInteractive = currentStatus !== 'В обработке';
                                          
                                          return (
-                                             <div key={step.id} className="relative z-10 flex flex-col items-center gap-2 group cursor-pointer" onClick={() => handleStatusChange(order.id, step.id)}>
+                                             <div 
+                                                key={step.id} 
+                                                className={`relative z-10 flex flex-col items-center gap-2 group ${isInteractive ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`} 
+                                                onClick={() => isInteractive && handleStatusChange(order.id, step.id)}
+                                             >
                                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isPassed ? `${step.bg} ${step.color} ${step.border}` : 'bg-white border-slate-200 text-slate-300'}`}>
                                                      <step.icon size={14} className={isCurrent ? 'animate-pulse' : ''} />
                                                  </div>

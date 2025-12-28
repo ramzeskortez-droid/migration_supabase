@@ -7,7 +7,9 @@ import {
   Send, Plus, Trash2, Zap, CheckCircle2, Car, MoreHorizontal, Calculator, Search, Loader2, ChevronDown, ShoppingCart, Archive, UserCircle2, LogOut, ShieldCheck, Phone, X, Calendar, Clock, Hash, Package, Ban, RefreshCw, AlertCircle, ArrowUp, ArrowDown, ArrowUpDown, FileText,
   Receipt,
   Truck,
-  CreditCard
+  CreditCard,
+  ChevronUp,
+  ClipboardList
 } from 'lucide-react';
 
 // --- DATA CONSTANTS ---
@@ -61,7 +63,7 @@ const STATUS_STEPS = [
 
 const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string }> = {
   'В обработке': { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
-  'КП отправлено': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' }, // Also maps 'КП готово'
+  'КП отправлено': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
   'КП готово': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
   'Готов купить': { color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
   'Подтверждение от поставщика': { color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' },
@@ -114,6 +116,9 @@ export const ClientInterface: React.FC = () => {
   const [showValidationHighlight, setShowValidationHighlight] = useState(false); 
   const [isSubmitting, setIsSubmitting] = useState(false); 
 
+  // --- NEW TABS STATE ---
+  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
@@ -136,6 +141,12 @@ export const ClientInterface: React.FC = () => {
           localStorage.setItem('my_created_order_ids', JSON.stringify(Array.from(next)));
           return next;
       });
+  };
+
+  // Helper for Toast
+  const showToast = (msg: string) => {
+      setSuccessToast({ message: msg, id: Date.now().toString() });
+      setTimeout(() => setSuccessToast(null), 3000);
   };
 
   // Sorting State
@@ -181,7 +192,7 @@ export const ClientInterface: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortConfig]);
+  }, [searchQuery, sortConfig, activeTab]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -320,32 +331,50 @@ export const ClientInterface: React.FC = () => {
         setTimeout(() => setHighlightedId(null), 2000); 
         setTimeout(() => setSuccessToast(null), 3000);
     } catch (err) {
-        console.error("Order creation failed", err);
+        console.error("Order creation failed FULL ERROR:", err);
         setOrders(prev => prev.filter(o => o.id !== tempId));
-        alert("Ошибка при создании заказа. Проверьте интернет.");
+        alert("Ошибка при создании заказа. Проверьте интернет или консоль (F12).");
     } finally {
         setIsSubmitting(false);
     }
   };
 
   const handleConfirmPurchase = async (orderId: string) => {
+    if (isConfirming) return;
     setIsConfirming(orderId);
-    try {
-      await SheetService.confirmPurchase(orderId);
-      setVanishingIds(prev => new Set(prev).add(orderId));
-      setSuccessToast({ message: `Заявка на покупку отправлена! Перемещено в архив.`, id: Date.now().toString() });
-      setTimeout(() => setSuccessToast(null), 4000);
-      setTimeout(() => {
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, readyToBuy: true, workflowStatus: 'Готов купить' } : o));
-        setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; });
-        fetchOrders();
-      }, 700);
-    } catch (e) {
-      console.error(e);
-      alert('Ошибка при подтверждении покупки.');
-    } finally {
-      setIsConfirming(null);
-    }
+    
+    // 1. Optimistic Status Change (Show progress bar update immediately)
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, workflowStatus: 'Готов купить' } : o));
+    showToast("🎉 Отличный выбор! Оформляем покупку...");
+
+    // 2. Animation delay (2 seconds) - User sees the green status
+    setTimeout(async () => {
+        try {
+          // 3. Collapse and Highlight
+          setExpandedId(null); 
+          setHighlightedId(orderId); 
+          
+          // Switch tab to History to follow the order
+          setActiveTab('history');
+          
+          // 4. API Call in background
+          await SheetService.confirmPurchase(orderId);
+          
+          // 5. Remove highlight after transition
+          setTimeout(() => {
+            setHighlightedId(null);
+            setIsConfirming(null);
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, readyToBuy: true } : o));
+            fetchOrders();
+          }, 2000); 
+          
+        } catch (e) {
+          console.error(e);
+          alert('Ошибка при подтверждении покупки.');
+          setIsConfirming(null);
+          fetchOrders(); // Revert
+        }
+    }, 2000); 
   };
 
   const openRefuseModal = (e: React.MouseEvent, order: Order) => {
@@ -418,6 +447,14 @@ export const ClientInterface: React.FC = () => {
     if (!Array.isArray(orders)) return [];
     let result = orders.filter(o => {
         if (forceShowAll) return true;
+        
+        // TAB FILTERING LOGIC
+        const status = o.workflowStatus || 'В обработке';
+        const isProcessing = status === 'В обработке';
+        
+        if (activeTab === 'active' && !isProcessing) return false;
+        if (activeTab === 'history' && isProcessing) return false;
+
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         if (String(o.id).toLowerCase().includes(q)) return true;
@@ -468,7 +505,7 @@ export const ClientInterface: React.FC = () => {
         });
     }
     return result;
-  }, [orders, searchQuery, sortConfig]);
+  }, [orders, searchQuery, sortConfig, activeTab]);
 
   const paginatedOrders = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -611,11 +648,20 @@ export const ClientInterface: React.FC = () => {
 
       <div className="space-y-4">
         <div className="relative group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors"/><input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Поиск по VIN, номеру заказа или названию детали..." className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm" /></div>
+        
+        {/* --- TABS --- */}
         <div className="flex justify-between items-end border-b border-slate-200 pb-2">
-            <h2 className="text-sm font-black uppercase text-slate-900 tracking-tight flex items-center gap-2">
-                <Package size={18}/> Мои заявки <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">{filteredOrders.length}</span>
-            </h2>
-            <button onClick={() => fetchOrders()} className="p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"><RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''}/></button>
+            <div className="flex gap-4">
+                <button onClick={() => setActiveTab('active')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'active' ? 'text-slate-900' : 'text-slate-400'}`}>
+                    В обработке <span className="ml-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px]">{orders.filter(o => (o.workflowStatus || 'В обработке') === 'В обработке').length}</span>
+                    {activeTab === 'active' && <span className="absolute bottom-[-1px] left-0 right-0 h-1 bg-slate-900 rounded-full"></span>}
+                </button>
+                <button onClick={() => setActiveTab('history')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-400'}`}>
+                    Обработанные <span className="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[9px]">{orders.filter(o => (o.workflowStatus || 'В обработке') !== 'В обработке').length}</span>
+                    {activeTab === 'history' && <span className="absolute bottom-[-1px] left-0 right-0 h-1 bg-indigo-600 rounded-full"></span>}
+                </button>
+            </div>
+            <button onClick={() => fetchOrders()} className="mb-2 p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"><RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''}/></button>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -669,7 +715,7 @@ export const ClientInterface: React.FC = () => {
             
             const currentStatus = order.workflowStatus || 'В обработке';
             const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
-            const statusIndex = isCancelled ? -1 : STATUS_STEPS.indexOf(currentStatus === 'КП готово' ? 'КП отправлено' : currentStatus);
+            const statusIndex = isCancelled ? -1 : STATUS_STEPS.indexOf(currentStatus);
             
             const statusStyle = STATUS_CONFIG[currentStatus] || STATUS_CONFIG['В обработке'];
 
