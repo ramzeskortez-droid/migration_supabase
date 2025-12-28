@@ -256,16 +256,46 @@ export const ClientInterface: React.FC = () => {
   };
 
   const handleConfirmPurchase = async (orderId: string) => {
-    if (isConfirming) return; setIsConfirming(orderId);
+    if (isConfirming) return;
+    setIsConfirming(orderId);
+    
+    // 1. Optimistic Status Change (Show progress bar update immediately)
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, workflowStatus: 'Готов купить' } : o));
     showToast("🎉 Отличный выбор! Оформляем покупку...");
+
+    // 2. Animation delay (2 seconds) - User sees the green status
     setTimeout(async () => {
         try {
-          setExpandedId(null); setHighlightedId(orderId); setActiveTab('history');
+          // 3. Collapse and Highlight
+          setExpandedId(null); 
+          setHighlightedId(orderId); 
+          
+          // Switch tab to History to follow the order
+          setActiveTab('history');
+          
+          // 4. API Call in background
           await SheetService.confirmPurchase(orderId);
-          setTimeout(() => { setHighlightedId(null); setIsConfirming(null); fetchOrders(); }, 2000); 
-        } catch (e) { alert('Ошибка при подтверждении.'); setIsConfirming(null); fetchOrders(); }
+          
+          // 5. Remove highlight after transition
+          setTimeout(() => {
+            setHighlightedId(null);
+            setIsConfirming(null);
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, readyToBuy: true } : o));
+            fetchOrders();
+          }, 2000); 
+          
+        } catch (e) {
+          console.error(e);
+          alert('Ошибка при подтверждении покупки.');
+          setIsConfirming(null);
+          fetchOrders(); // Revert
+        }
     }, 2000); 
+  };
+
+  const openRefuseModal = (e: React.MouseEvent, order: Order) => {
+    e.stopPropagation();
+    setRefuseModalOrder(order);
   };
 
   const confirmRefusal = async () => {
@@ -454,7 +484,7 @@ export const ClientInterface: React.FC = () => {
             const totalSum = winningItems.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0);
             
             return (
-              <div key={order.id} className={`transition-all duration-500 border-l-4 ${isExpanded ? 'border-l-indigo-600' : 'border-l-transparent'} ${highlightedId === order.id ? "bg-emerald-50" : ""}`}>
+              <div key={order.id} className={`transition-all duration-500 border-l-4 border-b border-slate-200 ${isExpanded ? 'border-l-indigo-600' : 'border-l-transparent'} ${highlightedId === order.id ? "bg-emerald-50" : ""}`}>
                  <div className="p-3 grid grid-cols-1 md:grid-cols-[80px_1fr_130px_50px_80px_110px_20px] items-center gap-2 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : order.id)}>
                     <div className="flex items-center justify-between md:justify-start">
                         {order.id.startsWith('temp-') ? (
@@ -505,12 +535,24 @@ export const ClientInterface: React.FC = () => {
                               {/* Mobile Vertical Timeline */}
                               <div className="md:hidden pl-4 border-l-2 border-slate-100 space-y-4">
                                   {STATUS_STEPS.map((step, idx) => {
-                                      const isPassed = idx <= STATUS_STEPS.indexOf(currentStatus === 'КП готово' ? 'КП отправлено' : currentStatus);
-                                      const stepStyle = STATUS_CONFIG[step] || STATUS_CONFIG['В обработке'];
+                                      const isPassed = idx <= STATUS_STEPS.indexOf(currentStatus === 'КП отправлено' ? 'КП готово' : currentStatus);
+                                      const isCurrent = idx === STATUS_STEPS.indexOf(currentStatus === 'КП отправлено' ? 'КП готово' : currentStatus);
+                                      const stepConfig = STATUS_CONFIG[step] || STATUS_CONFIG['В обработке'];
+                                      
+                                      let dotClass = 'bg-white border-slate-200';
+                                      let textClass = 'text-slate-300';
+                                      
+                                      if (isCancelled) {
+                                          if (isPassed) { dotClass = 'bg-red-500 border-red-500'; textClass = 'text-red-600 font-bold'; }
+                                      } else {
+                                          if (isCurrent) { dotClass = `${stepConfig.bg.replace('100','500')} border-transparent shadow-[0_0_8px_rgba(0,0,0,0.1)] scale-110`; textClass = 'text-slate-900 font-black'; }
+                                          else if (isPassed) { dotClass = `${stepConfig.bg.replace('100','500')} border-transparent opacity-60`; textClass = 'text-slate-500 font-bold'; }
+                                      }
+
                                       return (
                                           <div key={step} className="relative flex items-center gap-3">
-                                              <div className={`absolute -left-[21px] w-3 h-3 rounded-full border-2 bg-white transition-all ${isPassed ? (isCancelled ? 'border-red-500' : 'border-emerald-500') : 'border-slate-200'}`}></div>
-                                              <span className={`text-[8px] uppercase font-black ${isPassed ? 'text-slate-900' : 'text-slate-300'}`}>{step}</span>
+                                              <div className={`absolute -left-[21px] w-3.5 h-3.5 rounded-full border-2 bg-white transition-all duration-500 z-10 ${dotClass}`}></div>
+                                              <span className={`text-[9px] uppercase transition-all duration-300 ${textClass}`}>{step}</span>
                                           </div>
                                       );
                                   })}
@@ -576,17 +618,11 @@ export const ClientInterface: React.FC = () => {
                           </div>
                       )}
 
-                      {(order.readyToBuy || order.isRefused) && (
+                      {order.isRefused && (
                           <div className="bg-slate-900 text-white p-4 rounded-xl flex justify-center items-center mt-4 shadow-lg">
-                               {order.readyToBuy ? (
-                                   <div className="flex items-center gap-2 text-emerald-400">
-                                       <Archive size={14}/><span className="text-[9px] font-black uppercase">В Архиве (Оплачено)</span>
-                                   </div>
-                               ) : (
-                                   <div className="text-[10px] text-red-300 font-bold uppercase flex items-center gap-2">
-                                       <AlertCircle size={12}/> Причина отказа: {order.refusalReason || "Не указана"}
-                                   </div>
-                               )}
+                               <div className="text-[10px] text-red-300 font-bold uppercase flex items-center gap-2">
+                                   <AlertCircle size={12}/> Причина отказа: {order.refusalReason || "Не указана"}
+                               </div>
                           </div>
                       )}
                    </div>

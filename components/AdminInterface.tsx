@@ -217,15 +217,30 @@ export const AdminInterface: React.FC = () => {
                  const carYear = order.car?.AdminYear || order.car?.year;
                  const currentStatus = order.workflowStatus || 'В обработке';
                  const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
+                 
+                 // Color Coding Logic
+                 let statusBorderColor = 'border-l-transparent';
+                 let statusBgColor = 'hover:bg-slate-50';
+                 if (currentStatus === 'Готов купить' || currentStatus === 'Выполнен') { statusBorderColor = 'border-l-emerald-500'; statusBgColor = 'bg-emerald-50/30 hover:bg-emerald-50/50'; }
+                 else if (isCancelled) { statusBorderColor = 'border-l-red-500'; statusBgColor = 'bg-red-50/30 hover:bg-red-50/50'; }
+                 else if (currentStatus === 'Подтверждение от поставщика' || currentStatus === 'КП отправлено') { statusBorderColor = 'border-l-amber-400'; statusBgColor = 'bg-amber-50/30 hover:bg-amber-50/50'; }
+                 else if (currentStatus === 'В пути' || currentStatus === 'Ожидает оплаты') { statusBorderColor = 'border-l-blue-500'; statusBgColor = 'bg-blue-50/30 hover:bg-blue-50/50'; }
+
                  const statusConfig = STATUS_STEPS.find(s => s.id === currentStatus);
                  const statusBadgeColor = statusConfig ? `${statusConfig.bg} ${statusConfig.color} border ${statusConfig.border}` : 'bg-slate-100 text-slate-500 border-slate-200';
 
                  return (
-                 <div key={order.id} className={`transition-all duration-500 border-l-4 ${vanishingIds.has(order.id) ? 'opacity-0 scale-95 h-0 overflow-hidden' : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4' : 'border-b border-slate-100 hover:bg-slate-50'}`}>
+                 <div key={order.id} className={`transition-all duration-500 border-l-4 ${vanishingIds.has(order.id) ? 'opacity-0 scale-95 h-0 overflow-hidden' : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4' : `${statusBorderColor} ${statusBgColor} border-b border-slate-200`}`}>
                      <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px]`} onClick={() => !isEditing && setExpandedId(expandedId === order.id ? null : order.id)}>
                          <div className="flex items-center justify-between md:justify-start">
                              <div className="font-mono font-bold text-slate-700">{order.id}</div>
-                             <div className="md:hidden flex items-center gap-2"><span className={`px-2 py-1 rounded-md font-black text-[8px] uppercase border ${statusBadgeColor}`}>{currentStatus}</span><ChevronDown size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`}/></div>
+                             <div className="md:hidden flex items-center gap-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${offersCount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>
+                                    {offersCount} ОФ.
+                                </span>
+                                <span className={`px-2 py-1 rounded-md font-black text-[8px] uppercase border ${statusBadgeColor}`}>{currentStatus}</span>
+                                <ChevronDown size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
+                             </div>
                          </div>
                          <div className="font-bold text-slate-900 uppercase truncate">{carBrand}</div>
                          <div className="font-bold text-slate-700 uppercase truncate break-words leading-tight">{carModel}</div>
@@ -328,12 +343,23 @@ export const AdminInterface: React.FC = () => {
                                                                      <div><span className="block text-slate-400 font-bold uppercase mb-0.5">Срок Пост</span><span className="font-black text-amber-600">{off.item.deliveryWeeks || '-'} н</span></div>
                                                                  </div>
 
-                                                                 {/* ROW 2: ADMIN DATA */}
-                                                                 <div className="grid grid-cols-4 gap-2 bg-white p-2 rounded-lg text-[8px] text-center border border-indigo-50">
-                                                                     <div className="relative"><span className="block text-indigo-400 font-bold uppercase mb-0.5 text-[7px]">Продажа</span><input type="number" className="w-full p-1 border border-indigo-100 rounded text-center font-black text-[9px]" onChange={(e) => off.item.adminPrice = Number(e.target.value)} defaultValue={off.item.adminPrice || off.item.sellerPrice} disabled={order.isProcessed}/></div>
-                                                                     <div><span className="block text-indigo-400 font-bold uppercase mb-0.5 text-[7px]">Тариф</span><select className="w-full p-1 border border-indigo-100 rounded font-black text-[8px]" defaultValue={off.item.deliveryRate || 0} onChange={(e) => off.item.deliveryRate = Number(e.target.value)} disabled={order.isProcessed}><option value="0">-</option><option value="10">10₽</option><option value="100">100₽</option><option value="1000">1000₽</option></select></div>
-                                                                     <div><span className="block text-indigo-400 font-bold uppercase mb-0.5 text-[7px]">Цена Адм</span><div className="p-1 font-black text-slate-900 text-[9px]">{off.item.adminPrice || off.item.sellerPrice}</div></div>
-                                                                     <div><span className="block text-indigo-400 font-bold uppercase mb-0.5 text-[7px]">Валюта</span><select className="w-full p-1 border border-indigo-100 rounded font-black uppercase text-[8px]" defaultValue={off.item.adminCurrency || off.item.sellerCurrency} onChange={(e) => off.item.adminCurrency = e.target.value as Currency} disabled={order.isProcessed}><option value="CNY">CNY</option><option value="RUB">RUB</option><option value="USD">USD</option></select></div>
+                                                                 {/* ROW 2: ADMIN DATA (3 COLS) */}
+                                                                 <div className="grid grid-cols-3 gap-3 bg-white p-2 rounded-lg text-[8px] text-center border border-indigo-50 shadow-inner">
+                                                                     <div className="space-y-1">
+                                                                         <label className="block text-indigo-500 font-black uppercase mb-0.5 text-[7px]">Цена Продажи</label>
+                                                                         <div className="relative">
+                                                                            <input type="number" className="w-full p-2 border border-indigo-100 rounded-lg text-center font-black text-indigo-600 bg-indigo-50/30" onChange={(e) => off.item.adminPrice = Number(e.target.value)} defaultValue={off.item.adminPrice || off.item.sellerPrice} disabled={order.isProcessed}/>
+                                                                            {off.item.adminPrice && off.item.sellerPrice && off.item.adminPrice > off.item.sellerPrice && <span className="absolute -top-2 -right-1 text-[7px] text-emerald-500 font-black bg-white px-1 rounded-full border border-emerald-100">+{ (off.item.adminPrice - off.item.sellerPrice).toFixed(0) }</span>}
+                                                                         </div>
+                                                                     </div>
+                                                                     <div className="space-y-1">
+                                                                         <label className="block text-indigo-500 font-black uppercase mb-0.5 text-[7px]">Валюта</label>
+                                                                         <select className="w-full p-2 border border-indigo-100 rounded-lg font-black uppercase text-indigo-600 bg-white" defaultValue={off.item.adminCurrency || off.item.sellerCurrency} onChange={(e) => off.item.adminCurrency = e.target.value as Currency} disabled={order.isProcessed}><option value="CNY">CNY</option><option value="RUB">RUB</option><option value="USD">USD</option></select>
+                                                                     </div>
+                                                                     <div className="space-y-1">
+                                                                         <label className="block text-indigo-500 font-black uppercase mb-0.5 text-[7px]">Тариф (Дост)</label>
+                                                                         <select className="w-full p-2 border border-indigo-100 rounded-lg font-black text-indigo-600 bg-white" defaultValue={off.item.deliveryRate || 0} onChange={(e) => off.item.deliveryRate = Number(e.target.value)} disabled={order.isProcessed}><option value="0">-</option><option value="10">10₽</option><option value="100">100₽</option><option value="1000">1000₽</option></select>
+                                                                     </div>
                                                                  </div>
 
                                                                  <div className="flex gap-2">
@@ -376,7 +402,13 @@ export const AdminInterface: React.FC = () => {
                                  {isEditing ? (
                                      <><button onClick={() => setEditingOrderId(null)} className="px-6 py-3 rounded-xl border border-slate-200 text-slate-500 font-black text-[10px] uppercase">Отмена</button><button onClick={() => saveEditing(order)} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-[10px] uppercase shadow-lg hover:bg-indigo-700 flex items-center gap-2">{isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} Сохранить</button></>
                                  ) : (
-                                     <>{!isCancelled && !order.isProcessed && <button onClick={() => startEditing(order)} className="px-4 py-3 rounded-xl border border-indigo-100 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase flex items-center gap-2"><Edit2 size={14}/> Изменить</button>}{!isCancelled && <button onClick={() => setAdminModal({ type: 'ANNUL', orderId: order.id })} className="px-4 py-3 rounded-xl border border-red-100 text-red-500 bg-red-50 font-black text-[10px] uppercase flex items-center gap-2"><Ban size={14}/> Аннулировать</button>}{currentStatus === 'В обработке' && <button onClick={() => handleFormCP(order.id)} className="px-8 py-3 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase shadow-xl hover:bg-slate-800 transition-all active:scale-95 w-full md:w-auto flex items-center justify-center gap-2">{isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle2 size={14}/>} Утвердить КП и Отправить</button>}</>
+                                     <>{!isCancelled && !order.isProcessed && <button onClick={() => startEditing(order)} className="px-4 py-3 rounded-xl border border-indigo-100 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase flex items-center gap-2"><Edit2 size={14}/> Изменить</button>}{!isCancelled && <button onClick={() => setAdminModal({ type: 'ANNUL', orderId: order.id })} className="px-4 py-3 rounded-xl border border-red-100 text-red-500 bg-red-50 font-black text-[10px] uppercase flex items-center gap-2"><Ban size={14}/> Аннулировать</button>}                                        {/* Show Approve button ONLY in 'New' status and IF offers exist */}
+                                        {currentStatus === 'В обработке' && offersCount > 0 && (
+                                            <button onClick={() => handleFormCP(order.id)} className="px-8 py-3 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase shadow-xl hover:bg-slate-800 transition-all active:scale-95 w-full md:w-auto flex items-center justify-center gap-2">
+                                                {isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle2 size={14}/>} 
+                                                Утвердить КП и Отправить
+                                            </button>
+                                        )}</>
                                  )}
                              </div>
                          </div>

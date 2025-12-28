@@ -520,7 +520,7 @@ export const SellerInterface: React.FC = () => {
           const modelPart = fullModel.split(' ').slice(1).join(' ') || '-';
           const displayYear = order.car?.AdminYear || order.car?.year;
 
-          const containerStyle = isVanishing ? "opacity-0 scale-95 h-0 overflow-hidden" : isExpanded ? "border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-3" : "hover:bg-slate-50 border-l-transparent border-b-4 md:border-b border-slate-100 last:border-0";
+          const containerStyle = isVanishing ? "opacity-0 scale-95 h-0 overflow-hidden" : isExpanded ? "border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-3" : "hover:bg-slate-50 border-l-transparent border-b-4 md:border-b border-slate-200 last:border-0";
 
           return (
             <div key={order.id} className={`transition-all duration-500 border-l-4 ${containerStyle}`}>
