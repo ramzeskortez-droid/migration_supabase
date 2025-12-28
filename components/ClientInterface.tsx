@@ -493,6 +493,10 @@ export const ClientInterface: React.FC = () => {
             const winningItems = order.items.filter(i => i.AdminCHOOSErankLeader).map(i => ({ ...i, ...i.AdminCHOOSErankLeader }));
             const totalSum = winningItems.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0);
             
+            // Should we show the "Ready to Buy" button? 
+            // Only if CP is ready and user hasn't clicked it yet.
+            const showReadyToBuy = (currentStatus === 'КП готово' || currentStatus === 'КП отправлено') && winningItems.length > 0;
+            
             return (
               <div key={order.id} className={`transition-all duration-500 border-l-4 border-b border-slate-200 ${isExpanded ? 'border-l-indigo-600' : 'border-l-transparent'} ${highlightedId === order.id ? "bg-emerald-50" : ""}`}>
                  <div className="p-3 grid grid-cols-1 md:grid-cols-[80px_1fr_130px_50px_80px_110px_20px] items-center gap-2 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : order.id)}>
@@ -615,7 +619,7 @@ export const ClientInterface: React.FC = () => {
                                       <X size={12}/> Отказаться
                                   </button>
                                   
-                                  {winningItems.length > 0 && (
+                                  {showReadyToBuy && (
                                       <button 
                                           onClick={() => handleConfirmPurchase(order.id)} 
                                           disabled={!!isConfirming} 
