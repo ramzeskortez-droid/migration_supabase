@@ -688,11 +688,11 @@ export const SellerInterface: React.FC = () => {
                                         <h4 className={`font-black text-[11px] uppercase transition-all ${isUnavailable ? 'line-through text-red-400' : 'text-slate-900'}`}>{displayName}</h4>
                                         {isWinner && <span className="bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase shadow-sm">Выбрано</span>}
                                         {isUnavailable && <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[7px] font-black uppercase">Нет в наличии</span>}
-                                        {!isUnavailable && minCompetitorPrice !== null && (
+                                        {/* {!isUnavailable && minCompetitorPrice !== null && (
                                             <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-[7px] font-bold border border-indigo-100">
                                                 Лучшая цена сейчас: {minCompetitorPrice} ¥
                                             </span>
-                                        )}
+                                        )} */}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-[8px] font-bold text-slate-400 uppercase">{item.category}</span>
