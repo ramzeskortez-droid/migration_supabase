@@ -51,13 +51,26 @@ const DEMO_CARS = [
 
 const STATUS_STEPS = [
   'В обработке',
-  'КП отправлено', // Client sees 'КП готово' usually mapped here
+  'КП отправлено', 
   'Готов купить',
   'Подтверждение от поставщика',
   'Ожидает оплаты',
   'В пути',
   'Выполнен'
 ];
+
+const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string }> = {
+  'В обработке': { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
+  'КП отправлено': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' }, // Also maps 'КП готово'
+  'КП готово': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
+  'Готов купить': { color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
+  'Подтверждение от поставщика': { color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' },
+  'Ожидает оплаты': { color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-200' },
+  'В пути': { color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200' },
+  'Выполнен': { color: 'text-teal-600', bg: 'bg-teal-100', border: 'border-teal-200' },
+  'Аннулирован': { color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-200' },
+  'Отказ': { color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-200' }
+};
 
 export const ClientInterface: React.FC = () => {
   const [clientAuth, setClientAuth] = useState(() => {
@@ -656,7 +669,9 @@ export const ClientInterface: React.FC = () => {
             
             const currentStatus = order.workflowStatus || 'В обработке';
             const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
-            const statusIndex = isCancelled ? -1 : STATUS_STEPS.indexOf(currentStatus);
+            const statusIndex = isCancelled ? -1 : STATUS_STEPS.indexOf(currentStatus === 'КП готово' ? 'КП отправлено' : currentStatus);
+            
+            const statusStyle = STATUS_CONFIG[currentStatus] || STATUS_CONFIG['В обработке'];
 
             const containerStyle = isVanishing ? "opacity-0 max-h-0 py-0 overflow-hidden" 
                 : isHighlighted ? "bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200" 
@@ -669,7 +684,7 @@ export const ClientInterface: React.FC = () => {
                     <div className="flex items-center justify-between md:justify-start">
                         {isOptimistic ? (<div className="flex items-center gap-1.5 text-indigo-500"><Loader2 size={12} className="animate-spin"/><span className="text-[9px] font-bold uppercase tracking-wider">Создание</span></div>) : (<span className="font-mono font-bold text-[10px] text-slate-900 truncate block">{order.id}</span>)}
                         <div className="md:hidden flex items-center gap-2">
-                             <span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase whitespace-nowrap shadow-sm border bg-slate-100 text-slate-700`}>{currentStatus}</span>
+                             <span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase whitespace-nowrap shadow-sm border ${statusStyle.bg} ${statusStyle.color} ${statusStyle.border}`}>{currentStatus}</span>
                              <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}><ChevronDown size={14} className="text-slate-300"/></div>
                         </div>
                     </div>
@@ -689,7 +704,7 @@ export const ClientInterface: React.FC = () => {
                         <div className="flex items-center gap-2 md:gap-1 text-left md:hidden"><span className="text-[9px] font-bold text-slate-400 uppercase">Дата:</span><span className="text-[9px] font-bold text-slate-500">{orderDate}</span></div>
                     </div>
                     <div className="hidden md:flex items-center gap-1 text-left"><Calendar size={12} className="text-slate-300"/><span className="text-[9px] font-bold text-slate-500">{orderDate}</span></div>
-                    <div className="hidden md:flex justify-end text-right"><span className="px-2 py-1 rounded-md font-bold text-[8px] uppercase whitespace-nowrap shadow-sm border bg-slate-100 text-slate-700">{currentStatus}</span></div>
+                    <div className="hidden md:flex justify-end text-right"><span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase whitespace-nowrap shadow-sm border ${statusStyle.bg} ${statusStyle.color} ${statusStyle.border}`}>{currentStatus}</span></div>
                     <div className="hidden md:flex justify-end">{isOptimistic ? null : <MoreHorizontal size={14} className="text-slate-300" />}</div>
                  </div>
 
@@ -706,12 +721,26 @@ export const ClientInterface: React.FC = () => {
                                   {STATUS_STEPS.map((step, idx) => {
                                       const isPassed = idx <= statusIndex;
                                       const isCurrent = idx === statusIndex;
+                                      const stepConfig = STATUS_CONFIG[step] || STATUS_CONFIG['В обработке'];
+                                      const circleColor = isCancelled ? 'bg-red-500 border-red-500' : isPassed ? stepConfig.bg.replace('bg-', 'bg-').replace('100', '500') + ' border-transparent' : 'bg-white border-slate-200';
+                                      
+                                      // Simplify color mapping for progress dots
+                                      let dotClass = 'bg-white border-slate-200';
+                                      let textClass = 'text-slate-300';
+                                      
+                                      if (isCancelled) {
+                                          if (isPassed) { dotClass = 'bg-red-500 border-red-500 text-white'; textClass = 'text-red-500'; }
+                                      } else {
+                                          if (isCurrent) { dotClass = `bg-white border-2 ${stepConfig.border.replace('200','500')} ${stepConfig.color}`; textClass = 'text-slate-900'; }
+                                          else if (isPassed) { dotClass = `${stepConfig.bg.replace('100','500')} border-transparent text-white`; textClass = 'text-slate-500'; }
+                                      }
+
                                       return (
                                           <div key={step} className="flex flex-col items-center group">
-                                              <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-300 bg-white ${isPassed ? (isCancelled ? 'border-red-500 text-red-500' : 'border-emerald-500 text-emerald-500') : 'border-slate-200 text-transparent'}`}>
-                                                  <div className={`w-2 h-2 rounded-full ${isPassed ? (isCancelled ? 'bg-red-500' : 'bg-emerald-500') : ''}`}></div>
+                                              <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${dotClass}`}>
+                                                  <div className={`w-2 h-2 rounded-full ${isCurrent ? stepConfig.bg.replace('100','500') : ''}`}></div>
                                               </div>
-                                              <span className={`mt-2 text-[8px] font-bold uppercase text-center max-w-[60px] leading-tight transition-colors ${isCurrent ? 'text-slate-900' : isPassed ? 'text-slate-500' : 'text-slate-300'}`}>{step}</span>
+                                              <span className={`mt-2 text-[8px] font-bold uppercase text-center max-w-[60px] leading-tight transition-colors ${textClass}`}>{step}</span>
                                           </div>
                                       );
                                   })}

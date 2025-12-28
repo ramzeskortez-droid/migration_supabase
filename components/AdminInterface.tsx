@@ -459,16 +459,16 @@ export const AdminInterface: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-             <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 items-center bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none`}>
-                 <div className="cursor-pointer group" onClick={() => handleSort('id')}>ID <SortIcon column="id"/></div>
-                 <div className="cursor-pointer group" onClick={() => handleSort('client')}>Марка <SortIcon column="client"/></div> 
-                 <div className="cursor-pointer group">Модель</div>
-                 <div className="cursor-pointer group" onClick={() => handleSort('year')}>Год <SortIcon column="year"/></div>
-                 <div>VIN</div>
-                 <div className="cursor-pointer group" onClick={() => handleSort('client')}>Клиент</div>
-                 <div className="cursor-pointer group" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
-                 <div className="cursor-pointer group" onClick={() => handleSort('status')}>СТАТУС <SortIcon column="status"/></div>
-                 <div className="cursor-pointer flex justify-end group" onClick={() => handleSort('date')}>Дата <SortIcon column="date"/></div>
+             <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none h-12 items-center`}>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('id')}>ID <SortIcon column="id"/></div>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('client')}>Марка <SortIcon column="client"/></div> 
+                 <div className="cursor-pointer flex items-center h-full group">Модель</div>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('year')}>Год <SortIcon column="year"/></div>
+                 <div className="flex items-center h-full">VIN</div>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('client')}>Клиент</div>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('status')}>СТАТУС <SortIcon column="status"/></div>
+                 <div className="cursor-pointer flex items-center justify-end h-full group" onClick={() => handleSort('date')}>Дата <SortIcon column="date"/></div>
                  <div></div>
              </div>
 
@@ -495,6 +495,9 @@ export const AdminInterface: React.FC = () => {
                  else if (currentStatus === 'Подтверждение от поставщика' || currentStatus === 'КП отправлено') { statusBorderColor = 'border-l-amber-400'; statusBgColor = 'bg-amber-50/30 hover:bg-amber-50/50'; }
                  else if (currentStatus === 'В пути' || currentStatus === 'Ожидает оплаты') { statusBorderColor = 'border-l-blue-500'; statusBgColor = 'bg-blue-50/30 hover:bg-blue-50/50'; }
 
+                 const statusConfig = STATUS_STEPS.find(s => s.id === currentStatus);
+                 const statusBadgeColor = statusConfig ? `${statusConfig.bg} ${statusConfig.color} border ${statusConfig.border}` : 'bg-slate-100 text-slate-500 border-slate-200';
+
                  return (
                  <div key={order.id} className={`transition-all duration-500 border-l-4 ${isVanishing ? 'opacity-0 scale-95 h-0 overflow-hidden' : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4' : `${statusBorderColor} ${statusBgColor} border-b-4 md:border-b border-slate-100`}`}>
                      <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px]`} onClick={() => !isEditing && setExpandedId(expandedId === order.id ? null : order.id)}>
@@ -510,7 +513,7 @@ export const AdminInterface: React.FC = () => {
                          <div className="font-mono text-slate-500 truncate">{order.vin}</div>
                          <div className="font-bold text-slate-500 uppercase truncate">{order.clientName}</div>
                          <div className="hidden md:block"><span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-nowrap ${offersCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-400'}`}>[{offersCount}] ОФФЕРОВ</span></div>
-                         <div className="hidden md:block"><span className="inline-flex px-2 py-1 rounded bg-slate-100 text-slate-500 font-black uppercase text-[8px] whitespace-nowrap">{currentStatus}</span></div>
+                         <div className="hidden md:block"><span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-nowrap border ${statusBadgeColor}`}>{currentStatus}</span></div>
                          <div className="text-left md:text-right font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
                          <div className="hidden md:flex justify-end"><ChevronRight size={16} className={`text-slate-400 transition-transform ${expandedId === order.id ? 'rotate-90 text-indigo-600' : ''}`}/></div>
                      </div>
