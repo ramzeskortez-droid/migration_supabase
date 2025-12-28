@@ -697,8 +697,9 @@ export const AdminInterface: React.FC = () => {
                                                              <div key={oIdx} className={`flex flex-col md:grid md:grid-cols-[2fr_1fr_0.5fr_0.5fr_0.5fr_0.5fr_1.5fr_1fr_0.8fr_1fr] gap-2 p-2 rounded-lg border items-center text-[10px] text-center ${isLeader ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
                                                                  
                                                                  {/* 1. SUPPLIER */}
-                                                                 <div className="font-black uppercase text-slate-800 truncate text-left" title={off.clientName}>
+                                                                 <div className="font-black uppercase text-slate-800 truncate text-left flex items-center gap-2" title={off.clientName}>
                                                                      {off.clientName}
+                                                                     {isLeader && <span className="bg-emerald-500 text-white text-[7px] px-1.5 py-0.5 rounded font-black tracking-wider">WINNER</span>}
                                                                  </div>
 
                                                                  {/* 2. PRICE */}
