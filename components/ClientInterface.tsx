@@ -729,9 +729,9 @@ export const ClientInterface: React.FC = () => {
                  <div className="p-3 grid grid-cols-1 md:grid-cols-[80px_1fr_130px_50px_80px_110px_20px] items-center gap-2 md:gap-3 cursor-pointer min-h-[56px]" onClick={() => !isVanishing && !isOptimistic && setExpandedId(isExpanded ? null : order.id)}>
                     <div className="flex items-center justify-between md:justify-start">
                         {isOptimistic ? (<div className="flex items-center gap-1.5 text-indigo-500"><Loader2 size={12} className="animate-spin"/><span className="text-[9px] font-bold uppercase tracking-wider">Создание</span></div>) : (<span className="font-mono font-bold text-[10px] text-slate-900 truncate block">{order.id}</span>)}
-                        <div className="md:hidden flex items-center gap-2">
-                             <span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase whitespace-nowrap shadow-sm border ${statusStyle.bg} ${statusStyle.color} ${statusStyle.border}`}>{currentStatus}</span>
-                             <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}><ChevronDown size={14} className="text-slate-300"/></div>
+                        <div className="md:hidden flex items-center gap-2 max-w-[60%] justify-end">
+                             <span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase md:whitespace-nowrap text-center leading-tight shadow-sm border ${statusStyle.bg} ${statusStyle.color} ${statusStyle.border}`}>{currentStatus}</span>
+                             <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}><ChevronDown size={14} className="text-slate-300 shrink-0"/></div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 md:block">
