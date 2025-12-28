@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { SheetService } from '../services/sheetService';
 import { Order, OrderStatus, Currency, RankType, OrderItem } from '../types';
@@ -22,30 +23,32 @@ interface AdminModalState {
   missingItems?: string[];
 }
 
-// UNIFIED GRID COLUMNS DEFINITION
 const GRID_COLS = "grid-cols-[80px_90px_1fr_50px_110px_100px_80px_130px_80px_30px]";
 
-type AdminTab = 
-  | 'new' 
-  | 'kp_sent' 
-  | 'ready_to_buy' 
-  | 'supplier_confirmed' 
-  | 'awaiting_payment' 
-  | 'in_transit' 
-  | 'completed' 
-  | 'annulled' 
-  | 'refused';
+type AdminTab = 'new' | 'kp_sent' | 'ready_to_buy' | 'supplier_confirmed' | 'awaiting_payment' | 'in_transit' | 'completed' | 'annulled' | 'refused';
 
-// --- STATUS CONFIGURATION ---
+// --- STATUS CONFIGURATION (COLORFUL) ---
 const STATUS_STEPS = [
-  { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-500', bg: 'bg-slate-100' },
-  { id: 'КП отправлено', label: 'КП отправлено', icon: Send, color: 'text-amber-500', bg: 'bg-amber-100' },
-  { id: 'Готов купить', label: 'Готов купить', icon: ShoppingCart, color: 'text-emerald-500', bg: 'bg-emerald-100' },
-  { id: 'Подтверждение от поставщика', label: 'Подтверждение', icon: CheckCircle2, color: 'text-indigo-500', bg: 'bg-indigo-100' },
-  { id: 'Ожидает оплаты', label: 'Ждет оплаты', icon: CreditCard, color: 'text-purple-500', bg: 'bg-purple-100' },
-  { id: 'В пути', label: 'В пути', icon: Truck, color: 'text-blue-500', bg: 'bg-blue-100' },
-  { id: 'Выполнен', label: 'Выполнен', icon: PackageCheck, color: 'text-emerald-600', bg: 'bg-emerald-200' }
+  { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
+  { id: 'КП отправлено', label: 'КП отправлено', icon: Send, color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
+  { id: 'Готов купить', label: 'Готов купить', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
+  { id: 'Подтверждение от поставщика', label: 'Подтверждение', icon: CheckCircle2, color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' },
+  { id: 'Ожидает оплаты', label: 'Ждет оплаты', icon: CreditCard, color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-200' },
+  { id: 'В пути', label: 'В пути', icon: Truck, color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200' },
+  { id: 'Выполнен', label: 'Выполнен', icon: PackageCheck, color: 'text-teal-600', bg: 'bg-teal-100', border: 'border-teal-200' }
 ];
+
+const TAB_MAPPING: Record<string, AdminTab> = {
+    'В обработке': 'new',
+    'КП отправлено': 'kp_sent',
+    'Готов купить': 'ready_to_buy',
+    'Подтверждение от поставщика': 'supplier_confirmed',
+    'Ожидает оплаты': 'awaiting_payment',
+    'В пути': 'in_transit',
+    'Выполнен': 'completed',
+    'Аннулирован': 'annulled',
+    'Отказ': 'refused'
+};
 
 export const AdminInterface: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -124,9 +127,7 @@ export const AdminInterface: React.FC = () => {
   }, [activeTab, searchQuery, sortConfig]);
 
   const handleSort = (key: string) => {
-      // Logic: Collapse expanded row to prevent jumping visual bugs
       setExpandedId(null);
-      
       setSortConfig(current => {
           if (current?.key === key) {
               return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
@@ -139,7 +140,6 @@ export const AdminInterface: React.FC = () => {
   const filteredOrders = useMemo(() => {
       let result = orders.filter(o => {
           const status = o.workflowStatus || 'В обработке';
-          
           let matchesTab = false;
           switch (activeTab) {
               case 'new': matchesTab = status === 'В обработке'; break;
@@ -153,7 +153,6 @@ export const AdminInterface: React.FC = () => {
               case 'refused': matchesTab = status === 'Отказ'; break;
           }
           if (!matchesTab) return false;
-          
           if (searchQuery) {
               const q = searchQuery.toLowerCase();
               return o.id.toString().toLowerCase().includes(q) || 
@@ -168,7 +167,6 @@ export const AdminInterface: React.FC = () => {
         result.sort((a, b) => {
             let aVal: any = '';
             let bVal: any = '';
-            
             if (sortConfig.key === 'id') { aVal = Number(a.id); bVal = Number(b.id); }
             else if (sortConfig.key === 'date') { 
                 const parseD = (d: string) => {
@@ -177,27 +175,18 @@ export const AdminInterface: React.FC = () => {
                 };
                 aVal = parseD(a.createdAt); bVal = parseD(b.createdAt); 
             }
-            else if (sortConfig.key === 'year') {
-                aVal = a.car?.AdminYear || a.car?.year || ''; 
-                bVal = b.car?.AdminYear || b.car?.year || '';
-            }
+            else if (sortConfig.key === 'year') { aVal = a.car?.AdminYear || a.car?.year || ''; bVal = b.car?.AdminYear || b.car?.year || ''; }
             else if (sortConfig.key === 'client') { aVal = a.clientName; bVal = b.clientName; }
-            else if (sortConfig.key === 'offers') {
-                aVal = (a.offers || []).length;
-                bVal = (b.offers || []).length;
-            }
+            else if (sortConfig.key === 'offers') { aVal = (a.offers || []).length; bVal = (b.offers || []).length; }
             else if (sortConfig.key === 'status') {
-                // Custom Status Weight for Archive
                 const getStatusWeight = (o: Order) => {
-                    if (o.readyToBuy) return 4; // КУПЛЕНО (Top priority in approved)
-                    if (o.isProcessed) return 3; // ГОТОВО
-                    if (o.isRefused) return 2; // ОТКАЗ
-                    return 1; // Просто закрыт/Открыт
+                    if (o.readyToBuy) return 4; 
+                    if (o.isProcessed) return 3; 
+                    if (o.isRefused) return 2; 
+                    return 1; 
                 };
-                aVal = getStatusWeight(a);
-                bVal = getStatusWeight(b);
+                aVal = getStatusWeight(a); bVal = getStatusWeight(b);
             }
-            
             if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
             if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
@@ -213,10 +202,9 @@ export const AdminInterface: React.FC = () => {
 
   // --- ACTIONS ---
 
-  // LOCAL Update - No API call yet
+  // LOCAL Update
   const handleLocalUpdateRank = (offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number) => {
       const newAction = currentRank === 'ЛИДЕР' || currentRank === 'LEADER' ? 'RESET' : undefined;
-      
       setOrders(prev => prev.map(o => {
           if (o.vin !== vin) return o;
           return {
@@ -228,7 +216,6 @@ export const AdminInterface: React.FC = () => {
                           if (off.id === offerId) {
                               return { ...i, rank: newAction === 'RESET' ? 'РЕЗЕРВ' : 'ЛИДЕР' as RankType, adminPrice, adminCurrency, adminComment, deliveryRate };
                           } else {
-                              // If setting leader, reset others
                               if (!newAction) return { ...i, rank: 'РЕЗЕРВ' as RankType };
                           }
                       }
@@ -239,15 +226,11 @@ export const AdminInterface: React.FC = () => {
       }));
   };
 
-  // REAL COMMIT: Iterates locally selected leaders and pushes them to API
   const handleFormCP = async (orderId: string) => {
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
-      // VALIDATION: Check if every item has a Leader
-      const itemNames = order.items.map(i => (i.AdminName || i.name).trim().toLowerCase());
       const coveredItems = new Set<string>();
-      
       order.offers?.forEach(off => {
           off.items.forEach(i => {
               if (i.rank === 'ЛИДЕР' || i.rank === 'LEADER') {
@@ -266,53 +249,34 @@ export const AdminInterface: React.FC = () => {
           });
           return;
       }
-
       executeApproval(orderId);
   };
 
   const executeApproval = async (orderId: string) => {
       setAdminModal(null);
       setIsSubmitting(orderId);
-      
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
-      // Visual feedback
       setVanishingIds(prev => new Set(prev).add(orderId));
       showToast("Фиксация лидеров и формирование КП...");
 
-      // 1. COMMIT RANKS (Iterate offers and send updates for LEADERS)
       const rankPromises: Promise<void>[] = [];
-      
       if (order.offers) {
           for (const off of order.offers) {
               for (const item of off.items) {
                   if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') {
-                      // Found a winner locally, send to server
-                      rankPromises.push(SheetService.updateRank(
-                          order.vin, 
-                          item.name, 
-                          off.id, 
-                          item.adminPrice, 
-                          item.adminCurrency, 
-                          undefined, 
-                          item.adminComment, 
-                          item.deliveryRate
-                      ));
+                      rankPromises.push(SheetService.updateRank(order.vin, item.name, off.id, item.adminPrice, item.adminCurrency, undefined, item.adminComment, item.deliveryRate));
                   }
               }
           }
       }
 
       try {
-          // Wait for all ranks to be saved
           await Promise.all(rankPromises);
-          
-          // 2. FORM CP (Triggers notification and status update)
           await SheetService.formCP(orderId);
           addLog(`КП сформировано для ${orderId}`, 'success');
           
-          // Optimistic Update
           setOrders(prev => prev.map(o => o.id === orderId ? { 
               ...o, 
               isProcessed: true, 
@@ -320,10 +284,12 @@ export const AdminInterface: React.FC = () => {
               workflowStatus: 'КП отправлено' 
           } : o));
 
+          // Auto-switch tab to follow the order
+          setActiveTab('kp_sent');
+          
           setTimeout(() => {
               setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; });
-              setExpandedId(null);
-              setSuccessToast(null);
+              setExpandedId(orderId); // Keep expanded
               fetchData(true);
           }, 800);
           
@@ -337,16 +303,19 @@ export const AdminInterface: React.FC = () => {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
-      // Optimistic Update: Update UI immediately
+      // Optimistic UI Update
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, workflowStatus: newStatus } : o));
+      
+      // Auto-switch tab to follow the order
+      const targetTab = TAB_MAPPING[newStatus];
+      if (targetTab) setActiveTab(targetTab);
+      
       showToast(`Статус изменен на: ${newStatus}`);
       
-      // Send request in background
       try {
           await SheetService.updateWorkflowStatus(orderId, newStatus);
       } catch(e) {
           showToast("Ошибка сохранения статуса");
-          // Revert on error? Or just log. Usually better to not jump back unless critical.
           fetchData(true);
       }
   };
@@ -367,6 +336,7 @@ export const AdminInterface: React.FC = () => {
           setAdminModal(null);
           setRefusalReason("");
           setOrders(prev => prev.map(o => o.id === adminModal.orderId ? { ...o, isRefused: true, status: OrderStatus.CLOSED } : o));
+          setActiveTab('annulled');
       } catch (e) {
           addLog("Ошибка отказа", "error");
       } finally {
@@ -432,7 +402,7 @@ export const AdminInterface: React.FC = () => {
   return (
       <div className="max-w-6xl mx-auto p-4 space-y-4">
           {successToast && (
-             <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 fade-in duration-300 border border-slate-700">
+             <div className="fixed top-6 right-6 z-50 bg-slate-800 text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 animate-in slide-in-from-top-4 fade-in duration-300 border border-slate-700">
                  <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white"><CheckCircle2 size={18}/></div>
                  <div className="font-bold text-sm">{successToast.message}</div>
              </div>
@@ -471,7 +441,7 @@ export const AdminInterface: React.FC = () => {
               <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar max-w-[calc(100%-40px)]">
                   {['new','kp_sent','ready_to_buy','supplier_confirmed','awaiting_payment','in_transit','completed','annulled','refused'].map(id => {
                       const count = orders.filter(o => (o.workflowStatus || 'В обработке') === (
-                          id === 'new' ? 'В обработке' : id === 'kp_sent' ? 'КП отправлено' : id === 'ready_to_buy' ? 'Готов купить' : 
+                          id === 'new' ? 'В обработке' : id === 'kp_sent' ? 'КП отправлено' : id === 'ready_to_buy' ? 'Готов купить' :
                           id === 'supplier_confirmed' ? 'Подтверждение от поставщика' : id === 'awaiting_payment' ? 'Ожидает оплаты' :
                           id === 'in_transit' ? 'В пути' : id === 'completed' ? 'Выполнен' : id === 'annulled' ? 'Аннулирован' : 'Отказ'
                       )).length;
@@ -504,20 +474,30 @@ export const AdminInterface: React.FC = () => {
 
              {paginatedOrders.map(order => {
                  const isExpanded = expandedId === order.id;
+                 const isEditing = editingOrderId === order.id;
                  const offersCount = order.offers ? order.offers.length : 0;
                  const hasOffers = offersCount > 0;
                  const carBrand = (order.car?.AdminModel || order.car?.model || '').split(' ')[0];
                  const carModel = (order.car?.AdminModel || order.car?.model || '').split(' ').slice(1).join(' ');
-                 const status = order.workflowStatus || 'В обработке';
+                 const carYear = order.car?.AdminYear || order.car?.year;
+                 const isVanishing = vanishingIds.has(order.id);
+                 
+                 const currentStatus = order.workflowStatus || 'В обработке';
+                 const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
+                 
+                 // Show Registry if NOT "In processing" (meaning CP sent or further)
+                 const showRegistry = currentStatus !== 'В обработке';
+
                  let statusBorderColor = 'border-l-transparent';
-                 if (status === 'Готов купить' || status === 'Выполнен') statusBorderColor = 'border-l-emerald-500';
-                 else if (status === 'Аннулирован' || status === 'Отказ') statusBorderColor = 'border-l-red-500';
-                 else if (status === 'Подтверждение от поставщика' || status === 'КП отправлено') statusBorderColor = 'border-l-amber-400';
-                 else if (status === 'В пути' || status === 'Ожидает оплаты') statusBorderColor = 'border-l-blue-500';
+                 let statusBgColor = 'hover:bg-slate-50';
+                 if (currentStatus === 'Готов купить' || currentStatus === 'Выполнен') { statusBorderColor = 'border-l-emerald-500'; statusBgColor = 'bg-emerald-50/30 hover:bg-emerald-50/50'; }
+                 else if (isCancelled) { statusBorderColor = 'border-l-red-500'; statusBgColor = 'bg-red-50/30 hover:bg-red-50/50'; }
+                 else if (currentStatus === 'Подтверждение от поставщика' || currentStatus === 'КП отправлено') { statusBorderColor = 'border-l-amber-400'; statusBgColor = 'bg-amber-50/30 hover:bg-amber-50/50'; }
+                 else if (currentStatus === 'В пути' || currentStatus === 'Ожидает оплаты') { statusBorderColor = 'border-l-blue-500'; statusBgColor = 'bg-blue-50/30 hover:bg-blue-50/50'; }
 
                  return (
-                 <div key={order.id} className={`transition-all duration-500 border-l-4 ${vanishingIds.has(order.id) ? 'opacity-0 scale-95 h-0 overflow-hidden' : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4' : `${statusBorderColor} border-b border-slate-100 hover:bg-slate-50`}`}>
-                     <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px]`} onClick={() => !editingOrderId && setExpandedId(expandedId === order.id ? null : order.id)}>
+                 <div key={order.id} className={`transition-all duration-500 border-l-4 ${isVanishing ? 'opacity-0 scale-95 h-0 overflow-hidden' : isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4' : `${statusBorderColor} ${statusBgColor} border-b-4 md:border-b border-slate-100`}`}>
+                     <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px]`} onClick={() => !isEditing && setExpandedId(expandedId === order.id ? null : order.id)}>
                          <div className="flex items-center justify-between md:justify-start">
                              <div className="font-mono font-bold text-slate-700">{order.id}</div>
                              <div className="md:hidden">
@@ -526,11 +506,11 @@ export const AdminInterface: React.FC = () => {
                          </div>
                          <div className="font-bold text-slate-900 uppercase truncate">{carBrand}</div>
                          <div className="font-bold text-slate-700 uppercase truncate">{carModel}</div>
-                         <div className="font-bold text-slate-500">{order.car?.AdminYear || order.car?.year}</div>
+                         <div className="font-bold text-slate-500">{carYear}</div>
                          <div className="font-mono text-slate-500 truncate">{order.vin}</div>
                          <div className="font-bold text-slate-500 uppercase truncate">{order.clientName}</div>
                          <div className="hidden md:block"><span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-nowrap ${offersCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-400'}`}>[{offersCount}] ОФФЕРОВ</span></div>
-                         <div className="hidden md:block"><span className="inline-flex px-2 py-1 rounded bg-slate-100 text-slate-500 font-black uppercase text-[8px] whitespace-nowrap">{status}</span></div>
+                         <div className="hidden md:block"><span className="inline-flex px-2 py-1 rounded bg-slate-100 text-slate-500 font-black uppercase text-[8px] whitespace-nowrap">{currentStatus}</span></div>
                          <div className="text-left md:text-right font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
                          <div className="hidden md:flex justify-end"><ChevronRight size={16} className={`text-slate-400 transition-transform ${expandedId === order.id ? 'rotate-90 text-indigo-600' : ''}`}/></div>
                      </div>
@@ -539,11 +519,11 @@ export const AdminInterface: React.FC = () => {
                          <div className="p-6 bg-slate-50 border-t border-slate-100 rounded-b-xl cursor-default">
                              
                              {/* --- VISUAL STATUS BAR --- */}
-                             {!order.isRefused && (
+                             {!isCancelled && (
                                <div className="mb-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                  <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Процесс выполнения</h3>
-                                    {order.workflowStatus !== 'Выполнен' && (
+                                    {currentStatus !== 'Выполнен' && (
                                         <button onClick={() => handleNextStep(order)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-colors">
                                             Следующий шаг <ChevronRight size={12}/>
                                         </button>
@@ -552,12 +532,13 @@ export const AdminInterface: React.FC = () => {
                                  <div className="flex items-center justify-between relative px-2">
                                      <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -z-0"></div>
                                      {STATUS_STEPS.map((step, idx) => {
-                                         const currentStatusIdx = STATUS_STEPS.findIndex(s => s.id === (order.workflowStatus || 'В обработке'));
+                                         const currentStatusIdx = STATUS_STEPS.findIndex(s => s.id === currentStatus);
                                          const isPassed = idx <= currentStatusIdx;
                                          const isCurrent = idx === currentStatusIdx;
+                                         
                                          return (
                                              <div key={step.id} className="relative z-10 flex flex-col items-center gap-2 group cursor-pointer" onClick={() => handleStatusChange(order.id, step.id)}>
-                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isPassed ? `${step.bg} ${step.color} border-current` : 'bg-white border-slate-200 text-slate-300'}`}>
+                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isPassed ? `${step.bg} ${step.color} ${step.border}` : 'bg-white border-slate-200 text-slate-300'}`}>
                                                      <step.icon size={14} className={isCurrent ? 'animate-pulse' : ''} />
                                                  </div>
                                                  <span className={`text-[8px] font-bold uppercase transition-colors ${isPassed ? 'text-slate-800' : 'text-slate-300'}`}>{step.label}</span>
@@ -570,7 +551,7 @@ export const AdminInterface: React.FC = () => {
 
                              <div className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
                                 <div className="flex items-center gap-2 mb-3"><FileText size={14} className="text-slate-400"/><span className="text-[10px] font-black uppercase text-slate-500">Детали заказа</span></div>
-                                {editingOrderId === order.id ? (
+                                {isEditing ? (
                                     <div className="grid grid-cols-6 gap-4">
                                         <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Марка/Модель</label><input value={editForm['car_model']} onChange={e => setEditForm({...editForm, 'car_model': e.target.value})} className="w-full p-2 border rounded text-xs font-bold uppercase"/></div>
                                         <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Год</label><input value={editForm['car_year']} onChange={e => setEditForm({...editForm, 'car_year': e.target.value})} className="w-full p-2 border rounded text-xs font-bold"/></div>
@@ -584,7 +565,7 @@ export const AdminInterface: React.FC = () => {
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">VIN</span><span className="font-mono font-bold text-slate-600">{order.vin}</span></div>
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Модель</span><span className="font-black text-slate-800 uppercase">{order.car?.AdminModel || order.car?.model}</span></div>
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Марка</span><span className="font-bold text-slate-700 uppercase">{carBrand}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Год</span><span className="font-bold text-slate-700">{order.car?.AdminYear || order.car?.year}</span></div>
+                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Год</span><span className="font-bold text-slate-700">{carYear}</span></div>
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Кузов</span><span className="font-bold text-slate-700 uppercase">{order.car?.AdminBodyType || order.car?.bodyType || '-'}</span></div>
                                     </div>
                                 )}
@@ -603,19 +584,20 @@ export const AdminInterface: React.FC = () => {
                                          }
                                      }
                                      
-                                     // Group Leaders and Others if processed
+                                     // Group Leaders and Others based on status
                                      const leaders = itemOffers.filter(o => o.item.rank === 'ЛИДЕР' || o.item.rank === 'LEADER');
                                      const others = itemOffers.filter(o => o.item.rank !== 'ЛИДЕР' && o.item.rank !== 'LEADER');
                                      
-                                     const displayOffers = order.isProcessed ? leaders : itemOffers;
-                                     const hiddenCount = order.isProcessed ? others.length : 0;
+                                     // If we are past "Processing" (CP Sent+), we hide losers by default
+                                     const displayOffers = showRegistry ? leaders : itemOffers;
+                                     const hiddenCount = showRegistry ? others.length : 0;
                                      const isRegistryOpen = openRegistry.has(item.name);
 
                                      return (
                                          <div key={idx} className="bg-slate-900 rounded-xl overflow-hidden shadow-md">
                                              <div className="p-3 flex items-center justify-between text-white border-b border-slate-700">
                                                  <div className="flex items-center gap-3">
-                                                     {editingOrderId === order.id ? (
+                                                     {isEditing ? (
                                                          <div className="flex gap-2">
                                                              <input value={editForm[`item_${idx}_name`]} onChange={e => setEditForm({...editForm, [`item_${idx}_name`]: e.target.value})} className="bg-slate-800 text-white px-2 py-1 rounded border border-slate-600 text-xs font-bold uppercase w-64"/>
                                                              <input type="number" value={editForm[`item_${idx}_qty`]} onChange={e => setEditForm({...editForm, [`item_${idx}_qty`]: e.target.value})} className="bg-slate-800 text-white px-2 py-1 rounded border border-slate-600 text-xs font-bold w-16 text-center"/>
@@ -646,8 +628,10 @@ export const AdminInterface: React.FC = () => {
                                                                  <div><input type="number" className="w-full px-1 py-1 border border-slate-200 rounded text-center font-bold outline-none focus:border-indigo-500 bg-white" onChange={(e) => off.item.adminPrice = Number(e.target.value)} defaultValue={off.item.adminPrice || off.item.sellerPrice} disabled={order.isProcessed}/></div>
                                                                  <div><select className="w-full px-1 py-1 border border-slate-200 rounded font-bold outline-none bg-white" defaultValue={off.item.adminCurrency || off.item.sellerCurrency} onChange={(e) => off.item.adminCurrency = e.target.value as Currency} disabled={order.isProcessed}><option value="CNY">CNY</option><option value="RUB">RUB</option><option value="USD">USD</option></select></div>
                                                                  <div>
-                                                                     {order.isProcessed ? (isLeader ? <Check size={16} className="text-emerald-500 mx-auto"/> : <span className="text-slate-200">-</span>) : (
+                                                                     {currentStatus === 'В обработке' ? (
                                                                          <button onClick={() => handleLocalUpdateRank(off.offerId, item.name, off.item.rank || '', order.vin, off.item.adminPrice, off.item.adminCurrency, off.item.adminComment, off.item.deliveryRate)} className={`w-full py-1.5 rounded text-[8px] font-black uppercase transition-all ${isLeader ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{isLeader ? 'ЛИДЕР' : 'ВЫБРАТЬ'}</button>
+                                                                     ) : (
+                                                                         isLeader ? <Check size={16} className="text-emerald-500 mx-auto"/> : <span className="text-slate-200">-</span>
                                                                      )}
                                                                  </div>
                                                                  <div className="col-span-full mt-1"><input type="text" maxLength={90} placeholder="Комментарий..." className="w-full px-2 py-1 bg-slate-50 border border-slate-100 rounded text-[9px] text-slate-500 focus:text-slate-900 focus:bg-white outline-none" defaultValue={off.item.adminComment || ""} onChange={(e) => off.item.adminComment = e.target.value}/></div>
@@ -656,7 +640,7 @@ export const AdminInterface: React.FC = () => {
                                                      })
                                                  ) : (<div className="p-4 text-center text-[10px] font-bold text-slate-300 uppercase italic">Нет предложений</div>)}
                                                  
-                                                 {/* REGISTRY COLLAPSE */}
+                                                 {/* REGISTRY COLLAPSE - SHOW ONLY IF HIDDEN OFFERS EXIST */}
                                                  {hiddenCount > 0 && (
                                                      <div className="mt-2 border-t border-slate-100 pt-2">
                                                          <button onClick={() => toggleRegistry(item.name)} className="w-full py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-[9px] font-bold text-slate-500 uppercase flex items-center justify-center gap-2 transition-colors">
@@ -684,20 +668,21 @@ export const AdminInterface: React.FC = () => {
                              </div>
 
                              <div className="flex flex-wrap md:flex-nowrap justify-end gap-2 md:gap-3 mt-6 pt-4 border-t border-slate-200">
-                                 {editingOrderId === order.id ? (
+                                 {isEditing ? (
                                      <>
                                         <button onClick={() => setEditingOrderId(null)} className="px-6 py-3 rounded-xl border border-slate-200 text-slate-500 font-black text-[10px] uppercase hover:bg-slate-50">Отмена</button>
                                         <button onClick={() => saveEditing(order)} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-[10px] uppercase shadow-lg hover:bg-indigo-700 flex items-center gap-2">{isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} Сохранить</button>
                                      </>
                                  ) : (
                                      <>
-                                        {!order.isRefused && !order.isProcessed && (
+                                        {!isCancelled && !order.isProcessed && (
                                             <button onClick={() => startEditing(order)} className="px-4 py-3 rounded-xl border border-indigo-100 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase hover:bg-indigo-100 flex items-center gap-2"><Edit2 size={14}/> Изменить</button>
                                         )}
-                                        {!order.isRefused && (
+                                        {!isCancelled && (
                                             <button onClick={() => setAdminModal({ type: 'ANNUL', orderId: order.id })} className="px-4 py-3 rounded-xl border border-red-100 text-red-500 bg-red-50 font-black text-[10px] uppercase hover:bg-red-100 flex items-center gap-2"><Ban size={14}/> Аннулировать</button>
                                         )}
-                                        {!order.isRefused && !order.isProcessed && (
+                                        {/* Show Approve button ONLY in 'New' status */}
+                                        {currentStatus === 'В обработке' && (
                                             <button onClick={() => handleFormCP(order.id)} className="px-8 py-3 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase shadow-xl hover:bg-slate-800 transition-all active:scale-95 w-full md:w-auto flex items-center justify-center gap-2">
                                                 {isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle2 size={14}/>} 
                                                 Утвердить КП и Отправить
@@ -738,8 +723,7 @@ export const AdminInterface: React.FC = () => {
                           <div className="space-y-4">
                               <h3 className="text-lg font-black uppercase text-slate-800">Аннулирование заказа</h3>
                               <p className="text-xs text-slate-500 font-bold">Причина отказа (для клиента):</p>
-                              <textarea value={refusalReason} onChange={e => setRefusalReason(e.target.value)} className="w-full h-24 p-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 bg-slate-50 uppercase placeholder:normal-case" placeholder="Причина...">
-                              </textarea>
+                              <textarea value={refusalReason} onChange={e => setRefusalReason(e.target.value)} className="w-full h-24 p-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 bg-slate-50 uppercase placeholder:normal-case" placeholder="Причина..."/>
                               <div className="flex gap-2 justify-end">
                                   <button onClick={() => setAdminModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 uppercase hover:bg-slate-100 rounded-lg">Отмена</button>
                                   <button onClick={handleRefuse} className="px-4 py-2 text-xs font-bold text-white bg-red-600 uppercase rounded-lg hover:bg-red-700 shadow-lg shadow-red-200">Подтвердить</button>
