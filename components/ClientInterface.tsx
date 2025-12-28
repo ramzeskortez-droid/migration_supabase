@@ -153,6 +153,16 @@ export const ClientInterface: React.FC = () => {
     setItems([{ name: '', quantity: 1, color: '', category: 'Оригинал' as PartCategory, refImage: '' }]);
   };
 
+  const handleLogin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!tempAuth.name.trim()) return;
+    if (!isPhoneValid(tempAuth.phone)) return;
+    const authData = { name: tempAuth.name.trim().toUpperCase(), phone: tempAuth.phone.trim() };
+    setClientAuth(authData);
+    localStorage.setItem('client_auth', JSON.stringify(authData));
+    setShowAuthModal(false);
+  };
+
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
 
   const fetchOrders = React.useCallback(async () => {
