@@ -51,7 +51,7 @@ const DEMO_CARS = [
 
 const STATUS_STEPS = [
   'В обработке',
-  'КП отправлено', 
+  'КП готово', 
   'Готов купить',
   'Подтверждение от поставщика',
   'Ожидает оплаты',
@@ -445,7 +445,10 @@ export const ClientInterface: React.FC = () => {
           {paginatedOrders.map(order => {
             const isExpanded = expandedId === order.id;
             const currentStatus = order.workflowStatus || 'В обработке';
+            const displayStatus = currentStatus === 'КП отправлено' ? 'КП готово' : currentStatus;
             const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
+            const statusIndex = isCancelled ? -1 : STATUS_STEPS.indexOf(displayStatus);
+            
             const statusConfig = STATUS_CONFIG[currentStatus] || STATUS_CONFIG['В обработке'];
             const winningItems = order.items.filter(i => i.AdminCHOOSErankLeader).map(i => ({ ...i, ...i.AdminCHOOSErankLeader }));
             const totalSum = winningItems.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0);
@@ -463,7 +466,7 @@ export const ClientInterface: React.FC = () => {
                             <span className="font-mono font-bold text-[10px]">{order.id}</span>
                         )}
                         <div className="md:hidden flex items-center gap-2 max-w-[60%] justify-end">
-                             <span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase border whitespace-normal text-center leading-tight ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>{currentStatus}</span>
+                             <span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase border whitespace-normal text-center leading-tight ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>{displayStatus}</span>
                              <ChevronDown size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
                         </div>
                     </div>
@@ -471,7 +474,7 @@ export const ClientInterface: React.FC = () => {
                     <div className="font-mono text-[10px] text-slate-500 hidden md:block truncate break-words leading-tight">{order.vin}</div>
                     <div className="text-[9px] font-bold text-slate-500 flex items-center gap-1"><Package size={10}/> {order.items.length}</div>
                     <div className="text-[9px] font-bold text-slate-400 hidden md:block">{order.createdAt.split(',')[0]}</div>
-                    <div className="hidden md:flex justify-end"><span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase border whitespace-normal text-center leading-tight ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>{currentStatus}</span></div>
+                    <div className="hidden md:flex justify-end"><span className={`px-2 py-1 rounded-md font-bold text-[8px] uppercase border whitespace-normal text-center leading-tight ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>{displayStatus}</span></div>
                     <div className="hidden md:flex justify-end"><MoreHorizontal size={14} className="text-slate-300" /></div>
                  </div>
 
@@ -542,19 +545,48 @@ export const ClientInterface: React.FC = () => {
                       </div>
 
                       {/* FOOTER */}
-                      {currentStatus !== 'В обработке' && winningItems.length > 0 && (
+                      {!order.readyToBuy && !order.isRefused && (
                           <div className="bg-slate-900 text-white p-4 rounded-xl flex flex-wrap justify-between items-center gap-4 mt-4 shadow-lg">
                               <div className="flex flex-col gap-0.5">
-                                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Итого к оплате</span>
-                                  <div className="text-xl font-black leading-none">{totalSum.toLocaleString()} {getCurrencySymbol(winningItems[0]?.currency)}</div>
+                                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">
+                                      {currentStatus === 'В обработке' ? 'Статус заявки' : 'Итого к оплате'}
+                                  </span>
+                                  <div className="text-xl font-black leading-none">
+                                      {currentStatus === 'В обработке' ? 'В ОБРАБОТКЕ' : `${totalSum.toLocaleString()} ${getCurrencySymbol(winningItems[0]?.currency)}`}
+                                  </div>
                               </div>
                               <div className="flex gap-2 w-full sm:w-auto">
-                                  {!order.readyToBuy && !order.isRefused && (
-                                      <button onClick={() => handleConfirmPurchase(order.id)} disabled={!!isConfirming} className="flex-grow sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2">
+                                  <button 
+                                      onClick={(e) => openRefuseModal(e, order)} 
+                                      className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl font-bold text-[9px] uppercase tracking-widest bg-slate-700 text-slate-300 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                                  >
+                                      <X size={12}/> Отказаться
+                                  </button>
+                                  
+                                  {winningItems.length > 0 && (
+                                      <button 
+                                          onClick={() => handleConfirmPurchase(order.id)} 
+                                          disabled={!!isConfirming} 
+                                          className="flex-[2] sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg"
+                                      >
                                           {isConfirming === order.id ? <Loader2 size={14} className="animate-spin"/> : <ShoppingCart size={14}/>} Готов купить
                                       </button>
                                   )}
                               </div>
+                          </div>
+                      )}
+
+                      {(order.readyToBuy || order.isRefused) && (
+                          <div className="bg-slate-900 text-white p-4 rounded-xl flex justify-center items-center mt-4 shadow-lg">
+                               {order.readyToBuy ? (
+                                   <div className="flex items-center gap-2 text-emerald-400">
+                                       <Archive size={14}/><span className="text-[9px] font-black uppercase">В Архиве (Оплачено)</span>
+                                   </div>
+                               ) : (
+                                   <div className="text-[10px] text-red-300 font-bold uppercase flex items-center gap-2">
+                                       <AlertCircle size={12}/> Причина отказа: {order.refusalReason || "Не указана"}
+                                   </div>
+                               )}
                           </div>
                       )}
                    </div>
