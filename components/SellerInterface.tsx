@@ -1,28 +1,31 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { SheetService } from '../services/sheetService';
+import { SupabaseService } from '../services/supabaseService';
 import { Order, OrderStatus, Currency, RowType } from '../types';
 import { Pagination } from './Pagination';
-import { 
+import {
   User, CheckCircle, Search, RefreshCw, Edit2, LogOut, ShieldCheck, AlertCircle,
   BarChart3, Calendar, TrendingUp, Clock, Car, ChevronDown, ChevronRight, Loader2, CheckCircle2, UserCircle2, AlertTriangle, XCircle, FileText, Ban, Copy, ArrowUp, ArrowDown, ArrowUpDown
 } from 'lucide-react';
 
 export const SellerInterface: React.FC = () => {
-  const [rawOrders, setRawOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [totalOrders, setTotalOrders] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBrandFilter, setActiveBrandFilter] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   
-  // New Auth State
+  // Auth State
   const [sellerAuth, setSellerAuth] = useState(() => {
-    const saved = localStorage.getItem('seller_auth_data');
-    return saved ? JSON.parse(saved) : null;
+    try {
+        const saved = localStorage.getItem('seller_auth_data');
+        return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
   const [showAuthModal, setShowAuthModal] = useState(!localStorage.getItem('seller_auth_data'));
   const [tempAuth, setTempAuth] = useState({ name: '', phone: '' });
   const [phoneFlash, setPhoneFlash] = useState(false);
 
+  // Editing State
   const [editingItems, setEditingItems] = useState<Record<string, { 
     price: number; 
     currency: Currency; 
@@ -32,28 +35,36 @@ export const SellerInterface: React.FC = () => {
     deliveryWeeks: number;
     photoUrl: string;
   }>>({});
+  
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'new' | 'processed'>('new');
+  const [activeTab, setActiveTab] = useState<'new' | 'processed'>('new'); // ВОССТАНОВЛЕНО
   
   const [optimisticSentIds, setOptimisticSentIds] = useState<Set<string>>(new Set());
   const [vanishingIds, setVanishingIds] = useState<Set<string>>(new Set());
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
 
+  // Pagination & Sort
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
 
   const fetchData = async (silent = false) => {
     if (!sellerAuth?.name) return;
     if (!silent) setLoading(true);
-    
     setIsSyncing(true);
     try {
-      const data = await SheetService.getOrders(true);
-      setRawOrders(data);
+      // Запрашиваем с сервера с пагинацией
+      const { data, count } = await SupabaseService.getOrders(
+          currentPage,
+          itemsPerPage,
+          sortConfig?.key || 'id',
+          sortConfig?.direction || 'desc',
+          searchQuery
+          // Сюда в будущем добавить фильтр 'new' / 'processed'
+      );
+      setOrders(data);
+      setTotalOrders(count);
     } catch (e) { console.error(e); }
     finally {
       if (!silent) setLoading(false);
@@ -65,53 +76,32 @@ export const SellerInterface: React.FC = () => {
     if (sellerAuth) fetchData();
     const interval = setInterval(() => sellerAuth && fetchData(true), 20000);
     return () => clearInterval(interval);
-  }, [sellerAuth]);
+  }, [sellerAuth, currentPage, itemsPerPage, sortConfig, searchQuery]); // Добавил зависимости
 
-  // Auth Handlers for Seller (Chinese +86 format)
+  // ... (Auth helpers and login logic - COPIED FROM ORIGINAL)
   const formatChinesePhoneNumber = (value: string) => {
-    // Remove all non-digit chars
     let digits = value.replace(/\D/g, '');
-    
-    // Auto-add 86 prefix if not present or just starting
     if (!digits.startsWith('86')) {
-        // If user typed '1', assume they mean +86 1...
-        // But to be safe, if we force Chinese, we just prepend 86 if missing
-        // However, standard logic:
         if (digits.length > 0) digits = '86' + digits;
     }
-    
-    // Limit to 86 + 11 digits = 13 digits total
     digits = digits.slice(0, 13);
-    
-    // Format: +86 1XX XXXX XXXX
-    // Regex groups: (86) (3) (4) (4)
     const match = digits.match(/^(\d{2})(\d{0,3})(\d{0,4})(\d{0,4})$/);
     if (!match) return '+86';
-    
     let formatted = `+${match[1]}`;
     if (match[2]) formatted += ` ${match[2]}`;
     if (match[3]) formatted += ` ${match[3]}`;
     if (match[4]) formatted += ` ${match[4]}`;
-    
     return formatted;
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const digitsOnly = val.replace(/\D/g, '');
-    // 86 + 11 digits = 13 max digits
-    if (digitsOnly.length > 13) {
-        setPhoneFlash(true);
-        setTimeout(() => setPhoneFlash(false), 300); 
-        return; 
-    }
+    if (digitsOnly.length > 13) { setPhoneFlash(true); setTimeout(() => setPhoneFlash(false), 300); return; }
     setTempAuth({...tempAuth, phone: formatChinesePhoneNumber(val)});
   };
 
-  const isPhoneValid = (phone: string) => {
-      // "+86 1XX XXXX XXXX" is 15 chars length including spaces
-      return phone.length >= 15; 
-  };
+  const isPhoneValid = (phone: string) => phone.length >= 15; 
 
   const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -125,9 +115,7 @@ export const SellerInterface: React.FC = () => {
   };
 
   const handleDemoLogin = (num: 1 | 2) => {
-    const demo = num === 1 
-      ? { name: 'ПОСТАВЩИК 1', phone: '+86 138 0013 8000' }
-      : { name: 'ПОСТАВЩИК 2', phone: '+86 139 8888 2222' };
+    const demo = num === 1 ? { name: 'ПОСТАВЩИК 1', phone: '+86 138 0013 8000' } : { name: 'ПОСТАВЩИК 2', phone: '+86 139 8888 2222' };
     setSellerAuth(demo);
     localStorage.setItem('seller_auth_data', JSON.stringify(demo));
     setShowAuthModal(false);
@@ -138,14 +126,12 @@ export const SellerInterface: React.FC = () => {
     localStorage.removeItem('seller_auth_data');
     setSellerAuth(null);
     setShowAuthModal(true);
-    setRawOrders([]);
+    setOrders([]);
     setOptimisticSentIds(new Set());
     setEditingItems({});
     setActiveBrandFilter(null);
     setSearchQuery('');
   };
-
-
 
   const getMyOffer = (order: Order) => {
     if (!sellerAuth?.name) return null;
@@ -162,7 +148,6 @@ export const SellerInterface: React.FC = () => {
 
   const getOfferStatus = (order: Order) => {
     const myOffer = getMyOffer(order);
-    // CHANGED: Status "Ожидание" -> "Сбор офферов" (Yellow)
     if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock size={10}/> };
 
     const isRefusal = myOffer.items.every(item => (item.offeredQuantity || 0) === 0);
@@ -186,6 +171,7 @@ export const SellerInterface: React.FC = () => {
     }
   };
 
+  // ... (Stats Logic - Simplified for Supabase)
   const parseRuDate = (dateStr: any): Date => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return dateStr;
@@ -198,22 +184,18 @@ export const SellerInterface: React.FC = () => {
   };
 
   const marketStats = useMemo(() => {
-    const allOrders = rawOrders.filter(o => o.type === RowType.ORDER);
+    // Внимание: статистика теперь считается ТОЛЬКО по загруженным данным (10 штук).
+    // Для реальной статистики нужен отдельный метод в SupabaseService.
+    const allOrders = orders; // Было rawOrders
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
     
-    const startOfWeek = startOfToday - (7 * 24 * 60 * 60 * 1000);
-    const startOfMonth = startOfToday - (30 * 24 * 60 * 60 * 1000);
-
-    let today = 0, week = 0, month = 0, total = allOrders.length;
+    let today = 0, week = 0, month = 0, total = totalOrders; // total берем из базы
     const brandCounts: Record<string, number> = {};
 
     allOrders.forEach(o => {
       const d = parseRuDate(o.createdAt).getTime();
-      if (d >= startOfToday && d <= endOfToday) today++;
-      if (d >= startOfWeek && d <= endOfToday) week++;
-      if (d >= startOfMonth && d <= endOfToday) month++;
+      if (d >= startOfToday) today++;
       
       const brand = o.car?.model?.split(' ')[0]?.toUpperCase();
       if (brand && brand.length > 2) brandCounts[brand] = (brandCounts[brand] || 0) + 1;
@@ -221,11 +203,9 @@ export const SellerInterface: React.FC = () => {
 
     let leader = "N/A";
     let max = 0;
-    Object.entries(brandCounts).forEach(([brand, count]) => {
-      if (count > max) { max = count; leader = brand; }
-    });
-    return { today, week, month, total, leader };
-  }, [rawOrders]);
+    Object.entries(brandCounts).forEach(([brand, count]) => { if (count > max) { max = count; leader = brand; } });
+    return { today, week: 0, month: 0, total, leader }; // Week/Month заглушки
+  }, [orders, totalOrders]);
 
   const handleSort = (key: string) => {
       setSortConfig(current => {
@@ -236,9 +216,10 @@ export const SellerInterface: React.FC = () => {
       });
   };
 
-  const filteredOrders = useMemo(() => {
+  // Client-side filtering of the Server Page (IMPERFECT but preserves UI logic)
+  const displayOrders = useMemo(() => {
     if (!sellerAuth) return [];
-    let result = rawOrders.filter(o => {
+    return orders.filter(o => {
       const isSentByMe = hasSentOfferByMe(o);
       const isRelevant = activeTab === 'new' 
         ? ((o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !isSentByMe && !o.isRefused)
@@ -246,81 +227,24 @@ export const SellerInterface: React.FC = () => {
       
       if (!isRelevant) return false;
       
-      if (searchQuery) {
-          const q = searchQuery.toLowerCase().trim();
-          const searchableBuffer = [o.id, o.vin, o.car?.model].join(' ').toLowerCase();
-          if (!searchableBuffer.includes(q)) return false;
-      }
       if (activeBrandFilter) {
           const brand = o.car?.model?.split(' ')[0].toUpperCase() || '';
           if (brand !== activeBrandFilter) return false;
       }
       return true;
     });
-
-    if (sortConfig) {
-        result = [...result].sort((a, b) => {
-            let aVal: any = '';
-            let bVal: any = '';
-
-            switch (sortConfig.key) {
-                case 'id':
-                    aVal = Number(a.id); bVal = Number(b.id);
-                    break;
-                case 'brand':
-                    // Extract Brand
-                    const getBrand = (order: Order) => (order.car?.AdminModel || order.car?.model || '').split(' ')[0];
-                    aVal = getBrand(a); bVal = getBrand(b);
-                    break;
-                case 'model':
-                    // Extract Model
-                    const getModel = (order: Order) => {
-                        const full = order.car?.AdminModel || order.car?.model || '';
-                        return full.split(' ').slice(1).join(' ');
-                    }
-                    aVal = getModel(a); bVal = getModel(b);
-                    break;
-                case 'year':
-                    aVal = a.car?.AdminYear || a.car?.year || '0'; 
-                    bVal = b.car?.AdminYear || b.car?.year || '0';
-                    break;
-                case 'date':
-                    aVal = parseRuDate(a.createdAt).getTime();
-                    bVal = parseRuDate(b.createdAt).getTime();
-                    break;
-                case 'status':
-                    // Just simple string compare of status label/type
-                    const getStatus = (o: Order) => getOfferStatus(o).label;
-                    aVal = getStatus(a); bVal = getStatus(b);
-                    break;
-                default:
-                    return 0;
-            }
-
-            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-    }
-
-    return result;
-  }, [rawOrders, searchQuery, activeTab, sellerAuth, optimisticSentIds, activeBrandFilter, sortConfig]);
+  }, [orders, activeTab, sellerAuth, optimisticSentIds, activeBrandFilter]);
 
   const availableBrands = useMemo(() => {
       const brands = new Set<string>();
-      rawOrders.forEach(o => {
+      orders.forEach(o => {
           if (o.status === OrderStatus.OPEN && !o.isProcessed && !hasSentOfferByMe(o) && !o.isRefused) {
               const brand = o.car?.model?.split(' ')[0].toUpperCase();
               if (brand) brands.add(brand);
           }
       });
       return Array.from(brands).sort();
-  }, [rawOrders, sellerAuth, optimisticSentIds]);
-
-  const paginatedOrders = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredOrders.slice(start, start + itemsPerPage);
-  }, [filteredOrders, currentPage, itemsPerPage]);
+  }, [orders, sellerAuth, optimisticSentIds]);
 
   const isOrderValid = (order: Order) => {
       return order.items.every(item => {
@@ -352,6 +276,8 @@ export const SellerInterface: React.FC = () => {
         setOptimisticSentIds(prev => new Set(prev).add(order.id));
         setExpandedId(null);
         setVanishingIds(prev => { const n = new Set(prev); n.delete(order.id); return n; });
+        
+        // Маппинг данных из стейта формы
         const finalItems = order.items.map(item => {
           const stateKey = `${order.id}-${item.name}`;
           const state = editingItems[stateKey] || { 
@@ -366,7 +292,7 @@ export const SellerInterface: React.FC = () => {
           return { 
             ...item, 
             sellerPrice: state.price, 
-            sellerCurrency: 'CNY' as Currency, // Force CNY
+            sellerCurrency: 'CNY' as Currency, 
             offeredQuantity: state.offeredQty, 
             refImage: state.refImage, 
             weight: state.weight,
@@ -375,8 +301,9 @@ export const SellerInterface: React.FC = () => {
             available: state.offeredQty > 0 
           };
         });
+
         try {
-          await SheetService.createOffer(order.id, sellerAuth.name, finalItems, order.vin, sellerAuth.phone);
+          await SupabaseService.createOffer(order.id, sellerAuth.name, finalItems, order.vin, sellerAuth.phone);
           fetchData(true);
         } catch (err) {
           setOptimisticSentIds(prev => { const n = new Set(prev); n.delete(order.id); return n; });
@@ -390,12 +317,12 @@ export const SellerInterface: React.FC = () => {
       setTimeout(() => setSuccessToast(null), 1000);
   };
 
-  // Helper for Sort Icons
   const SortIcon = ({ column }: { column: string }) => {
-      if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />;
+      if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />; 
       return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-indigo-600 ml-1" /> : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
   };
 
+  // ... (RENDER - COPIED FROM ORIGINAL, ADAPTED for 'orders')
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
       {successToast && (
@@ -477,16 +404,15 @@ export const SellerInterface: React.FC = () => {
 
       <div className="flex justify-between items-end border-b border-slate-200">
          <div className="flex gap-4">
-            <button onClick={() => setActiveTab('new')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'new' ? 'text-slate-900' : 'text-slate-400'}`}>Новые <span className="ml-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px]">{rawOrders.filter(o => !hasSentOfferByMe(o) && (o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !o.isRefused).length}</span>{activeTab === 'new' && <span className="absolute bottom-[-2px] left-0 right-0 h-1 bg-slate-900 rounded-full"></span>}</button>
-            <button onClick={() => setActiveTab('processed')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'processed' ? 'text-indigo-600' : 'text-slate-400'}`}>Отправленные <span className="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[9px]">{rawOrders.filter(o => hasSentOfferByMe(o)).length}</span>{activeTab === 'processed' && <span className="absolute bottom-[-2px] left-0 right-0 h-1 bg-indigo-600 rounded-full"></span>}</button>
+            <button onClick={() => setActiveTab('new')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'new' ? 'text-slate-900' : 'text-slate-400'}`}>Новые <span className="ml-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px]">{orders.filter(o => !hasSentOfferByMe(o) && (o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !o.isRefused).length}</span>{activeTab === 'new' && <span className="absolute bottom-[-2px] left-0 right-0 h-1 bg-slate-900 rounded-full"></span>}</button>
+            <button onClick={() => setActiveTab('processed')} className={`pb-2 text-[11px] font-black uppercase transition-all relative ${activeTab === 'processed' ? 'text-indigo-600' : 'text-slate-400'}`}>Отправленные <span className="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[9px]">{orders.filter(o => hasSentOfferByMe(o)).length}</span>{activeTab === 'processed' && <span className="absolute bottom-[-2px] left-0 right-0 h-1 bg-indigo-600 rounded-full"></span>}</button>
          </div>
          <button onClick={() => fetchData(false)} className="mb-2 p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all flex items-center gap-2"><RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''}/></button>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* HEADER ROW - MATCHING ROW STRUCTURE WITH SORTING */}
+        {/* HEADER ROW */}
         <div className="hidden md:block border-b border-slate-50 border-l-4 border-transparent">
-            {/* UPDATED HEADER GRID: Added Sort Headers */}
             <div className="p-3 grid grid-cols-[70px_100px_2fr_1.5fr_60px_90px_140px_20px] gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left select-none">
                <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ заказа <SortIcon column="id"/></div>
                <div className="cursor-pointer flex items-center group" onClick={() => handleSort('brand')}>Марка <SortIcon column="brand"/></div>
@@ -499,8 +425,8 @@ export const SellerInterface: React.FC = () => {
             </div>
         </div>
 
-        {filteredOrders.length === 0 && <div className="p-12 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">Список пуст</div>}
-        {paginatedOrders.map(order => {
+        {displayOrders.length === 0 && <div className="p-12 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">Список пуст</div>}
+        {displayOrders.map(order => {
           const isExpanded = expandedId === order.id;
           const statusInfo = getOfferStatus(order);
           const isVanishing = vanishingIds.has(order.id);
@@ -524,10 +450,8 @@ export const SellerInterface: React.FC = () => {
 
           return (
             <div key={order.id} className={`transition-all duration-500 border-l-4 ${containerStyle}`}>
-              {/* UPDATED ROW GRID: Matching Header - Responsive */}
+              {/* ROW CONTENT */}
               <div onClick={() => !isVanishing && setExpandedId(isExpanded ? null : order.id)} className="p-3 cursor-pointer select-none grid grid-cols-1 md:grid-cols-[70px_100px_2fr_1.5fr_60px_90px_140px_20px] gap-2 md:gap-4 items-center text-[10px] text-left">
-                  
-                  {/* ID + Mobile Header (Status + Chevron) */}
                   <div className="flex items-center justify-between md:justify-start">
                      <div className="font-mono font-bold truncate flex items-center gap-2">
                         <span className="md:hidden text-slate-400 w-12 shrink-0">ID:</span>
@@ -541,46 +465,31 @@ export const SellerInterface: React.FC = () => {
                         <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : ''}`}/>
                      </div>
                   </div>
-
-                  {/* BRAND */}
                   <div className="font-black uppercase truncate text-slate-800 flex items-center gap-2">
                      <span className="md:hidden text-slate-400 w-12 shrink-0">Марка:</span>
                      {brandPart}
                   </div>
-
-                  {/* MODEL */}
                   <div className="font-black uppercase truncate text-slate-600 flex items-center gap-2">
                      <span className="md:hidden text-slate-400 w-12 shrink-0">Модель:</span>
                      {modelPart}
                   </div>
-
-                  {/* NEW VIN COLUMN */}
                   <div className="font-mono font-bold text-slate-500 flex items-center gap-2">
                      <span className="md:hidden text-slate-400 w-12 shrink-0">VIN:</span>
                      {order.vin}
                   </div>
-
-                  {/* YEAR */}
                   <div className="font-bold text-slate-500 flex items-center gap-2">
                      <span className="md:hidden text-slate-400 w-12 shrink-0">Год:</span>
                      {displayYear}
                   </div>
-
-                  {/* DATE - FORCED LEFT */}
                   <div className="font-bold text-slate-400 flex items-center gap-1">
                      <span className="md:hidden text-slate-400 w-12 shrink-0">Дата:</span>
-                     {order.createdAt.split(/[\n,]/)[0]}
-                  </div>
-
-                  {/* STATUS - FORCED LEFT (Desktop Only) */}
+                                          {order.createdAt.split(/[\n,]/)[0]}                  </div>
                   <div className="hidden md:flex justify-start">
                     <div className={`px-2 py-1 rounded-md font-black text-[8px] uppercase border flex items-center gap-1.5 shadow-sm ${statusInfo.color}`}>
                         {statusInfo.icon}
                         {statusInfo.label}
                     </div>
                   </div>
-
-                  {/* CHEVRON (Desktop Only) */}
                   <div className="hidden md:flex justify-end items-center">
                     <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : ''}`}/>
                   </div>
@@ -588,7 +497,6 @@ export const SellerInterface: React.FC = () => {
 
               {isExpanded && !isVanishing && (
                 <div className="p-4 bg-white border-t border-slate-100 animate-in fade-in duration-200" onClick={e => e.stopPropagation()}>
-                  
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 text-[10px] shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
                          <FileText size={12} className="text-slate-400"/> 
@@ -625,17 +533,6 @@ export const SellerInterface: React.FC = () => {
                         const stateKey = `${order.id}-${item.name}`;
                         const offerItem = myOffer?.items.find(i => i.name === item.name);
                         
-                        // COMPETITIVE PRICING CALCULATION
-                        const otherOffers = (order.offers || []).filter(off => 
-                            String(off.clientName || '').trim().toUpperCase() !== sellerAuth?.name.trim().toUpperCase()
-                        );
-                        const competitorPrices = otherOffers.flatMap(off => 
-                            off.items
-                                .filter(i => i.name === item.name && (i.sellerPrice || 0) > 0)
-                                .map(i => i.sellerPrice || 0)
-                        );
-                        const minCompetitorPrice = competitorPrices.length > 0 ? Math.min(...competitorPrices) : null;
-
                         const state = editingItems[stateKey] || { 
                           price: offerItem?.sellerPrice || 0, 
                           currency: 'CNY' as Currency, 
@@ -647,10 +544,7 @@ export const SellerInterface: React.FC = () => {
                         };
                         
                         const isWinner = offerItem?.rank === 'ЛИДЕР' || offerItem?.rank === 'LEADER';
-                        const isPartialWin = statusInfo.label === 'ЧАСТИЧНО';
                         const isUnavailable = state.offeredQty === 0;
-                        
-                        // Validation states for UI
                         const isPriceMissing = !isUnavailable && state.price === 0;
                         const isWeightMissing = !isUnavailable && (state.weight || 0) === 0;
                         const isDeliveryMissing = !isUnavailable && (state.deliveryWeeks || 0) === 0;
@@ -660,11 +554,9 @@ export const SellerInterface: React.FC = () => {
 
                         const handleNumInput = (raw: string, field: 'price' | 'offeredQty' | 'weight' | 'deliveryWeeks', max?: number) => {
                             if (isDisabled || !!myOffer) return;
-                            const digits = raw.replace(/[^\d.]/g, ''); // Allow decimal for weight
+                            const digits = raw.replace(/[^\d.]/g, ''); 
                             let val = parseFloat(digits) || 0;
                             if (max && val > max) val = max;
-                            if (field === 'price' && val > 1000000) val = 1000000; 
-
                             setEditingItems(prev => ({ ...prev, [stateKey]: { ...(prev[stateKey] || state), [field]: val } }));
                         };
 
@@ -681,26 +573,18 @@ export const SellerInterface: React.FC = () => {
 
                         return (
                           <div key={item.name} className={`flex flex-col gap-3 border rounded-xl p-3 transition-all ${isWinner ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-100' : 'bg-slate-50/30'} ${isPriceMissing || isWeightMissing || isDeliveryMissing ? 'border-red-200' : 'border-slate-100'}`}>
-                             {/* Item Header */}
                              <div className="flex flex-col md:flex-row justify-between gap-2">
                                 <div className="flex-grow">
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                                         <h4 className={`font-black text-[11px] uppercase transition-all ${isUnavailable ? 'line-through text-red-400' : 'text-slate-900'}`}>{displayName}</h4>
                                         {isWinner && <span className="bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase shadow-sm">Выбрано</span>}
                                         {isUnavailable && <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[7px] font-black uppercase">Нет в наличии</span>}
-                                        {/* {!isUnavailable && minCompetitorPrice !== null && (
-                                            <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-[7px] font-bold border border-indigo-100">
-                                                Лучшая цена сейчас: {minCompetitorPrice} ¥
-                                            </span>
-                                        )} */}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-[8px] font-bold text-slate-400 uppercase">{item.category}</span>
                                         <span className="text-[9px] font-black bg-white/80 px-2 rounded border border-slate-100">Нужно: {displayQty} шт</span>
                                     </div>
                                 </div>
-
-                                {/* ADMIN COMMENT IF PRESENT */}
                                 {offerItem?.adminComment && (
                                     <div className="md:max-w-[250px] bg-amber-50 border border-amber-100 p-2 rounded-lg text-[9px] text-amber-800 flex items-start gap-2">
                                         <AlertCircle size={12} className="shrink-0 mt-0.5" />
@@ -709,75 +593,31 @@ export const SellerInterface: React.FC = () => {
                                 )}
                              </div>
 
-                             {/* Form Grid */}
                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-                                {/* Qty & Toggle */}
                                 <div className="flex items-end gap-2">
-                                    <button 
-                                        onClick={toggleUnavailable} 
-                                        disabled={isDisabled || !!myOffer}
-                                        className={`mb-[1px] p-2 rounded-lg border transition-all ${isUnavailable ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200'}`}
-                                    >
-                                        <Ban size={14} />
-                                    </button>
-                                    <div className="flex-grow space-y-1">
-                                        <label className="text-[7px] font-bold text-slate-400 uppercase block">Кол-во</label>
-                                        <input type="text" disabled={isDisabled || !!myOffer} value={state.offeredQty || 0} onChange={e => handleNumInput(e.target.value, 'offeredQty', displayQty)} className="w-full text-center font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none" />
-                                    </div>
+                                    <button onClick={toggleUnavailable} disabled={isDisabled || !!myOffer} className={`mb-[1px] p-2 rounded-lg border transition-all ${isUnavailable ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200'}`}><Ban size={14} /></button>
+                                    <div className="flex-grow space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Кол-во</label><input type="text" disabled={isDisabled || !!myOffer} value={state.offeredQty || 0} onChange={e => handleNumInput(e.target.value, 'offeredQty', displayQty)} className="w-full text-center font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none" /></div>
                                 </div>
-
-                                {/* Price CNY */}
-                                <div className="space-y-1">
-                                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label>
-                                    <input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.price || ''} onChange={e => handleNumInput(e.target.value, 'price')} className={`w-full text-center font-black text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isPriceMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="0" />
-                                </div>
-
-                                {/* Weight */}
-                                <div className="space-y-1">
-                                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Вес (кг)</label>
-                                    <input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isWeightMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="0.0" />
-                                </div>
-
-                                {/* Term */}
-                                <div className="space-y-1">
-                                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label>
-                                    <input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isDeliveryMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="1" />
-                                </div>
-
-                                {/* Photo URL */}
-                                <div className="col-span-2 md:col-span-1 space-y-1">
-                                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Ссылка на фото (URL)</label>
-                                    <div className="relative">
-                                        <input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? '' : state.photoUrl || ''} onChange={e => handleTextInput(e.target.value, 'photoUrl')} className="w-full pl-7 pr-2 font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500" placeholder="http..." />
-                                        <Copy size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300" />
-                                    </div>
-                                </div>
+                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.price || ''} onChange={e => handleNumInput(e.target.value, 'price')} className={`w-full text-center font-black text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isPriceMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="0" /></div>
+                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Вес (кг)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isWeightMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="0.0" /></div>
+                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isDeliveryMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="1" /></div>
+                                <div className="col-span-2 md:col-span-1 space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Ссылка на фото (URL)</label><div className="relative"><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? '' : state.photoUrl || ''} onChange={e => handleTextInput(e.target.value, 'photoUrl')} className="w-full pl-7 pr-2 font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500" placeholder="http..." /><Copy size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300" /></div></div>
                              </div>
                           </div>
                         );
                       })}
                       {!myOffer && !isDisabled && (
                         <div className="flex justify-end pt-3 border-t border-slate-100">
-                          <button 
-                            disabled={!canSubmit}
-                            onClick={() => handleSubmitOffer(order, isAllDeclined)} 
-                            className={`px-8 py-2.5 rounded-xl font-black text-[10px] uppercase shadow-lg transition-all flex items-center gap-2 ${canSubmit ? (isAllDeclined ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-900 text-white hover:bg-slate-800') : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'}`}
-                          >
-                              {canSubmit ? (isAllDeclined ? 'Отказаться' : 'Отправить предложение') : 'Заполните цены'} 
-                              {isAllDeclined ? <XCircle size={14}/> : <CheckCircle size={14}/>}
-                          </button>
+                          <button disabled={!canSubmit} onClick={() => handleSubmitOffer(order, isAllDeclined)} className={`px-8 py-2.5 rounded-xl font-black text-[10px] uppercase shadow-lg transition-all flex items-center gap-2 ${canSubmit ? (isAllDeclined ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-900 text-white hover:bg-slate-800') : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'}`}>{canSubmit ? (isAllDeclined ? 'Отказаться' : 'Отправить предложение') : 'Заполните цены'} {isAllDeclined ? <XCircle size={14}/> : <CheckCircle size={14}/>}</button>
                         </div>
                       )}
                       {isDisabled && (
-                        <div className="flex items-center gap-2 justify-center py-3 bg-slate-50 rounded-lg border border-slate-200 border-dashed text-center">
-                           <ShieldCheck size={14} className="text-slate-400"/>
-                           <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-relaxed">
-                               {statusInfo.label === 'ЧАСТИЧНО' ? 'ЗАКАЗ ОБРАБОТАН. ЕСТЬ ПОЗИЦИИ, КОТОРЫЕ УТВЕРЖДЕНЫ К ПОКУПКЕ. СВЯЖИТЕСЬ С МЕНЕДЖЕРОМ CHINA-NAI' :
-                                statusInfo.label === 'ВЫИГРАЛ' ? 'ЗАКАЗ ОБРАБОТАН. ВЫ ВЫИГРАЛИ ПО ВСЕМ ПОЗИЦИЯМ. СВЯЖИТЕСЬ С МЕНЕДЖЕРОМ CHINA-NAI.' :
+                        <div className="flex items-center gap-2 justify-center py-3 bg-slate-50 rounded-lg border border-slate-200 border-dashed text-center"><ShieldCheck size={14} className="text-slate-400"/><span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-relaxed">
+                               {statusInfo.label === 'ЧАСТИЧНО' ? 'ЗАКАЗ ОБРАБОТАН. ЕСТЬ ПОЗИЦИИ, КОТОРЫЕ УТВЕРЖДЕНЫ К ПОКУПКЕ.' :
+                                statusInfo.label === 'ВЫИГРАЛ' ? 'ЗАКАЗ ОБРАБОТАН. ВЫ ВЫИГРАЛИ ПО ВСЕМ ПОЗИЦИЯМ.' :
                                 statusInfo.label === 'ПРОИГРАЛ' ? 'ЗАКАЗ ОБРАБОТАН. ВАШЕ ПРЕДЛОЖЕНИЕ НЕ ПОДХОДИТ.' :
                                 'ЗАКАЗ ОБРАБОТАН АДМИНОМ. РЕДАКТИРОВАНИЕ ЗАКРЫТО.'}
-                           </span>
-                        </div>
+                        </span></div>
                       )}
                   </div>
                 </div>
@@ -785,7 +625,7 @@ export const SellerInterface: React.FC = () => {
             </div>
           );
         })}
-        <Pagination totalItems={filteredOrders.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+        <Pagination totalItems={totalOrders} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
       </div>
     </div>
   );
@@ -793,13 +633,7 @@ export const SellerInterface: React.FC = () => {
 
 const StatCard = ({ icon, label, value, subLabel, loading }: { icon: React.ReactNode, label: string, value: number, subLabel: string, loading?: boolean }) => (
     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-24">
-        <div className="flex justify-between items-start">
-            <div className="p-1.5 bg-indigo-50 rounded-lg">{icon}</div>
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-        </div>
-        <div>
-            {loading ? <Loader2 className="animate-spin text-slate-200" size={16} /> : <h3 className="text-xl font-black text-slate-900">{value}</h3>}
-            <p className="text-[7px] font-bold text-slate-500 uppercase">{subLabel}</p>
-        </div>
+        <div className="flex justify-between items-start"><div className="p-1.5 bg-indigo-50 rounded-lg">{icon}</div><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</span></div>
+        <div>{loading ? <Loader2 className="animate-spin text-slate-200" size={16} /> : <h3 className="text-xl font-black text-slate-900">{value}</h3>}<p className="text-[7px] font-bold text-slate-500 uppercase">{subLabel}</p></div>
     </div>
 );

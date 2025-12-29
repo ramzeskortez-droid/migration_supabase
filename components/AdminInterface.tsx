@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { SheetService } from '../services/sheetService';
+import { SupabaseService } from '../services/supabaseService';
 import { Order, OrderStatus, Currency, RankType, OrderItem } from '../types';
 import { Pagination } from './Pagination';
 import { 
@@ -42,9 +42,11 @@ const TAB_MAPPING: Record<string, AdminTab> = {
 
 export const AdminInterface: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [totalOrders, setTotalOrders] = useState(0); 
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>('new');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [logs, setLogs] = useState<ActionLog[]>([]);
@@ -56,11 +58,39 @@ export const AdminInterface: React.FC = () => {
   const [vanishingIds, setVanishingIds] = useState<Set<string>>(new Set());
   const [adminModal, setAdminModal] = useState<AdminModalState | null>(null);
   const [refusalReason, setRefusalReason] = useState("");
+  
+  // Пагинация и Сортировка
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
+  
   const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
   const interactionLock = useRef<number>(0);
+
+  // Дебаунс для поиска
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setCurrentPage(1); 
+        fetchData(); 
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Маппинг табов на статусы БД
+  const getStatusFilter = (tab: AdminTab) => {
+      switch(tab) {
+          case 'new': return 'В обработке';
+          case 'kp_sent': return 'КП отправлено';
+          case 'ready_to_buy': return 'Готов купить';
+          case 'supplier_confirmed': return 'Подтверждение от поставщика';
+          case 'awaiting_payment': return 'Ожидает оплаты';
+          case 'in_transit': return 'В пути';
+          case 'completed': return 'Выполнен';
+          case 'annulled': return 'Аннулирован';
+          case 'refused': return 'Отказ';
+          default: return undefined;
+      }
+  };
 
   const addLog = (text: string, type: 'info' | 'success' | 'error') => {
       const log: ActionLog = { id: Date.now().toString() + Math.random(), time: new Date().toLocaleTimeString(), text, type };
@@ -73,53 +103,34 @@ export const AdminInterface: React.FC = () => {
   };
 
   const fetchData = async (silent = false) => {
-    if (silent && (Date.now() - interactionLock.current < 10000 || SheetService.isLocked())) return;
+    if (silent && (Date.now() - interactionLock.current < 10000)) return;
     if (!silent) setLoading(true); setIsSyncing(true);
-    try { const data = await SheetService.getOrders(true); setOrders(data); } catch(e) { addLog("Ошибка загрузки", "error"); }
+    
+    try { 
+        const statusFilter = getStatusFilter(activeTab);
+        const { data, count } = await SupabaseService.getOrders(
+            currentPage, 
+            itemsPerPage, 
+            sortConfig?.key || 'id', 
+            sortConfig?.direction || 'desc', 
+            searchQuery,
+            statusFilter
+        );
+        setOrders(data); 
+        setTotalOrders(count);
+    } catch(e) { addLog("Ошибка загрузки", "error"); }
     finally { setLoading(false); setIsSyncing(false); }
   };
 
   useEffect(() => { fetchData(); const interval = setInterval(() => fetchData(true), 30000); return () => clearInterval(interval); }, []);
-  useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery, sortConfig]);
+  
+  // При смене таба или сортировки - сбрасываем на 1 страницу и грузим
+  useEffect(() => { setCurrentPage(1); fetchData(); }, [activeTab, sortConfig]);
+  
+  // При смене страницы - просто грузим (поиск обрабатывается в отдельном useEffect с дебаунсом)
+  useEffect(() => { fetchData(); }, [currentPage, itemsPerPage]);
 
   const handleSort = (key: string) => { setExpandedId(null); setSortConfig(current => { if (current?.key === key) return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }; return { key, direction: 'asc' }; }); };
-
-  const filteredOrders = useMemo(() => {
-      let result = orders.filter(o => {
-          const status = o.workflowStatus || 'В обработке';
-          let matchesTab = false;
-          switch (activeTab) {
-              case 'new': matchesTab = status === 'В обработке'; break;
-              case 'kp_sent': matchesTab = status === 'КП отправлено'; break;
-              case 'ready_to_buy': matchesTab = status === 'Готов купить'; break;
-              case 'supplier_confirmed': matchesTab = status === 'Подтверждение от поставщика'; break;
-              case 'awaiting_payment': matchesTab = status === 'Ожидает оплаты'; break;
-              case 'in_transit': matchesTab = status === 'В пути'; break;
-              case 'completed': matchesTab = status === 'Выполнен'; break;
-              case 'annulled': matchesTab = status === 'Аннулирован'; break;
-              case 'refused': matchesTab = status === 'Отказ'; break;
-          }
-          if (!matchesTab) return false;
-          if (searchQuery) { const q = searchQuery.toLowerCase(); return o.id.toString().toLowerCase().includes(q) || o.vin.toLowerCase().includes(q) || o.clientName.toLowerCase().includes(q) || o.items.some(i => i.name.toLowerCase().includes(q)); }
-          return true;
-      });
-      if (sortConfig) {
-        result.sort((a, b) => {
-            let aVal: any = ''; let bVal: any = '';
-            if (sortConfig.key === 'id') { aVal = Number(a.id); bVal = Number(b.id); }
-            else if (sortConfig.key === 'date') { 
-                const parseD = (d: string) => { const [day, month, year] = d.split(/[\.\,]/); return new Date(Number(year), Number(month) - 1, Number(day)).getTime(); };
-                aVal = parseD(a.createdAt); bVal = parseD(b.createdAt); 
-            }
-            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-      }
-      return result;
-  }, [orders, activeTab, searchQuery, sortConfig]);
-  
-  const paginatedOrders = useMemo(() => { const start = (currentPage - 1) * itemsPerPage; return filteredOrders.slice(start, start + itemsPerPage); }, [filteredOrders, currentPage, itemsPerPage]);
 
   const handleLocalUpdateRank = (offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number) => {
       const newAction = currentRank === 'ЛИДЕР' || currentRank === 'LEADER' ? 'RESET' : undefined;
@@ -137,24 +148,24 @@ export const AdminInterface: React.FC = () => {
   const executeApproval = async (orderId: string) => {
       setAdminModal(null); setIsSubmitting(orderId); const order = orders.find(o => o.id === orderId); if (!order) return;
       setVanishingIds(prev => new Set(prev).add(orderId)); showToast("Фиксация лидеров и формирование КП...");
-      const rankPromises: Promise<void>[] = []; if (order.offers) { for (const off of order.offers) { for (const item of off.items) { if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { rankPromises.push(SheetService.updateRank(order.vin, item.name, off.id, item.adminPrice, item.adminCurrency, undefined, item.adminComment, item.deliveryRate)); } } } }
-      try { await Promise.all(rankPromises); await SheetService.formCP(orderId); setActiveTab('kp_sent'); setTimeout(() => { setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); setExpandedId(orderId); fetchData(true); }, 800); } catch (e) { setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); fetchData(true); } finally { setIsSubmitting(null); }
+      const rankPromises: Promise<void>[] = []; if (order.offers) { for (const off of order.offers) { for (const item of off.items) { if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { rankPromises.push(SupabaseService.updateRank(order.vin, item.name, off.id, item.adminPrice, item.adminCurrency, undefined, item.adminComment, item.deliveryRate)); } } } }
+      try { await Promise.all(rankPromises); await SupabaseService.formCP(orderId); setActiveTab('kp_sent'); setTimeout(() => { setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); setExpandedId(orderId); fetchData(true); }, 800); } catch (e) { setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); fetchData(true); } finally { setIsSubmitting(null); }
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, workflowStatus: newStatus } : o));
       const targetTab = TAB_MAPPING[newStatus]; if (targetTab) setActiveTab(targetTab);
       showToast(`Статус изменен на: ${newStatus}`);
-      try { await SheetService.updateWorkflowStatus(orderId, newStatus); } catch(e) { showToast("Ошибка сохранения"); fetchData(true); }
+      try { await SupabaseService.updateWorkflowStatus(orderId, newStatus); } catch(e) { showToast("Ошибка сохранения"); fetchData(true); }
   };
 
   const handleNextStep = (order: Order) => { const currentIdx = STATUS_STEPS.findIndex(s => s.id === (order.workflowStatus || 'В обработке')); if (currentIdx < STATUS_STEPS.length - 1) handleStatusChange(order.id, STATUS_STEPS[currentIdx + 1].id); };
 
-  const handleRefuse = async () => { if (!adminModal?.orderId) return; setIsSubmitting(adminModal.orderId); try { await SheetService.refuseOrder(adminModal.orderId, refusalReason, 'ADMIN'); setAdminModal(null); setRefusalReason(""); setOrders(prev => prev.map(o => o.id === adminModal.orderId ? { ...o, isRefused: true, status: OrderStatus.CLOSED } : o)); setActiveTab('refused'); } catch (e) {} finally { setIsSubmitting(null); } };
+  const handleRefuse = async () => { if (!adminModal?.orderId) return; setIsSubmitting(adminModal.orderId); try { await SupabaseService.refuseOrder(adminModal.orderId, refusalReason, 'ADMIN'); setAdminModal(null); setRefusalReason(""); setOrders(prev => prev.map(o => o.id === adminModal.orderId ? { ...o, isRefused: true, status: OrderStatus.CLOSED } : o)); setActiveTab('refused'); } catch (e) {} finally { setIsSubmitting(null); } };
 
   const startEditing = (order: Order) => { setEditingOrderId(order.id); const form: any = {}; form[`car_model`] = order.car?.AdminModel || order.car?.model || ''; form[`car_year`] = order.car?.AdminYear || order.car?.year || ''; form[`car_body`] = order.car?.AdminBodyType || order.car?.bodyType || ''; form[`delivery_weeks`] = order.items[0]?.deliveryWeeks?.toString() || ''; order.items.forEach((item, idx) => { form[`item_${idx}_name`] = item.AdminName || item.name; form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity; }); setEditForm(form); };
 
-  const saveEditing = async (order: Order) => { setIsSubmitting(order.id); const newItems = order.items.map((item, idx) => ({ ...item, AdminName: editForm[`item_${idx}_name`], AdminQuantity: Number(editForm[`item_${idx}_qty`]), deliveryWeeks: Number(editForm[`delivery_weeks`]), car: { ...order.car, AdminModel: editForm[`car_model`], AdminYear: editForm[`car_year`], AdminBodyType: editForm[`car_body`] } })); setOrders(prev => prev.map(o => o.id === order.id ? { ...o, items: newItems } : o)); try { await SheetService.updateOrderJson(order.id, newItems); setEditingOrderId(null); } catch (e) { fetchData(true); } finally { setIsSubmitting(null); } };
+  const saveEditing = async (order: Order) => { setIsSubmitting(order.id); const newItems = order.items.map((item, idx) => ({ ...item, AdminName: editForm[`item_${idx}_name`], AdminQuantity: Number(editForm[`item_${idx}_qty`]), deliveryWeeks: Number(editForm[`delivery_weeks`]), car: { ...order.car, AdminModel: editForm[`car_model`], AdminYear: editForm[`car_year`], AdminBodyType: editForm[`car_body`] } })); setOrders(prev => prev.map(o => o.id === order.id ? { ...o, items: newItems } : o)); try { await SupabaseService.updateOrderJson(order.id, newItems); setEditingOrderId(null); } catch (e) { fetchData(true); } finally { setIsSubmitting(null); } };
 
   const toggleRegistry = (id: string) => { setOpenRegistry(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
 
@@ -177,6 +188,48 @@ export const AdminInterface: React.FC = () => {
                   <h1 className="text-lg font-black uppercase text-slate-800">Панель Администратора</h1>
                   <button onClick={() => setShowLogs(!showLogs)} className={`p-2 rounded-lg ${showLogs ? 'bg-slate-200' : 'bg-slate-50'} hover:bg-slate-200 transition-colors`}><History size={18} className="text-slate-600"/></button>
               </div>
+              
+              <div className="flex gap-2">
+                 <button 
+                    onClick={async () => {
+                        if(!confirm('ВНИМАНИЕ: Это удалит ВСЕ заказы из базы данных. Продолжить?')) return;
+                        setLoading(true);
+                        try {
+                            await SupabaseService.deleteAllOrders();
+                            showToast("База данных очищена");
+                            fetchData(true);
+                        } catch(e: any) { alert("Ошибка очистки: " + (e.message || JSON.stringify(e))); }
+                        finally { setLoading(false); }
+                    }}
+                    className="px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-black uppercase hover:bg-red-100 flex items-center gap-2"
+                 >
+                    <Ban size={14}/> Очистить БД
+                 </button>
+                 
+                 <div className="flex bg-indigo-50 rounded-lg p-1 border border-indigo-100 items-center">
+                    <span className="px-2 text-[9px] font-black text-indigo-300 uppercase hidden sm:block">Gen:</span>
+                    {[100, 1000, 10000].map(count => (
+                        <button 
+                            key={count}
+                            disabled={loading}
+                            onClick={async () => {
+                                setLoading(true);
+                                setSeedProgress(0);
+                                try {
+                                   await SupabaseService.seedOrders(count, (created) => setSeedProgress(created));
+                                   showToast(`Создано ${count} заказов`);
+                                   fetchData(true);
+                                } catch(e: any) { alert("Ошибка: " + e.message); console.error(e); }
+                                finally { setLoading(false); setSeedProgress(null); }
+                            }}
+                            className="px-3 py-1.5 hover:bg-white hover:shadow-sm rounded-md text-[10px] font-black uppercase text-indigo-600 disabled:opacity-50 transition-all"
+                        >
+                            {count >= 1000 ? `${count/1000}k` : count}
+                        </button>
+                    ))}
+                    {seedProgress !== null && <span className="px-2 text-[9px] font-bold text-indigo-600 animate-pulse">{seedProgress}...</span>}
+                 </div>
+              </div>
           </div>
 
           <div className="relative group flex items-center">
@@ -187,9 +240,11 @@ export const AdminInterface: React.FC = () => {
           <div className="flex justify-between items-end border-b border-slate-200">
               <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar max-w-[calc(100%-40px)]">
                   {['new','kp_sent','ready_to_buy','supplier_confirmed','awaiting_payment','in_transit','completed','annulled','refused'].map(id => {
-                      const count = orders.filter(o => (o.workflowStatus || 'В обработке') === (id === 'new' ? 'В обработке' : id === 'kp_sent' ? 'КП отправлено' : id === 'ready_to_buy' ? 'Готов купить' : id === 'supplier_confirmed' ? 'Подтверждение от поставщика' : id === 'awaiting_payment' ? 'Ожидает оплаты' : id === 'in_transit' ? 'В пути' : id === 'completed' ? 'Выполнен' : id === 'annulled' ? 'Аннулирован' : 'Отказ')).length;
+                      // При серверной пагинации мы не знаем кол-во в каждом табе без отдельных запросов.
+                      // Пока убираем бейджики с количеством или делаем их "?"
+                      // Можно сделать отдельный useEffect для подгрузки статистики, но это лишние запросы.
                       const label = id === 'new' ? 'Новые' : id === 'kp_sent' ? 'КП отпр.' : id === 'ready_to_buy' ? 'Готов купить' : id === 'supplier_confirmed' ? 'Подтверждено' : id === 'awaiting_payment' ? 'Ждет оплаты' : id === 'in_transit' ? 'В пути' : id === 'completed' ? 'Выполнен' : id === 'annulled' ? 'Аннулирован' : 'Отказ';
-                      return (<button key={id} onClick={() => setActiveTab(id as AdminTab)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>{label} {count > 0 && <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === id ? 'bg-white/20' : 'bg-slate-100'}`}>{count}</span>}</button>);
+                      return (<button key={id} onClick={() => setActiveTab(id as AdminTab)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>{label}</button>);
                   })}
               </div>
               <button onClick={() => fetchData()} className="mb-2 p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition-all flex items-center gap-2 shrink-0"><RefreshCw size={14} className={isSyncing ? "animate-spin" : ""}/></button>
@@ -198,18 +253,18 @@ export const AdminInterface: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
              <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none h-12 items-center`}>
                  <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('id')}>ID <SortIcon column="id"/></div>
-                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('client')}>Марка <SortIcon column="client"/></div> 
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('clientName')}>Имя <SortIcon column="clientName"/></div> 
                  <div className="flex items-center h-full">Модель</div>
-                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('year')}>Год <SortIcon column="year"/></div>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('created_at')}>Дата <SortIcon column="created_at"/></div>
                  <div className="flex items-center h-full">VIN</div>
-                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('client')}>Клиент</div>
-                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
-                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('status')}>СТАТУС <SortIcon column="status"/></div>
-                 <div className="cursor-pointer flex items-center justify-end h-full group" onClick={() => handleSort('date')}>Дата <SortIcon column="date"/></div>
+                 <div className="flex items-center h-full">Клиент</div>
+                 <div className="flex items-center h-full">ОФФЕРЫ</div>
+                 <div className="flex items-center h-full">СТАТУС</div>
+                 <div className="flex items-center justify-end h-full">Дата</div>
                  <div></div>
              </div>
 
-             {paginatedOrders.map(order => {
+             {orders.map(order => {
                  const isExpanded = expandedId === order.id; const isEditing = editingOrderId === order.id;
                  const offersCount = order.offers ? order.offers.length : 0;
                  const carBrand = (order.car?.AdminModel || order.car?.model || '').split(' ')[0];
@@ -416,7 +471,7 @@ export const AdminInterface: React.FC = () => {
                  </div>
                  );
              })}
-             <Pagination totalItems={filteredOrders.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+             <Pagination totalItems={totalOrders} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
           </div>
           
           {adminModal && (
