@@ -4,7 +4,7 @@ import { Order, OrderStatus, PartCategory } from '../types';
 import { Pagination } from './Pagination';
 import { POPULAR_BRANDS, ALL_BRANDS } from '../constants/cars';
 import { 
-  Send, Plus, Trash2, Zap, CheckCircle2, Car, MoreHorizontal, Search, Loader2, ChevronDown, ShoppingCart, LogOut, ShieldCheck, Phone, X, Package, RefreshCw, AlertCircle, ArrowUp, ArrowDown, ArrowUpDown, FileText, UserCircle2
+  Send, Plus, Trash2, Zap, CheckCircle2, Car, MoreHorizontal, Search, Loader2, ChevronDown, ShoppingCart, LogOut, ShieldCheck, Phone, X, Package, RefreshCw, AlertCircle, ArrowUp, ArrowDown, ArrowUpDown, FileText, UserCircle2, Clock
 } from 'lucide-react';
 
 const FULL_BRAND_SET = new Set([...POPULAR_BRANDS, ...ALL_BRANDS]);
@@ -29,13 +29,11 @@ const DEMO_CARS = [
     { brand: "Kia", model: "Rio 4", prefix: "Z94" }
 ];
 
-const STATUS_STEPS = ['В обработке', 'КП готово', 'Готов купить', 'Подтверждение от поставщика', 'Ожидает оплаты', 'В пути', 'Выполнен'];
+const STATUS_STEPS = ['В обработке', 'КП отправлено', 'Подтверждение от поставщика', 'Ожидает оплаты', 'В пути', 'Выполнен'];
 
 const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string }> = {
   'В обработке': { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
   'КП отправлено': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
-  'КП готово': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
-  'Готов купить': { color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
   'Подтверждение от поставщика': { color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' },
   'Ожидает оплаты': { color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-200' },
   'В пути': { color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200' },
@@ -53,7 +51,6 @@ export const ClientInterface: React.FC = () => {
   });
   const [showAuthModal, setShowAuthModal] = useState(() => !localStorage.getItem('client_auth'));
   const [tempAuth, setTempAuth] = useState({ name: '', phone: '' });
-  const [phoneFlash, setPhoneFlash] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
   const [vin, setVin] = useState('');
@@ -62,7 +59,6 @@ export const ClientInterface: React.FC = () => {
   
   const [isBrandOpen, setIsBrandOpen] = useState(false);
   const brandListRef = useRef<HTMLDivElement>(null);
-  const brandInputRef = useRef<HTMLInputElement>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [totalOrders, setTotalOrders] = useState(0);
@@ -196,9 +192,34 @@ export const ClientInterface: React.FC = () => {
 
   const isFormValid = useMemo(() => car.brand && FULL_BRAND_SET.has(car.brand) && items.every(i => i.name.trim().length > 0), [car.brand, items]);
 
+  const handleDemoOrder = () => {
+    const randomCarInfo = DEMO_CARS[Math.floor(Math.random() * DEMO_CARS.length)];
+    setVin(generateVin(randomCarInfo.prefix));
+    setCar({
+        brand: randomCarInfo.brand,
+        model: randomCarInfo.model,
+        year: String(new Date().getFullYear() - Math.floor(Math.random() * 5)),
+        bodyType: '',
+        engine: '',
+        transmission: ''
+    });
+
+    const numItems = Math.floor(Math.random() * 3) + 1;
+    const shuffledItems = [...DEMO_ITEMS_POOL].sort(() => 0.5 - Math.random());
+    const newItems = shuffledItems.slice(0, numItems).map(item => ({
+        ...item,
+        quantity: Math.floor(Math.random() * 2) + 1,
+        color: '',
+        refImage: ''
+    }));
+    setItems(newItems);
+  };
+
   const displayOrders = useMemo(() => {
       return orders.filter(o => {
         const status = o.workflowStatus || 'В обработке';
+        // 'В обработке' - это единственное состояние для активных новых заявок.
+        // Статус 'КП отправлено' (и все последующие) идет в историю.
         const isProcessing = status === 'В обработке';
         if (activeTab === 'active' && !isProcessing) return false;
         if (activeTab === 'history' && isProcessing) return false;
@@ -291,9 +312,14 @@ export const ClientInterface: React.FC = () => {
             ))}
             <button type="button" onClick={() => setItems([...items, { name: '', quantity: 1, color: '', category: 'Оригинал', refImage: '' }])} className="text-[9px] font-bold text-indigo-600 uppercase flex items-center gap-1"><Plus size={10}/> Добавить</button>
           </div>
-          <button type="submit" disabled={!isFormValid || isSubmitting} className={`w-full py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-xl flex items-center justify-center gap-3 ${isFormValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-300 text-slate-500'}`}>
-            {isSubmitting ? <Loader2 className="animate-spin w-4 h-4"/> : <Send className="w-4 h-4" />} {isSubmitting ? 'Отправка...' : 'Отправить запрос'}
-          </button>
+          <div className="flex w-full items-center gap-3">
+            <button type="submit" disabled={!isFormValid || isSubmitting} className={`w-full py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-xl flex items-center justify-center gap-3 ${isFormValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-300 text-slate-500'}`}>
+              {isSubmitting ? <Loader2 className="animate-spin w-4 h-4"/> : <Send className="w-4 h-4" />} {isSubmitting ? 'Отправка...' : 'Отправить запрос'}
+            </button>
+            <button type="button" onClick={handleDemoOrder} title="Демо-заказ" className="p-3 bg-indigo-50 text-indigo-500 rounded-xl hover:bg-indigo-100 transition-all border border-indigo-100">
+              <Zap size={16}/>
+            </button>
+          </div>
         </form>
       </section>
 
@@ -315,7 +341,7 @@ export const ClientInterface: React.FC = () => {
                <div>Модель</div>
                <div>VIN</div>
                <div>Поз.</div>
-               <div>Дата</div>
+               <div className="cursor-pointer" onClick={() => handleSort('date')}>Дата <SortIcon column="date"/></div>
                <div className="text-right">Статус</div>
                <div></div>
             </div>
@@ -326,19 +352,25 @@ export const ClientInterface: React.FC = () => {
           {displayOrders.map(order => {
             const isExpanded = expandedId === order.id;
             const currentStatus = order.workflowStatus || 'В обработке';
-            const displayStatus = currentStatus === 'КП отправлено' ? 'КП готово' : currentStatus;
+            const displayStatus = currentStatus;
             const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
             const statusConfig = STATUS_CONFIG[currentStatus] || STATUS_CONFIG['В обработке'];
             
             // Winning items helper
             const winningItems: any[] = [];
-            order.items.forEach(i => {
-                if (i.adminPrice || (i as any).AdminCHOOSErankLeader) {
-                    winningItems.push({ ...i, ...(i as any).AdminCHOOSErankLeader });
-                }
+            order.offers?.forEach(offer => {
+                offer.items.forEach(item => {
+                    if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') {
+                        winningItems.push({
+                            ...item,
+                            supplierName: offer.clientName
+                        });
+                    }
+                });
             });
-            const totalSum = winningItems.reduce((acc, item) => acc + ((item.price || item.adminPrice || 0) * (item.quantity || 1)), 0);
-            const showReadyToBuy = (currentStatus === 'КП готово' || currentStatus === 'КП отправлено') && winningItems.length > 0;
+            // (Цена + Тариф) * Кол-во. Страховка: если adminPrice пуст, берем sellerPrice
+            const totalSum = winningItems.reduce((acc, item) => acc + (((item.adminPrice || item.sellerPrice || 0) + (item.deliveryRate || 0)) * (item.quantity || 1)), 0);
+            const showReadyToBuy = (currentStatus === 'КП отправлено') && winningItems.length > 0;
             
             return (
               <div key={order.id} className={`transition-all duration-500 border-l-4 border-b border-slate-200 ${isExpanded ? 'border-l-indigo-600' : 'border-l-transparent'}`}>
@@ -387,13 +419,30 @@ export const ClientInterface: React.FC = () => {
                           {winningItems.length > 0 ? (
                               <div className="space-y-3">
                                   {winningItems.map((item, idx) => (
-                                      <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
-                                          <div>
-                                              <div className="text-[10px] font-black uppercase text-slate-900">{item.name}</div>
-                                              <div className="text-[8px] text-slate-400 font-bold uppercase">{item.quantity || 1} шт</div>
+                                      <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                          <div className="flex-grow">
+                                              <div className="text-xs font-black uppercase text-slate-900 mb-1">{item.AdminName || item.name}</div>
+                                              <div className="flex flex-wrap gap-3 items-center mb-2">
+                                                  <span className="text-[10px] text-slate-400 font-bold uppercase">{item.category} &bull; {item.quantity || 1} шт.</span>
+                                                  {item.photoUrl && (
+                                                      <a href={item.photoUrl} target="_blank" rel="noreferrer" className="text-[9px] font-black text-indigo-600 border-b border-indigo-200 uppercase leading-none pb-0.5">Посмотреть фото</a>
+                                                  )}
+                                              </div>
+                                              <div className="flex flex-wrap gap-2">
+                                                  {item.deliveryWeeks && (
+                                                      <span className="text-[10px] bg-slate-100 text-slate-600 px-3 py-1 rounded-lg border border-slate-200 font-black uppercase shadow-sm flex items-center gap-1">
+                                                          <Clock size={12}/> Срок: {item.deliveryWeeks} нед.
+                                                      </span>
+                                                  )}
+                                                  {item.deliveryRate > 0 && (
+                                                      <span className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg border border-indigo-100 font-black uppercase shadow-sm">
+                                                          Доставка: +{item.deliveryRate} {getCurrencySymbol(item.adminCurrency)}/шт.
+                                                      </span>
+                                                  )}
+                                              </div>
                                           </div>
-                                          <div className="text-right">
-                                              <div className="text-sm font-black text-slate-900">{( (item.price || item.adminPrice || 0) * (item.quantity || 1)).toLocaleString()} {getCurrencySymbol(item.currency || item.adminCurrency)}</div>
+                                          <div className="text-right w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                              <div className="text-lg font-black text-slate-900">{( ((item.adminPrice || item.sellerPrice || 0) + (item.deliveryRate || 0)) * (item.quantity || 1)).toLocaleString()} {getCurrencySymbol(item.adminCurrency)}</div>
                                           </div>
                                       </div>
                                   ))}
@@ -401,7 +450,15 @@ export const ClientInterface: React.FC = () => {
                           ) : (
                               <div className="space-y-2">
                                   {order.items.map((item, i) => (
-                                      <div key={i} className="p-3 bg-slate-50 rounded-lg flex justify-between items-center"><span className="text-[10px] font-bold uppercase">{item.name}</span><span className="text-[8px] text-slate-400">В обработке</span></div>
+                                    <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-[11px] font-black uppercase text-slate-800">{item.name}</p>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{item.category} &bull; {item.quantity} шт.</p>
+                                        </div>
+                                        <div className="px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Обработка</span>
+                                        </div>
+                                    </div>
                                   ))}
                               </div>
                           )}
@@ -413,8 +470,8 @@ export const ClientInterface: React.FC = () => {
                                   <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">
                                       {currentStatus === 'В обработке' ? 'Статус заявки' : 'Итого к оплате'}
                                   </span>
-                                  <div className="text-xl font-black leading-none">
-                                      {currentStatus === 'В обработке' ? 'В ОБРАБОТКЕ' : `${totalSum.toLocaleString()} ${getCurrencySymbol(winningItems[0]?.currency || winningItems[0]?.adminCurrency)}`}
+                                  <div className="text-xl font-black leading-none uppercase">
+                                      {currentStatus === 'В обработке' ? 'В ОБРАБОТКЕ' : `${totalSum.toLocaleString()} ${getCurrencySymbol(winningItems[0]?.adminCurrency)}`}
                                   </div>
                               </div>
                               <div className="flex gap-2 w-full sm:w-auto">

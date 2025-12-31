@@ -13,6 +13,7 @@ export const SellerInterface: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBrandFilter, setActiveBrandFilter] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [flashFields, setFlashFields] = useState<Set<string>>(new Set());
   
   // Auth State
   const [sellerAuth, setSellerAuth] = useState(() => {
@@ -38,8 +39,9 @@ export const SellerInterface: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'new' | 'processed'>('new'); // ВОССТАНОВЛЕНО
+  const [activeTab, setActiveTab] = useState<'new' | 'processed'>('new'); 
   
+  const [stats, setStats] = useState({ today: 0, week: 0, month: 0, total: 0, leader: 'N/A' });
   const [optimisticSentIds, setOptimisticSentIds] = useState<Set<string>>(new Set());
   const [vanishingIds, setVanishingIds] = useState<Set<string>>(new Set());
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
@@ -54,14 +56,12 @@ export const SellerInterface: React.FC = () => {
     if (!silent) setLoading(true);
     setIsSyncing(true);
     try {
-      // Запрашиваем с сервера с пагинацией
       const { data, count } = await SupabaseService.getOrders(
           currentPage,
           itemsPerPage,
           sortConfig?.key || 'id',
           sortConfig?.direction || 'desc',
           searchQuery
-          // Сюда в будущем добавить фильтр 'new' / 'processed'
       );
       setOrders(data);
       setTotalOrders(count);
@@ -72,318 +72,317 @@ export const SellerInterface: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (sellerAuth) fetchData();
-    const interval = setInterval(() => sellerAuth && fetchData(true), 20000);
-    return () => clearInterval(interval);
-  }, [sellerAuth, currentPage, itemsPerPage, sortConfig, searchQuery]); // Добавил зависимости
-
-  // ... (Auth helpers and login logic - COPIED FROM ORIGINAL)
-  const formatChinesePhoneNumber = (value: string) => {
-    let digits = value.replace(/\D/g, '');
-    if (!digits.startsWith('86')) {
-        if (digits.length > 0) digits = '86' + digits;
-    }
-    digits = digits.slice(0, 13);
-    const match = digits.match(/^(\d{2})(\d{0,3})(\d{0,4})(\d{0,4})$/);
-    if (!match) return '+86';
-    let formatted = `+${match[1]}`;
-    if (match[2]) formatted += ` ${match[2]}`;
-    if (match[3]) formatted += ` ${match[3]}`;
-    if (match[4]) formatted += ` ${match[4]}`;
-    return formatted;
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    const digitsOnly = val.replace(/\D/g, '');
-    if (digitsOnly.length > 13) { setPhoneFlash(true); setTimeout(() => setPhoneFlash(false), 300); return; }
-    setTempAuth({...tempAuth, phone: formatChinesePhoneNumber(val)});
-  };
-
-  const isPhoneValid = (phone: string) => phone.length >= 15; 
-
-  const handleLogin = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!tempAuth.name.trim()) return;
-    if (!isPhoneValid(tempAuth.phone)) return;
-    const authData = { name: tempAuth.name.trim().toUpperCase(), phone: tempAuth.phone.trim() };
-    setSellerAuth(authData);
-    localStorage.setItem('seller_auth_data', JSON.stringify(authData));
-    setShowAuthModal(false);
-    fetchData(false);
-  };
-
-  const handleDemoLogin = (num: 1 | 2) => {
-    const demo = num === 1 ? { name: 'ПОСТАВЩИК 1', phone: '+86 138 0013 8000' } : { name: 'ПОСТАВЩИК 2', phone: '+86 139 8888 2222' };
-    setSellerAuth(demo);
-    localStorage.setItem('seller_auth_data', JSON.stringify(demo));
-    setShowAuthModal(false);
-    fetchData(false);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('seller_auth_data');
-    setSellerAuth(null);
-    setShowAuthModal(true);
-    setOrders([]);
-    setOptimisticSentIds(new Set());
-    setEditingItems({});
-    setActiveBrandFilter(null);
-    setSearchQuery('');
-  };
-
-  const getMyOffer = (order: Order) => {
-    if (!sellerAuth?.name) return null;
-    const nameToMatch = sellerAuth.name.trim().toUpperCase();
-    return order.offers?.find(off => 
-      String(off.clientName || '').trim().toUpperCase() === nameToMatch
-    ) || null;
-  };
-
-  const hasSentOfferByMe = (order: Order) => {
-    if (!sellerAuth) return false;
-    return optimisticSentIds.has(order.id) || !!getMyOffer(order);
-  };
-
-  const getOfferStatus = (order: Order) => {
-    const myOffer = getMyOffer(order);
-    if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock size={10}/> };
-
-    const isRefusal = myOffer.items.every(item => (item.offeredQuantity || 0) === 0);
-    if (isRefusal) {
-        return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: <Ban size={10}/> };
-    }
-
-    if (!order.isProcessed) {
-        return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: <Loader2 size={10} className="animate-spin"/> };
-    }
-
-    const winningItems = myOffer.items.filter(i => i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
-    const totalItems = myOffer.items.length;
-
-    if (winningItems.length === totalItems) {
-        return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 size={10}/> };
-    } else if (winningItems.length === 0) {
-        return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: <XCircle size={10}/> };
-    } else {
-        return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <AlertTriangle size={10}/> };
-    }
-  };
-
-  // ... (Stats Logic - Simplified for Supabase)
-  const parseRuDate = (dateStr: any): Date => {
-    if (!dateStr) return new Date(0);
-    if (dateStr instanceof Date) return dateStr;
-    const s = String(dateStr).trim().replace(/[\n\r]/g, ' ');
-    const nativeDate = new Date(s);
-    if (!isNaN(nativeDate.getTime())) return nativeDate;
-    const match = s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-    if (match) return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
-    return new Date(0);
-  };
-
-  const marketStats = useMemo(() => {
-    // Внимание: статистика теперь считается ТОЛЬКО по загруженным данным (10 штук).
-    // Для реальной статистики нужен отдельный метод в SupabaseService.
-    const allOrders = orders; // Было rawOrders
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    
-    let today = 0, week = 0, month = 0, total = totalOrders; // total берем из базы
-    const brandCounts: Record<string, number> = {};
-
-    allOrders.forEach(o => {
-      const d = parseRuDate(o.createdAt).getTime();
-      if (d >= startOfToday) today++;
-      
-      const brand = o.car?.model?.split(' ')[0]?.toUpperCase();
-      if (brand && brand.length > 2) brandCounts[brand] = (brandCounts[brand] || 0) + 1;
-    });
-
-    let leader = "N/A";
-    let max = 0;
-    Object.entries(brandCounts).forEach(([brand, count]) => { if (count > max) { max = count; leader = brand; } });
-    return { today, week: 0, month: 0, total, leader }; // Week/Month заглушки
-  }, [orders, totalOrders]);
-
-  const handleSort = (key: string) => {
-      setSortConfig(current => {
-          if (current?.key === key) {
-              return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
-          }
-          return { key, direction: 'asc' };
-      });
-  };
-
-  // Client-side filtering of the Server Page (IMPERFECT but preserves UI logic)
-  const displayOrders = useMemo(() => {
-    if (!sellerAuth) return [];
-    return orders.filter(o => {
-      const isSentByMe = hasSentOfferByMe(o);
-      const isRelevant = activeTab === 'new' 
-        ? ((o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !isSentByMe && !o.isRefused)
-        : isSentByMe;
-      
-      if (!isRelevant) return false;
-      
-      if (activeBrandFilter) {
-          const brand = o.car?.model?.split(' ')[0].toUpperCase() || '';
-          if (brand !== activeBrandFilter) return false;
-      }
-      return true;
-    });
-  }, [orders, activeTab, sellerAuth, optimisticSentIds, activeBrandFilter]);
-
-  const availableBrands = useMemo(() => {
-      const brands = new Set<string>();
-      orders.forEach(o => {
-          if (o.status === OrderStatus.OPEN && !o.isProcessed && !hasSentOfferByMe(o) && !o.isRefused) {
-              const brand = o.car?.model?.split(' ')[0].toUpperCase();
-              if (brand) brands.add(brand);
-          }
-      });
-      return Array.from(brands).sort();
-  }, [orders, sellerAuth, optimisticSentIds]);
-
-  const isOrderValid = (order: Order) => {
-      return order.items.every(item => {
-          const stateKey = `${order.id}-${item.name}`;
-          const state = editingItems[stateKey];
-          const currentPrice = state ? state.price : 0;
-          const currentQty = state ? state.offeredQty : item.quantity;
-          const currentWeight = state ? state.weight : 0;
-          const currentDelivery = state ? state.deliveryWeeks : 0;
-          
-          if (currentQty === 0) return true; // Declined item is valid
-          return currentPrice > 0 && currentWeight > 0 && currentDelivery > 0;
-      });
-  };
-
-  const handleSubmitOffer = async (order: Order, isRefusal: boolean) => {
-    if (order.isProcessed || !sellerAuth) return;
-
-    if (!isOrderValid(order)) {
-        alert("Пожалуйста, заполните Цену, Вес и Срок доставки для всех позиций.");
-        return;
-    }
-
-    setVanishingIds(prev => new Set(prev).add(order.id));
-    setSuccessToast({ message: isRefusal ? `Отказ от заказа ${order.id} отправлен` : `Предложение к заказу ${order.id} отправлено`, id: Date.now().toString() });
-    setTimeout(() => setSuccessToast(null), 3000);
-
-    setTimeout(async () => {
-        setOptimisticSentIds(prev => new Set(prev).add(order.id));
-        setExpandedId(null);
-        setVanishingIds(prev => { const n = new Set(prev); n.delete(order.id); return n; });
-        
-        // Маппинг данных из стейта формы
-        const finalItems = order.items.map(item => {
-          const stateKey = `${order.id}-${item.name}`;
-          const state = editingItems[stateKey] || { 
-            price: 0, 
-            currency: 'CNY' as Currency, 
-            offeredQty: item.quantity, 
-            refImage: '',
-            weight: 0,
-            deliveryWeeks: 0,
-            photoUrl: ''
-          };
-          return { 
-            ...item, 
-            sellerPrice: state.price, 
-            sellerCurrency: 'CNY' as Currency, 
-            offeredQuantity: state.offeredQty, 
-            refImage: state.refImage, 
-            weight: state.weight,
-            deliveryWeeks: state.deliveryWeeks,
-            photoUrl: state.photoUrl,
-            available: state.offeredQty > 0 
-          };
-        });
-
+    const fetchStats = async () => {
         try {
-          await SupabaseService.createOffer(order.id, sellerAuth.name, finalItems, order.vin, sellerAuth.phone);
-          fetchData(true);
-        } catch (err) {
-          setOptimisticSentIds(prev => { const n = new Set(prev); n.delete(order.id); return n; });
-        }
-    }, 600);
-  };
+            const s = await SupabaseService.getMarketStats();
+            setStats({ today: s.today, week: s.week, month: s.month, total: s.total, leader: s.leader });
+        } catch (e) { console.error("Stats error:", e); }
+    };
   
-  const copyToClipboard = (text: string) => {
-      navigator.clipboard.writeText(text);
-      setSuccessToast({ message: "Скопировано", id: Date.now().toString() });
-      setTimeout(() => setSuccessToast(null), 1000);
-  };
-
-  const SortIcon = ({ column }: { column: string }) => {
-      if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />; 
-      return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-indigo-600 ml-1" /> : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
-  };
-
-  // ... (RENDER - COPIED FROM ORIGINAL, ADAPTED for 'orders')
-  return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
-      {successToast && (
-          <div className="fixed top-6 right-6 z-[250] animate-in slide-in-from-top-4 fade-in duration-300">
-              <div className="bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700">
-                  <CheckCircle2 className="text-emerald-400" size={20} />
-                  <div><p className="text-[10px] font-black uppercase text-emerald-400">Успешно</p><p className="text-xs font-bold">{successToast.message}</p></div>
-              </div>
-          </div>
-      )}
-
-      {showAuthModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-[400px] shadow-2xl flex flex-col items-center gap-6 animate-in zoom-in-95 duration-300">
-             <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-indigo-100"><ShieldCheck size={40} /></div>
-             <div className="text-center space-y-1"><h2 className="text-xl font-black uppercase text-slate-900 tracking-tight">Вход поставщика</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Авторизуйтесь для работы</p></div>
-             <div className="grid grid-cols-2 gap-3 w-full">
-                <button onClick={() => handleDemoLogin(1)} className="py-3 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1"><UserCircle2 size={16}/> Демо Поставщик 1</button>
-                <button onClick={() => handleDemoLogin(2)} className="py-3 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1"><UserCircle2 size={16}/> Демо Поставщик 2</button>
-             </div>
-             <div className="w-full flex items-center gap-4 py-2"><div className="flex-grow h-px bg-slate-100"></div><span className="text-[9px] font-bold text-slate-300 uppercase">или</span><div className="flex-grow h-px bg-slate-100"></div></div>
-             <form onSubmit={handleLogin} className="w-full space-y-3">
-                 <div className="space-y-1"><label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Название Компании</label><input autoFocus value={tempAuth.name} onChange={e => setTempAuth({...tempAuth, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-600 uppercase" placeholder="ООО АВТО" /></div>
-                 <div className="space-y-1"><label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Номер телефона</label><input value={tempAuth.phone} onChange={handlePhoneChange} className={`w-full px-4 py-3 bg-slate-50 border rounded-xl font-bold text-sm outline-none transition-all duration-300 ${phoneFlash ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-indigo-600'}`} placeholder="+86 1XX XXXX XXXX" /></div>
-                 <button type="submit" disabled={!tempAuth.name || !isPhoneValid(tempAuth.phone)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:bg-indigo-700 active:scale-95 transition-all mt-4 disabled:opacity-50 disabled:active:scale-100">Войти</button>
-             </form>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-         <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">MARKET DASHBOARD</span>
-            <span className="text-lg font-black text-slate-900 uppercase tracking-tight">Личный кабинет</span>
-         </div>
-         <div className="flex items-center gap-3 w-full sm:w-auto">
-             {sellerAuth?.name && (
-                 <div className="flex flex-col items-end gap-0.5">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
-                        <UserCircle2 size={16} className="text-indigo-600"/>
-                        <span className="text-[10px] font-black uppercase text-slate-700 tracking-tight">{sellerAuth.name}</span>
-                    </div>
-                    <span className="text-[9px] font-bold text-slate-400">{sellerAuth.phone}</span>
-                 </div>
-             )}
-             <button onClick={handleLogout} className="p-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors border border-transparent hover:border-red-100 ml-auto sm:ml-0">
-                <LogOut size={18}/>
-             </button>
-         </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={<Clock size={16} className="text-indigo-600"/>} label="СЕГОДНЯ" value={marketStats.today} subLabel="ЗАКАЗОВ" loading={loading} />
-          <StatCard icon={<Calendar size={16} className="text-indigo-600"/>} label="НЕДЕЛЯ" value={marketStats.week} subLabel="ЗАКАЗОВ" loading={loading} />
-          <StatCard icon={<TrendingUp size={16} className="text-indigo-600"/>} label="МЕСЯЦ" value={marketStats.month} subLabel="ЗАКАЗОВ" loading={loading} />
-          <StatCard icon={<ShieldCheck size={16} className="text-indigo-600"/>} label="ВСЕГО" value={marketStats.total} subLabel="ЗАКАЗОВ" loading={loading} />
+      useEffect(() => {
+        if (sellerAuth) {
+            fetchData();
+        }
+        const interval = setInterval(() => {
+            if (sellerAuth) {
+                fetchData(true);
+            }
+        }, 20000);
+        return () => clearInterval(interval);
+      }, [sellerAuth, currentPage, itemsPerPage, sortConfig, searchQuery]);
+    
+      useEffect(() => {
+        if(sellerAuth) {
+            fetchStats();
+            const interval = setInterval(() => {
+                if (sellerAuth) {
+                    fetchStats();
+                }
+            }, 20000);
+            return () => clearInterval(interval);
+        }
+      }, [sellerAuth]);  
+    // ... (Auth helpers and login logic - COPIED FROM ORIGINAL)
+    const formatChinesePhoneNumber = (value: string) => {
+      let digits = value.replace(/\D/g, '');
+      if (!digits.startsWith('86')) {
+          if (digits.length > 0) digits = '86' + digits;
+      }
+      digits = digits.slice(0, 13);
+      const match = digits.match(/^(\d{2})(\d{0,3})(\d{0,4})(\d{0,4})$/);
+      if (!match) return '+86';
+      let formatted = `+${match[1]}`;
+      if (match[2]) formatted += ` ${match[2]}`;
+      if (match[3]) formatted += ` ${match[3]}`;
+      if (match[4]) formatted += ` ${match[4]}`;
+      return formatted;
+    };
+  
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      const digitsOnly = val.replace(/\D/g, '');
+      if (digitsOnly.length > 13) { setPhoneFlash(true); setTimeout(() => setPhoneFlash(false), 300); return; }
+      setTempAuth({...tempAuth, phone: formatChinesePhoneNumber(val)});
+    };
+  
+    const isPhoneValid = (phone: string) => phone.length >= 15; 
+  
+    const handleLogin = (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      if (!tempAuth.name.trim()) return;
+      if (!isPhoneValid(tempAuth.phone)) return;
+      const authData = { name: tempAuth.name.trim().toUpperCase(), phone: tempAuth.phone.trim() };
+      setSellerAuth(authData);
+      localStorage.setItem('seller_auth_data', JSON.stringify(authData));
+      setShowAuthModal(false);
+      fetchData(false);
+    };
+  
+    const handleDemoLogin = (num: 1 | 2) => {
+      const demo = num === 1 ? { name: 'ПОСТАВЩИК 1', phone: '+86 138 0013 8000' } : { name: 'ПОСТАВЩИК 2', phone: '+86 139 8888 2222' };
+      setSellerAuth(demo);
+      localStorage.setItem('seller_auth_data', JSON.stringify(demo));
+      setShowAuthModal(false);
+      fetchData(false);
+    };
+  
+    const handleLogout = () => {
+      localStorage.removeItem('seller_auth_data');
+      setSellerAuth(null);
+      setShowAuthModal(true);
+      setOrders([]);
+      setOptimisticSentIds(new Set());
+      setEditingItems({});
+      setActiveBrandFilter(null);
+      setSearchQuery('');
+    };
+  
+    const getMyOffer = (order: Order) => {
+      if (!sellerAuth?.name) return null;
+      const nameToMatch = sellerAuth.name.trim().toUpperCase();
+      return order.offers?.find(off => 
+        String(off.clientName || '').trim().toUpperCase() === nameToMatch
+      ) || null;
+    };
+  
+    const hasSentOfferByMe = (order: Order) => {
+      if (!sellerAuth) return false;
+      return optimisticSentIds.has(order.id) || !!getMyOffer(order);
+    };
+  
+    const getOfferStatus = (order: Order) => {
+      const myOffer = getMyOffer(order);
+      if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock size={10}/> };
+  
+      const isRefusal = myOffer.items.every(item => (item.offeredQuantity || 0) === 0);
+      if (isRefusal) {
+          return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: <Ban size={10}/> };
+      }
+  
+      if (!order.isProcessed) {
+          return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: <Loader2 size={10} className="animate-spin"/> };
+      }
+  
+      const winningItems = myOffer.items.filter(i => i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
+      const totalItems = myOffer.items.length;
+  
+      if (winningItems.length === totalItems) {
+          return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 size={10}/> };
+      } else if (winningItems.length === 0) {
+          return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: <XCircle size={10}/> };
+      } else {
+          return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <AlertTriangle size={10}/> };
+      }
+    };
+  
+    // ... (Stats Logic - Simplified for Supabase)
+    const parseRuDate = (dateStr: any): Date => {
+      if (!dateStr) return new Date(0);
+      if (dateStr instanceof Date) return dateStr;
+      const s = String(dateStr).trim().replace(/[\n\r]/g, ' ');
+      const nativeDate = new Date(s);
+      if (!isNaN(nativeDate.getTime())) return nativeDate;
+      const match = s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+      if (match) return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+      return new Date(0);
+    };
+  
+    const handleSort = (key: string) => {
+        setSortConfig(current => {
+            if (current?.key === key) {
+                return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+  
+    // Client-side filtering of the Server Page (IMPERFECT but preserves UI logic)
+    const displayOrders = useMemo(() => {
+      if (!sellerAuth) return [];
+      return orders.filter(o => {
+        const isSentByMe = hasSentOfferByMe(o);
+        const isRelevant = activeTab === 'new' 
+          ? ((o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !isSentByMe && !o.isRefused)
+          : isSentByMe;
+        
+        if (!isRelevant) return false;
+        
+        if (activeBrandFilter) {
+            const brand = o.car?.model?.split(' ')[0].toUpperCase() || '';
+            if (brand !== activeBrandFilter) return false;
+        }
+        return true;
+      });
+    }, [orders, activeTab, sellerAuth, optimisticSentIds, activeBrandFilter]);
+  
+    const availableBrands = useMemo(() => {
+        const brands = new Set<string>();
+        orders.forEach(o => {
+            if (o.status === OrderStatus.OPEN && !o.isProcessed && !hasSentOfferByMe(o) && !o.isRefused) {
+                const brand = o.car?.model?.split(' ')[0].toUpperCase();
+                if (brand) brands.add(brand);
+            }
+        });
+        return Array.from(brands).sort();
+    }, [orders, sellerAuth, optimisticSentIds]);
+  
+    const isOrderValid = (order: Order) => {
+        return order.items.every(item => {
+            const stateKey = `${order.id}-${item.name}`;
+            const state = editingItems[stateKey];
+            const currentPrice = state ? state.price : 0;
+            const currentQty = state ? state.offeredQty : item.quantity;
+            const currentWeight = state ? state.weight : 0;
+            const currentDelivery = state ? state.deliveryWeeks : 0;
+            
+            if (currentQty === 0) return true; // Declined item is valid
+            return currentPrice > 0 && currentWeight > 0 && currentDelivery > 0;
+        });
+    };
+  
+    const handleSubmitOffer = async (order: Order, isRefusal: boolean) => {
+      if (order.isProcessed || !sellerAuth) return;
+  
+      if (!isOrderValid(order)) {
+          alert("Пожалуйста, заполните Цену, Вес и Срок доставки для всех позиций.");
+          return;
+      }
+  
+      setVanishingIds(prev => new Set(prev).add(order.id));
+      setSuccessToast({ message: isRefusal ? `Отказ от заказа ${order.id} отправлен` : `Предложение к заказу ${order.id} отправлено`, id: Date.now().toString() });
+      setTimeout(() => setSuccessToast(null), 3000);
+  
+      setTimeout(async () => {
+          setOptimisticSentIds(prev => new Set(prev).add(order.id));
+          setExpandedId(null);
+          setVanishingIds(prev => { const n = new Set(prev); n.delete(order.id); return n; });
           
+          // Маппинг данных из стейта формы
+          const finalItems = order.items.map(item => {
+            const stateKey = `${order.id}-${item.name}`;
+            const state = editingItems[stateKey] || { 
+              price: 0, 
+              currency: 'CNY' as Currency, 
+              offeredQty: item.quantity, 
+              refImage: '',
+              weight: 0,
+              deliveryWeeks: 0,
+              photoUrl: ''
+            };
+            return { 
+              ...item, 
+              sellerPrice: state.price, 
+              sellerCurrency: 'CNY' as Currency, 
+              offeredQuantity: state.offeredQty, 
+              refImage: state.refImage, 
+              weight: state.weight,
+              deliveryWeeks: state.deliveryWeeks,
+              photoUrl: state.photoUrl,
+              available: state.offeredQty > 0 
+            };
+          });
+  
+          try {
+            await SupabaseService.createOffer(order.id, sellerAuth.name, finalItems, order.vin, sellerAuth.phone);
+            fetchData(true);
+          } catch (err) {
+            setOptimisticSentIds(prev => { const n = new Set(prev); n.delete(order.id); return n; });
+          }
+      }, 600);
+    };
+  
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setSuccessToast({ message: "Скопировано", id: Date.now().toString() });
+        setTimeout(() => setSuccessToast(null), 1000);
+    };
+  
+    const SortIcon = ({ column }: { column: string }) => {
+        if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />;
+        return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-indigo-600 ml-1" /> : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
+    };
+  
+    // ... (RENDER - COPIED FROM ORIGINAL, ADAPTED for 'orders')
+    return (
+      <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
+        {successToast && (
+            <div className="fixed top-6 right-6 z-[250] animate-in slide-in-from-top-4 fade-in duration-300">
+                <div className="bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700">
+                    <CheckCircle2 className="text-emerald-400" size={20} />
+                    <div><p className="text-[10px] font-black uppercase text-emerald-400">Успешно</p><p className="text-xs font-bold">{successToast.message}</p></div>
+                </div>
+            </div>
+        )}
+  
+        {showAuthModal && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-[400px] shadow-2xl flex flex-col items-center gap-6 animate-in zoom-in-95 duration-300">
+               <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-indigo-100"><ShieldCheck size={40} /></div>
+               <div className="text-center space-y-1"><h2 className="text-xl font-black uppercase text-slate-900 tracking-tight">Вход поставщика</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Авторизуйтесь для работы</p></div>
+               <div className="grid grid-cols-2 gap-3 w-full">
+                  <button onClick={() => handleDemoLogin(1)} className="py-3 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1"><UserCircle2 size={16}/> Демо Поставщик 1</button>
+                  <button onClick={() => handleDemoLogin(2)} className="py-3 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1"><UserCircle2 size={16}/> Демо Поставщик 2</button>
+               </div>
+               <div className="w-full flex items-center gap-4 py-2"><div className="flex-grow h-px bg-slate-100"></div><span className="text-[9px] font-bold text-slate-300 uppercase">или</span><div className="flex-grow h-px bg-slate-100"></div></div>
+               <form onSubmit={handleLogin} className="w-full space-y-3">
+                   <div className="space-y-1"><label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Название Компании</label><input autoFocus value={tempAuth.name} onChange={e => setTempAuth({...tempAuth, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-600 uppercase" placeholder="ООО АВТО" /></div>
+                   <div className="space-y-1"><label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Номер телефона</label><input value={tempAuth.phone} onChange={handlePhoneChange} className={`w-full px-4 py-3 bg-slate-50 border rounded-xl font-bold text-sm outline-none transition-all duration-300 ${phoneFlash ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-indigo-600'}`} placeholder="+86 1XX XXXX XXXX" /></div>
+                   <button type="submit" disabled={!tempAuth.name || !isPhoneValid(tempAuth.phone)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:bg-indigo-700 active:scale-95 transition-all mt-4 disabled:opacity-50 disabled:active:scale-100">Войти</button>
+               </form>
+            </div>
+          </div>
+        )}
+  
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+           <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">MARKET DASHBOARD</span>
+              <span className="text-lg font-black text-slate-900 uppercase tracking-tight">Личный кабинет</span>
+           </div>
+           <div className="flex items-center gap-3 w-full sm:w-auto">
+               {sellerAuth?.name && (
+                   <div className="flex flex-col items-end gap-0.5">
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
+                          <UserCircle2 size={16} className="text-indigo-600"/>
+                          <span className="text-[10px] font-black uppercase text-slate-700 tracking-tight">{sellerAuth.name}</span>
+                      </div>
+                      <span className="text-[9px] font-bold text-slate-400">{sellerAuth.phone}</span>
+                   </div>
+               )}
+               <button onClick={handleLogout} className="p-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors border border-transparent hover:border-red-100 ml-auto sm:ml-0">
+                  <LogOut size={18}/>
+               </button>
+           </div>
+        </div>
+  
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard icon={<Clock size={16} className="text-indigo-600"/>} label="СЕГОДНЯ" value={stats.today} subLabel="ЗАКАЗОВ" loading={loading} />
+            <StatCard icon={<Calendar size={16} className="text-indigo-600"/>} label="НЕДЕЛЯ" value={stats.week} subLabel="ЗАКАЗОВ" loading={loading} />
+            <StatCard icon={<TrendingUp size={16} className="text-indigo-600"/>} label="МЕСЯЦ" value={stats.month} subLabel="ЗАКАЗОВ" loading={loading} />
+            <StatCard icon={<ShieldCheck size={16} className="text-indigo-600"/>} label="ВСЕГО" value={stats.total} subLabel="ЗАКАЗОВ" loading={loading} />          
           <div className="col-span-full bg-slate-900 rounded-2xl p-4 flex items-center justify-between border border-slate-800 shadow-xl overflow-hidden relative min-h-[80px]">
               <div className="z-10">
                   <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Лидер спроса на рынке</span>
-                  <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">{marketStats.leader}</h3>
+                  <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">{stats.leader}</h3>
               </div>
               <Car size={64} className="text-white/10 absolute -right-4 -bottom-4 rotate-[-12deg]" />
           </div>
@@ -542,6 +541,15 @@ export const SellerInterface: React.FC = () => {
                           deliveryWeeks: offerItem?.deliveryWeeks || 0,
                           photoUrl: offerItem?.photoUrl || ''
                         };
+
+                        // Находим лучшую цену и лучший срок конкурента
+                        const competitors = order.offers?.filter(off => String(off.clientName || '').trim().toUpperCase() !== sellerAuth.name.trim().toUpperCase()) || [];
+                        
+                        const competitorPrices = competitors.map(off => off.items.find(i => i.name === item.name)?.sellerPrice).filter((p): p is number => !!p && p > 0);
+                        const minCompetitorPrice = competitorPrices.length > 0 ? Math.min(...competitorPrices) : null;
+
+                        const competitorDeliveries = competitors.map(off => off.items.find(i => i.name === item.name)?.deliveryWeeks).filter((d): d is number => !!d && d > 0);
+                        const minCompetitorDelivery = competitorDeliveries.length > 0 ? Math.min(...competitorDeliveries) : null;
                         
                         const isWinner = offerItem?.rank === 'ЛИДЕР' || offerItem?.rank === 'LEADER';
                         const isUnavailable = state.offeredQty === 0;
@@ -556,7 +564,19 @@ export const SellerInterface: React.FC = () => {
                             if (isDisabled || !!myOffer) return;
                             const digits = raw.replace(/[^\d.]/g, ''); 
                             let val = parseFloat(digits) || 0;
-                            if (max && val > max) val = max;
+                            
+                            // Validation Limits
+                            let limit = max;
+                            if (field === 'price') limit = 1000000;
+                            if (field === 'weight') limit = 1000;
+                            if (field === 'deliveryWeeks') limit = 52;
+
+                            if (limit && val > limit) {
+                                val = limit;
+                                setFlashFields(prev => new Set(prev).add(`${stateKey}-${field}`));
+                                setTimeout(() => setFlashFields(prev => { const n = new Set(prev); n.delete(`${stateKey}-${field}`); return n; }), 500);
+                            }
+
                             setEditingItems(prev => ({ ...prev, [stateKey]: { ...(prev[stateKey] || state), [field]: val } }));
                         };
 
@@ -579,6 +599,16 @@ export const SellerInterface: React.FC = () => {
                                         <h4 className={`font-black text-[11px] uppercase transition-all ${isUnavailable ? 'line-through text-red-400' : 'text-slate-900'}`}>{displayName}</h4>
                                         {isWinner && <span className="bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase shadow-sm">Выбрано</span>}
                                         {isUnavailable && <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[7px] font-black uppercase">Нет в наличии</span>}
+                                        {minCompetitorPrice && (
+                                            <span className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded text-[7px] font-black uppercase border border-amber-100 animate-pulse">
+                                                Лучшая цена сейчас: {minCompetitorPrice} ¥
+                                            </span>
+                                        )}
+                                        {minCompetitorDelivery && (
+                                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[7px] font-black uppercase border border-blue-100 animate-pulse">
+                                                Лучший срок: {minCompetitorDelivery} нед.
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-[8px] font-bold text-slate-400 uppercase">{item.category}</span>
@@ -586,9 +616,9 @@ export const SellerInterface: React.FC = () => {
                                     </div>
                                 </div>
                                 {offerItem?.adminComment && (
-                                    <div className="md:max-w-[250px] bg-amber-50 border border-amber-100 p-2 rounded-lg text-[9px] text-amber-800 flex items-start gap-2">
-                                        <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                                        <div><span className="font-black uppercase text-[7px] block mb-0.5">Комментарий менеджера:</span>{offerItem.adminComment}</div>
+                                    <div className="md:max-w-[250px] bg-amber-50 border border-amber-100 p-2.5 rounded-xl text-[9px] text-amber-800 flex items-start gap-2 shadow-sm animate-in zoom-in-95 duration-300">
+                                        <AlertCircle size={14} className="shrink-0 mt-0.5 text-amber-500" />
+                                        <div><span className="font-black uppercase text-[7px] block mb-0.5 opacity-70">Комментарий менеджера:</span>{offerItem.adminComment}</div>
                                     </div>
                                 )}
                              </div>
@@ -596,11 +626,11 @@ export const SellerInterface: React.FC = () => {
                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
                                 <div className="flex items-end gap-2">
                                     <button onClick={toggleUnavailable} disabled={isDisabled || !!myOffer} className={`mb-[1px] p-2 rounded-lg border transition-all ${isUnavailable ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200'}`}><Ban size={14} /></button>
-                                    <div className="flex-grow space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Кол-во</label><input type="text" disabled={isDisabled || !!myOffer} value={state.offeredQty || 0} onChange={e => handleNumInput(e.target.value, 'offeredQty', displayQty)} className="w-full text-center font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none" /></div>
+                                    <div className="flex-grow space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Кол-во</label><input type="text" disabled={isDisabled || !!myOffer} value={state.offeredQty || 0} onChange={e => handleNumInput(e.target.value, 'offeredQty', displayQty)} className={`w-full text-center font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none ${flashFields.has(`${stateKey}-offeredQty`) ? 'bg-red-100 border-red-400 transition-colors duration-100' : ''}`} /></div>
                                 </div>
-                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.price || ''} onChange={e => handleNumInput(e.target.value, 'price')} className={`w-full text-center font-black text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isPriceMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="0" /></div>
-                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Вес (кг)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isWeightMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="0.0" /></div>
-                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isDeliveryMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`} placeholder="1" /></div>
+                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.price || ''} onChange={e => handleNumInput(e.target.value, 'price')} className={`w-full text-center font-black text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isPriceMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'} ${flashFields.has(`${stateKey}-price`) ? 'bg-red-100 border-red-400 text-red-600 transition-colors duration-100' : ''}`} placeholder="0" /></div>
+                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Вес (кг)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isWeightMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'} ${flashFields.has(`${stateKey}-weight`) ? 'bg-red-100 border-red-400 text-red-600 transition-colors duration-100' : ''}`} placeholder="0.0" /></div>
+                                <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? 0 : state.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={`w-full text-center font-bold text-[10px] border rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 ${isDeliveryMissing ? 'border-red-300 bg-red-50/30' : 'border-slate-200'} ${flashFields.has(`${stateKey}-deliveryWeeks`) ? 'bg-red-100 border-red-400 text-red-600 transition-colors duration-100' : ''}`} placeholder="1" /></div>
                                 <div className="col-span-2 md:col-span-1 space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Ссылка на фото (URL)</label><div className="relative"><input type="text" disabled={isDisabled || !!myOffer || isUnavailable} value={isUnavailable ? '' : state.photoUrl || ''} onChange={e => handleTextInput(e.target.value, 'photoUrl')} className="w-full pl-7 pr-2 font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500" placeholder="http..." /><Copy size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300" /></div></div>
                              </div>
                           </div>

@@ -6,7 +6,7 @@ import {
   Search, RefreshCw, ChevronRight, FileText, 
   History, X, CheckCircle2, Ban, Loader2,
   ArrowUp, ArrowDown, ArrowUpDown, Edit2, Check, AlertCircle, TrendingUp,
-  Send, ShoppingCart, CreditCard, Truck, PackageCheck, ChevronDown, ChevronUp, ClipboardList
+  Send, ShoppingCart, CreditCard, Truck, PackageCheck, ChevronDown, ChevronUp, ClipboardList, LayoutDashboard, Settings, Zap, Clock
 } from 'lucide-react';
 
 interface ActionLog {
@@ -41,7 +41,56 @@ const TAB_MAPPING: Record<string, AdminTab> = {
 };
 
 export const AdminInterface: React.FC = () => {
+  const [currentView, setCurrentView] = useState<'listing' | 'statuses'>('listing');
   const [orders, setOrders] = useState<Order[]>([]);
+
+  // ... (existing state)
+
+  const renderStatusSettings = () => (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><Settings size={20}/></div>
+            <h2 className="text-xl font-black uppercase text-slate-800 tracking-tight">Настройка статусов</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="space-y-4">
+                <div className="px-4 py-2 bg-slate-900 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Клиента</div>
+                <div className="space-y-2">
+                    {['В обработке', 'КП готово', 'Готов купить', 'Подтверждение от поставщика', 'Ожидает оплаты', 'В пути', 'Выполнен', 'Аннулирован', 'Отказ'].map(s => (
+                        <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> {s}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="space-y-4">
+                <div className="px-4 py-2 bg-indigo-600 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Поставщика</div>
+                <div className="space-y-2">
+                    {['Сбор офферов', 'Идут торги', 'ВЫИГРАЛ', 'ПРОИГРАЛ', 'ЧАСТИЧНО', 'ОТКАЗ', 'Торги завершены'].map(s => (
+                        <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div> {s}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="space-y-4">
+                <div className="px-4 py-2 bg-amber-500 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Админа</div>
+                <div className="space-y-2">
+                    {STATUS_STEPS.map(s => (
+                        <div key={s.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
+                            <s.icon size={12} className={s.color}/> {s.label}
+                        </div>
+                    ))}
+                    {['Аннулирован', 'Отказ'].map(s => (
+                        <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div> {s}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+  );
   const [totalOrders, setTotalOrders] = useState(0); 
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,7 +111,7 @@ export const AdminInterface: React.FC = () => {
   // Пагинация и Сортировка
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'desc' });
   
   const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
   const interactionLock = useRef<number>(0);
@@ -130,7 +179,14 @@ export const AdminInterface: React.FC = () => {
   // При смене страницы - просто грузим (поиск обрабатывается в отдельном useEffect с дебаунсом)
   useEffect(() => { fetchData(); }, [currentPage, itemsPerPage]);
 
-  const handleSort = (key: string) => { setExpandedId(null); setSortConfig(current => { if (current?.key === key) return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }; return { key, direction: 'asc' }; }); };
+  const handleSort = (key: string) => { 
+      setExpandedId(null); 
+      setSortConfig(current => { 
+          if (current?.key === key) return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }; 
+          const defaultDir = (key === 'date' || key === 'offers' || key === 'id' || key === 'created_at') ? 'desc' : 'asc';
+          return { key, direction: defaultDir }; 
+      }); 
+  };
 
   const handleLocalUpdateRank = (offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number) => {
       const newAction = currentRank === 'ЛИДЕР' || currentRank === 'LEADER' ? 'RESET' : undefined;
@@ -148,8 +204,49 @@ export const AdminInterface: React.FC = () => {
   const executeApproval = async (orderId: string) => {
       setAdminModal(null); setIsSubmitting(orderId); const order = orders.find(o => o.id === orderId); if (!order) return;
       setVanishingIds(prev => new Set(prev).add(orderId)); showToast("Фиксация лидеров и формирование КП...");
-      const rankPromises: Promise<void>[] = []; if (order.offers) { for (const off of order.offers) { for (const item of off.items) { if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { rankPromises.push(SupabaseService.updateRank(order.vin, item.name, off.id, item.adminPrice, item.adminCurrency, undefined, item.adminComment, item.deliveryRate)); } } } }
-      try { await Promise.all(rankPromises); await SupabaseService.formCP(orderId); setActiveTab('kp_sent'); setTimeout(() => { setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); setExpandedId(orderId); fetchData(true); }, 800); } catch (e) { setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); fetchData(true); } finally { setIsSubmitting(null); }
+      
+      try {
+          const rankPromises: Promise<void>[] = []; 
+          if (order.offers) { 
+              for (const off of order.offers) { 
+                  for (const item of off.items) { 
+                      if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { 
+                          // Используем adminPrice или падаем к sellerPrice, если админ не менял цену
+                          const finalPrice = item.adminPrice || item.sellerPrice;
+                          const finalCurrency = item.adminCurrency || item.sellerCurrency;
+                          
+                          rankPromises.push(SupabaseService.updateRank(
+                              order.vin, 
+                              item.name, 
+                              off.id, 
+                              finalPrice, 
+                              finalCurrency, 
+                              undefined, 
+                              item.adminComment, 
+                              item.deliveryRate || 0
+                          )); 
+                      } 
+                  } 
+              } 
+          } 
+          await Promise.all(rankPromises); 
+          await SupabaseService.formCP(orderId); 
+          
+          // Обновляем локальный стейт, чтобы заказ сразу "ушел" из текущего таба
+          setOrders(prev => prev.filter(o => o.id !== orderId));
+          setTotalOrders(prev => prev - 1);
+          
+          setActiveTab('kp_sent'); 
+          setTimeout(() => { 
+              setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); 
+              fetchData(true); 
+          }, 500); 
+      } catch (e) { 
+          setVanishingIds(prev => { const n = new Set(prev); n.delete(orderId); return n; }); 
+          fetchData(true); 
+      } finally { 
+          setIsSubmitting(null); 
+      }
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -175,13 +272,47 @@ export const AdminInterface: React.FC = () => {
   };
 
   return (
-      <div className="max-w-6xl mx-auto p-4 space-y-4">
-          {successToast && (
-             <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 border border-slate-700">
-                 <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white"><CheckCircle2 size={18}/></div>
-                 <div className="font-bold text-sm">{successToast.message}</div>
-             </div>
-          )}
+      <div className="flex min-h-screen bg-slate-50/50">
+          {/* SIDEBAR */}
+          <aside className="w-64 bg-white border-r border-slate-200 p-4 flex flex-col gap-2 shrink-0">
+              <div className="px-4 py-6 mb-4">
+                  <div className="flex items-center gap-3 text-indigo-600 mb-1">
+                      <LayoutDashboard size={24} />
+                      <span className="font-black uppercase text-lg tracking-tighter text-slate-900">Admin<span className="text-indigo-600">Panel</span></span>
+                  </div>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-9">Management System</p>
+              </div>
+              
+              <button 
+                onClick={() => setCurrentView('listing')}
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase transition-all ${currentView === 'listing' ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 translate-x-2' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
+              >
+                  <ClipboardList size={18} /> Листинг
+              </button>
+              
+              <button 
+                onClick={() => setCurrentView('statuses')}
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase transition-all ${currentView === 'statuses' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 translate-x-2' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
+              >
+                  <Settings size={18} /> Настройка статусов
+              </button>
+
+              <div className="mt-auto p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Версия системы</p>
+                  <p className="text-[10px] font-bold text-slate-600">v2.4.0-supabase</p>
+              </div>
+          </aside>
+
+          {/* MAIN CONTENT */}
+          <main className="flex-grow p-8 overflow-y-auto">
+              {currentView === 'statuses' ? renderStatusSettings() : (
+                  <div className="max-w-6xl mx-auto space-y-4 animate-in fade-in duration-500">
+                      {successToast && (
+                         <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 border border-slate-700">
+                             <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white"><CheckCircle2 size={18}/></div>
+                             <div className="font-bold text-sm">{successToast.message}</div>
+                         </div>
+                      )}
           
           <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
               <div className="flex items-center gap-4">
@@ -258,7 +389,7 @@ export const AdminInterface: React.FC = () => {
                  <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('created_at')}>Дата <SortIcon column="created_at"/></div>
                  <div className="flex items-center h-full">VIN</div>
                  <div className="flex items-center h-full">Клиент</div>
-                 <div className="flex items-center h-full">ОФФЕРЫ</div>
+                 <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
                  <div className="flex items-center h-full">СТАТУС</div>
                  <div className="flex items-center justify-end h-full">Дата</div>
                  <div></div>
@@ -356,7 +487,23 @@ export const AdminInterface: React.FC = () => {
 
                              <div className="space-y-4">
                                  {order.items.map((item, idx) => {
-                                     const itemOffers = []; if (order.offers) { for (const off of order.offers) { const matching = off.items.find(i => i.name === item.name); if (matching && (matching.offeredQuantity || 0) > 0) itemOffers.push({ offerId: off.id, clientName: off.clientName, item: matching }); } }
+                                     const itemOffers: any[] = []; 
+                                     if (order.offers) { 
+                                         for (const off of order.offers) { 
+                                             const matching = off.items.find(i => i.name === item.name); 
+                                             if (matching && (matching.offeredQuantity || 0) > 0) 
+                                                 itemOffers.push({ offerId: off.id, clientName: off.clientName, item: matching }); 
+                                         } 
+                                     }
+                                     
+                                     // Находим лучшую цену и лучший срок
+                                     let minPrice = Infinity;
+                                     let minDelivery = Infinity;
+                                     itemOffers.forEach(o => {
+                                         if (o.item.sellerPrice < minPrice) minPrice = o.item.sellerPrice;
+                                         if (o.item.deliveryWeeks !== undefined && o.item.deliveryWeeks < minDelivery) minDelivery = o.item.deliveryWeeks;
+                                     });
+
                                      const leaders = itemOffers.filter(o => o.item.rank === 'ЛИДЕР' || o.item.rank === 'LEADER');
                                      const others = itemOffers.filter(o => o.item.rank !== 'ЛИДЕР' && o.item.rank !== 'LEADER');
                                      const showRegistry = currentStatus !== 'В обработке';
@@ -384,8 +531,16 @@ export const AdminInterface: React.FC = () => {
                                              <div className="bg-white p-2 space-y-1">
                                                  {displayOffers.map((off, oIdx) => {
                                                      const isLeader = off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER';
+                                                     const isBestPrice = off.item.sellerPrice === minPrice && minPrice !== Infinity;
+                                                     const isBestDelivery = off.item.deliveryWeeks === minDelivery && minDelivery !== Infinity;
+
                                                      return (
-                                                         <div key={oIdx} className={`p-2 rounded-lg border items-center text-[10px] ${isLeader ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'} md:grid md:grid-cols-[2fr_1fr_0.5fr_0.5fr_0.5fr_0.5fr_1.5fr_1fr_0.8fr_1fr] md:gap-2 flex flex-col gap-3`}>
+                                                         <div key={oIdx} className={`p-2 rounded-lg border items-center text-[10px] ${isLeader ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'} md:grid md:grid-cols-[2fr_1fr_0.5fr_0.5fr_0.5fr_0.5fr_1.5fr_1fr_0.8fr_1fr] md:gap-2 flex flex-col gap-3 relative`}>
+                                                             {/* Labels for BEST PRICE / BEST TERM */}
+                                                             <div className="absolute -top-1 right-2 flex gap-1">
+                                                                 {isBestPrice && <span className="bg-indigo-600 text-white text-[6px] px-1 py-0.5 rounded font-black uppercase shadow-sm">Лучшая цена</span>}
+                                                                 {isBestDelivery && <span className="bg-amber-500 text-white text-[6px] px-1 py-0.5 rounded font-black uppercase shadow-sm">Лучший срок</span>}
+                                                             </div>
                                                              {/* MOBILE VIEW (CARD) */}
                                                              <div className="md:hidden w-full space-y-3">
                                                                  <div className="flex justify-between items-center border-b border-slate-100 pb-2"><span className="font-black text-slate-800 truncate uppercase">{off.clientName}</span>{isLeader && <span className="bg-emerald-500 text-white text-[7px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase">Winner</span>}</div>
@@ -397,6 +552,11 @@ export const AdminInterface: React.FC = () => {
                                                                      <div><span className="block text-slate-400 font-bold uppercase mb-0.5">Вес Пост</span><span className="font-black text-indigo-600">{off.item.weight || '-'} кг</span></div>
                                                                      <div><span className="block text-slate-400 font-bold uppercase mb-0.5">Срок Пост</span><span className="font-black text-amber-600">{off.item.deliveryWeeks || '-'} н</span></div>
                                                                  </div>
+                                                                 {off.item.photoUrl && (
+                                                                     <div className="flex justify-center p-1 bg-blue-50 rounded-lg">
+                                                                         <a href={off.item.photoUrl} target="_blank" rel="noreferrer" className="text-[8px] font-black text-blue-600 flex items-center gap-1 uppercase"><FileText size={10}/> Посмотреть фото</a>
+                                                                     </div>
+                                                                 )}
 
                                                                  {/* ROW 2: ADMIN DATA (3 COLS) */}
                                                                  <div className="grid grid-cols-3 gap-3 bg-white p-2 rounded-lg text-[8px] text-center border border-indigo-50 shadow-inner">
@@ -426,17 +586,26 @@ export const AdminInterface: React.FC = () => {
                                                                  </div>
                                                              </div>
                                                              {/* DESKTOP VIEW */}
-                                                             <div className="hidden md:contents text-center">
-                                                                 <div className="font-black uppercase text-slate-800 truncate text-left flex items-center gap-2" title={off.clientName}>{off.clientName}{isLeader && <span className="bg-emerald-500 text-white text-[7px] px-1.5 py-0.5 rounded font-black tracking-wider">WINNER</span>}</div>
-                                                                 <div className="font-bold text-slate-600">{off.item.sellerPrice} {off.item.sellerCurrency}</div>
-                                                                 <div className="font-bold text-slate-500">{off.item.offeredQuantity} шт</div>
-                                                                 <div className="text-indigo-600 font-bold">{off.item.weight ? `${off.item.weight} кг` : '-'}</div>
-                                                                 <div className="text-amber-600 font-bold">{off.item.deliveryWeeks ? `${off.item.deliveryWeeks} н.` : '-'}</div>
-                                                                 <div className="flex justify-center">{off.item.photoUrl ? (<a href={off.item.photoUrl} target="_blank" rel="noreferrer" className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"><FileText size={14}/></a>) : <span className="text-slate-200">-</span>}</div>
-                                                                 <div><select className="w-full px-1 py-1 border border-slate-200 rounded text-[9px] font-bold outline-none bg-white text-slate-900 truncate" defaultValue={off.item.deliveryRate || 0} onChange={(e) => off.item.deliveryRate = Number(e.target.value)} disabled={order.isProcessed}><option value="0">---</option><option value="10">10 ₽</option><option value="100">100 ₽</option><option value="1000">1000 ₽</option></select></div>
-                                                                 <div><input type="number" className="w-full px-1 py-1 border border-slate-200 rounded text-center font-bold" onChange={(e) => off.item.adminPrice = Number(e.target.value)} defaultValue={off.item.adminPrice || off.item.sellerPrice} disabled={order.isProcessed}/></div>
-                                                                 <div><select className="w-full px-1 py-1 border border-slate-200 rounded font-bold" defaultValue={off.item.adminCurrency || off.item.sellerCurrency} onChange={(e) => off.item.adminCurrency = e.target.value as Currency} disabled={order.isProcessed}><option value="CNY">CNY</option><option value="RUB">RUB</option><option value="USD">USD</option></select></div>
-                                                                 <div>{currentStatus === 'В обработке' ? (<button onClick={() => handleLocalUpdateRank(off.offerId, item.name, off.item.rank || '', order.vin, off.item.adminPrice, off.item.adminCurrency, off.item.adminComment, off.item.deliveryRate)} className={`w-full py-1.5 rounded text-[8px] font-black uppercase transition-all ${isLeader ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{isLeader ? 'ЛИДЕР' : 'ВЫБРАТЬ'}</button>) : (isLeader ? <Check size={16} className="text-emerald-500 mx-auto"/> : <span className="text-slate-200">-</span>)}</div>
+                                                             <div className="hidden md:contents text-center font-bold text-slate-700">
+                                                                 <div className="font-black uppercase text-slate-800 truncate text-left flex flex-col gap-1" title={off.clientName}>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {off.clientName}
+                                                                        {isLeader && <CheckCircle2 size={14} className="text-emerald-500"/>}
+                                                                    </div>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {isBestPrice && <span className="bg-indigo-600 text-white text-[7px] px-1.5 py-0.5 rounded-md font-black uppercase shadow-sm flex items-center gap-0.5"><Zap size={8}/> Лучшая цена</span>}
+                                                                        {isBestDelivery && <span className="bg-amber-500 text-white text-[7px] px-1.5 py-0.5 rounded-md font-black uppercase shadow-sm flex items-center gap-0.5"><Clock size={8}/> Лучший срок</span>}
+                                                                    </div>
+                                                                 </div>
+                                                                 <div className="text-slate-900 font-black">{off.item.sellerPrice} {off.item.sellerCurrency}</div>
+                                                                 <div className="text-slate-500">{off.item.offeredQuantity} шт</div>
+                                                                 <div className="text-indigo-600 font-black bg-indigo-50 px-2 py-1 rounded-lg">{off.item.weight ? `${off.item.weight} кг` : '-'}</div>
+                                                                 <div className="text-amber-600 font-black bg-amber-50 px-2 py-1 rounded-lg">{off.item.deliveryWeeks ? `${off.item.deliveryWeeks} н.` : '-'}</div>
+                                                                 <div className="flex justify-center">{off.item.photoUrl ? (<a href={off.item.photoUrl} target="_blank" rel="noreferrer" className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"><FileText size={16}/></a>) : <span className="text-slate-200">-</span>}</div>
+                                                                 <div><select className="w-full px-2 py-2 border-2 border-slate-100 rounded-xl text-[10px] font-black outline-none bg-white text-slate-900 truncate focus:border-indigo-300 transition-all" defaultValue={off.item.deliveryRate || 0} onChange={(e) => off.item.deliveryRate = Number(e.target.value)} disabled={order.isProcessed}><option value="0">---</option><option value="10">10 ₽</option><option value="100">100 ₽</option><option value="1000">1000 ₽</option></select></div>
+                                                                 <div><input type="number" className="w-full px-2 py-2 border-2 border-slate-100 rounded-xl text-center font-black text-xs focus:border-indigo-500 focus:bg-indigo-50/30 transition-all outline-none" onChange={(e) => off.item.adminPrice = Number(e.target.value)} defaultValue={off.item.adminPrice || off.item.sellerPrice} disabled={order.isProcessed}/></div>
+                                                                 <div><select className="w-full px-2 py-2 border-2 border-slate-100 rounded-xl font-black text-[10px] uppercase focus:border-indigo-300 transition-all" defaultValue={off.item.adminCurrency || off.item.sellerCurrency} onChange={(e) => off.item.adminCurrency = e.target.value as Currency} disabled={order.isProcessed}><option value="CNY">CNY</option><option value="RUB">RUB</option><option value="USD">USD</option></select></div>
+                                                                 <div>{currentStatus === 'В обработке' ? (<button onClick={() => handleLocalUpdateRank(off.offerId, item.name, off.item.rank || '', order.vin, off.item.adminPrice, off.item.adminCurrency, off.item.adminComment, off.item.deliveryRate)} className={`w-full py-2 rounded-xl font-black uppercase text-[8px] transition-all shadow-md ${isLeader ? 'bg-emerald-500 text-white scale-105' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{isLeader ? 'ЛИДЕР' : 'ВЫБРАТЬ'}</button>) : (isLeader ? <div className="bg-emerald-100 text-emerald-600 p-2 rounded-xl flex items-center justify-center"><Check size={18}/></div> : <span className="text-slate-200">-</span>)}</div>
                                                              </div>
                                                              <div className="col-span-full mt-1"><input type="text" maxLength={90} placeholder="Комментарий..." className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-[9px] text-slate-500 outline-none focus:border-indigo-300 transition-colors shadow-inner" defaultValue={off.item.adminComment || ""} onChange={(e) => off.item.adminComment = e.target.value}/></div>
                                                          </div>
@@ -473,6 +642,9 @@ export const AdminInterface: React.FC = () => {
              })}
              <Pagination totalItems={totalOrders} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
           </div>
+          </div>
+          )}
+          </main>
           
           {adminModal && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">

@@ -38,14 +38,9 @@ export class SupabaseService {
 
     // Фильтр по статусу (для табов админки)
     if (statusFilter) {
-         if (statusFilter === 'В обработке') {
-             query = query.eq('status_admin', 'В обработке');
-         } else if (statusFilter === 'КП отправлено') {
-             query = query.or('status_admin.eq.КП отправлено,status_client.eq.КП готово');
-         } else if (statusFilter === 'Аннулирован') {
-             query = query.eq('status_admin', 'Аннулирован');
-         } else if (statusFilter === 'Отказ') {
-             query = query.eq('status_admin', 'Отказ');
+         if (statusFilter === 'КП отправлено') {
+             // Для КП отправлено показываем то, что у админа имеет этот статус (КП готово)
+             query = query.eq('status_admin', 'КП готово');
          } else {
              query = query.eq('status_admin', statusFilter);
          }
@@ -53,19 +48,29 @@ export class SupabaseService {
 
     // Поиск (Search)
     if (searchQuery) {
-        if (!isNaN(Number(searchQuery))) {
-             query = query.eq('id', Number(searchQuery));
+        const q = searchQuery.trim();
+        if (!isNaN(Number(q))) {
+             // Если ввели число - ищем по ID или телефону (если похоже)
+             query = query.or(`id.eq.${q},client_phone.ilike.%${q}%`);
         } else {
-             query = query.or(`vin.ilike.%${searchQuery}%,client_name.ilike.%${searchQuery}%`);
+             query = query.or(`vin.ilike.%${q}%,client_name.ilike.%${q}%,car_model.ilike.%${q}%,car_brand.ilike.%${q}%,status_admin.ilike.%${q}%`);
         }
     }
 
     // Сортировка
     let dbSortCol = sortBy;
-    if (sortBy === 'createdAt') dbSortCol = 'created_at';
-    if (sortBy === 'clientName') dbSortCol = 'client_name';
+    if (sortBy === 'id') dbSortCol = 'id';
+    else if (sortBy === 'createdAt' || sortBy === 'created_at' || sortBy === 'date') dbSortCol = 'created_at';
+    else if (sortBy === 'clientName') dbSortCol = 'client_name';
+    else if (sortBy === 'offers') dbSortCol = 'created_at'; // Fallback
 
+    // Первичная сортировка
     query = query.order(dbSortCol, { ascending: sortDirection === 'asc' });
+    
+    // Вторичная сортировка (для стабильной пагинации)
+    if (dbSortCol !== 'id') {
+        query = query.order('id', { ascending: true }); // Всегда добавляем стабильный хвост
+    }
 
     // Пагинация
     query = query.range(from, to);
@@ -79,7 +84,60 @@ export class SupabaseService {
 
     const mappedData = data.map(order => this.mapDbOrderToAppOrder(order));
     
+    // Если просили сортировку по офферам, сделаем её на клиенте для текущей страницы
+    // (так как пагинация уже ограничила выборку 10 записями)
+    if (sortBy === 'offers') {
+        mappedData.sort((a, b) => {
+            const countA = a.offers?.length || 0;
+            const countB = b.offers?.length || 0;
+            return sortDirection === 'asc' ? countA - countB : countB - countA;
+        });
+    }
+
     return { data: mappedData, count: count || 0 };
+  }
+
+  /**
+   * Получение статистики для дашбордов (не зависит от поиска и пагинации)
+   */
+  static async getMarketStats(): Promise<{ today: number, week: number, month: number, total: number, leader: string }> {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
+      const startOfWeek = new Date(now.setDate(diff));
+      const startOfWeekISO = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate()).toISOString();
+      
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      // Запросы выполняются параллельно
+      const [
+          { count: total },
+          { count: today },
+          { count: week },
+          { count: month },
+          { data: recentOrders }
+      ] = await Promise.all([
+          supabase.from('orders').select('*', { count: 'exact', head: true }),
+          supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', startOfToday),
+          supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', startOfWeekISO),
+          supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
+          supabase.from('orders').select('car_brand').order('created_at', { ascending: false }).limit(100)
+      ]);
+
+      const brandCounts: Record<string, number> = {};
+      recentOrders?.forEach(o => {
+          if (o.car_brand) brandCounts[o.car_brand] = (brandCounts[o.car_brand] || 0) + 1;
+      });
+
+      let leader = "N/A";
+      let max = 0;
+      Object.entries(brandCounts).forEach(([brand, count]) => {
+          if (count > max) { max = count; leader = brand; }
+      });
+
+      return { today: today || 0, week: week || 0, month: month || 0, total: total || 0, leader };
   }
 
   /**
@@ -91,6 +149,7 @@ export class SupabaseService {
       name: item.name,
       quantity: item.quantity,
       comment: item.comment,
+      category: item.category, // Mapped category
       car: {
         model: dbOrder.car_model,
         brand: dbOrder.car_brand,
@@ -112,12 +171,17 @@ export class SupabaseService {
         id: oi.id,
         name: oi.name,
         quantity: oi.quantity,
+        offeredQuantity: oi.quantity,
         sellerPrice: oi.price,
         sellerCurrency: oi.currency as Currency,
         adminPrice: oi.admin_price,
         adminCurrency: oi.admin_currency as Currency,
         rank: oi.is_winner ? 'ЛИДЕР' : 'РЕЗЕРВ',
-        deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : undefined
+        deliveryWeeks: oi.delivery_days !== null && oi.delivery_days !== undefined ? Math.ceil(oi.delivery_days / 7) : undefined,
+        deliveryDays: oi.delivery_days,
+        weight: oi.weight, // Убедимся что в БД есть колонка weight
+        photoUrl: oi.photo_url,
+        adminComment: oi.admin_comment
       })),
       status: OrderStatus.OPEN,
       vin: dbOrder.vin,
@@ -134,7 +198,7 @@ export class SupabaseService {
       statusAdmin: dbOrder.status_admin,
       statusClient: dbOrder.status_client,
       statusSeller: dbOrder.status_supplier,
-      workflowStatus: dbOrder.workflowStatus as WorkflowStatus,
+      workflowStatus: dbOrder.status_client as WorkflowStatus,
       createdAt: new Date(dbOrder.created_at).toLocaleString('ru-RU'),
       location: dbOrder.location,
       visibleToClient: dbOrder.visible_to_client ? 'Y' : 'N',
@@ -169,7 +233,8 @@ export class SupabaseService {
       order_id: orderData.id,
       name: item.name,
       quantity: item.quantity || 1,
-      comment: item.comment
+      comment: item.comment,
+      category: item.category // Insert category
     }));
 
     const { error: itemsError } = await supabase
@@ -202,7 +267,10 @@ export class SupabaseService {
       name: item.name,
       quantity: item.offeredQuantity || item.quantity || 1,
       price: item.sellerPrice || 0,
-      currency: item.sellerCurrency || 'RUB'
+      currency: item.sellerCurrency || 'RUB',
+      delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
+      weight: item.weight || 0,
+      photo_url: item.photoUrl || ''
     }));
 
     const { error: oiError } = await supabase
@@ -239,7 +307,8 @@ export class SupabaseService {
           is_winner: true,
           admin_price: adminPrice,
           admin_currency: adminCurrency,
-          delivery_days: deliveryRate 
+          delivery_days: deliveryRate,
+          admin_comment: adminComment
         })
         .eq('offer_id', offerId)
         .eq('name', itemName);
@@ -248,8 +317,8 @@ export class SupabaseService {
 
   static async formCP(orderId: string): Promise<void> {
     await supabase.from('orders').update({
-      status_client: 'КП готово',
-      status_admin: 'КП отправлено'
+      status_client: 'КП отправлено',
+      status_admin: 'КП готово'
     }).eq('id', orderId);
   }
 
