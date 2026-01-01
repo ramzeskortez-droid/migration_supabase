@@ -202,7 +202,9 @@ export class SupabaseService {
         deliveryRate: oi.delivery_rate, // Маппинг тарифа доставки
         weight: oi.weight, // Убедимся что в БД есть колонка weight
         photoUrl: oi.photo_url,
-        adminComment: oi.admin_comment
+        adminComment: oi.admin_comment,
+        totalCost: oi.total_cost, // Computed Column
+        goodsCost: oi.goods_cost  // Computed Column
       })),
       status: OrderStatus.OPEN,
       vin: dbOrder.vin,

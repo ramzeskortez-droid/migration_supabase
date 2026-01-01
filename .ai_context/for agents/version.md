@@ -1,5 +1,9 @@
 # Version History
 
+## 1.4.0 - Server-Side Calculations
+- **Database:** Added Computed Columns `total_cost` and `goods_cost` to `offer_items` table. Logic is now centralized in PostgreSQL (`add_server_calculations.sql`).
+- **Client Interface:** Frontend now consumes pre-calculated totals from the server, improving security and consistency. Includes fallback to client-side math for optimistic UI.
+
 ## 1.3.1 - Delivery Logic Fix
 - **Client Interface:** Fixed delivery cost calculation logic. Delivery rate is now treated as a *fixed cost per position* (line item), not multiplied by item quantity.
 

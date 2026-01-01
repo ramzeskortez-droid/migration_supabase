@@ -75,6 +75,10 @@ export interface OrderItem {
   photoUrl?: string; // НОВОЕ: Ссылка на фото
   clientPhone?: string; // Телефон клиента (из заказа)
   sellerPhone?: string; // Телефон поставщика (из оффера)
+  
+  // Computed Columns (Calculated on Server)
+  totalCost?: number; // (Price * Qty) + Delivery
+  goodsCost?: number; // (Price * Qty)
 }
 
 export interface Order {

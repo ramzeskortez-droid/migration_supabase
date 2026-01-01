@@ -368,10 +368,23 @@ export const ClientInterface: React.FC = () => {
             });
 
             // Расчет сумм
-            const goodsTotal = winningItems.reduce((acc, item) => acc + ((item.adminPrice || item.sellerPrice || 0) * (item.quantity || 1)), 0);
-            // Доставка теперь считается за позицию (фиксированная), а не за штуку
+            // Если есть серверный расчет (totalCost), используем его. Иначе считаем вручную (fallback).
+            const totalSum = winningItems.reduce((acc, item) => {
+                if (item.totalCost !== undefined && item.totalCost !== null) {
+                    return acc + item.totalCost;
+                }
+                // Fallback (Старая логика)
+                return acc + ((item.adminPrice || item.sellerPrice || 0) * (item.quantity || 1)) + (item.deliveryRate || 0);
+            }, 0);
+            
+            const goodsTotal = winningItems.reduce((acc, item) => {
+                 if (item.goodsCost !== undefined && item.goodsCost !== null) {
+                     return acc + item.goodsCost;
+                 }
+                 return acc + ((item.adminPrice || item.sellerPrice || 0) * (item.quantity || 1));
+            }, 0);
+
             const deliveryTotal = winningItems.reduce((acc, item) => acc + (item.deliveryRate || 0), 0);
-            const totalSum = goodsTotal + deliveryTotal;
             
             const showReadyToBuy = (currentStatus === 'КП отправлено') && winningItems.length > 0;
             
