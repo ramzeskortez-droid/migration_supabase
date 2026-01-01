@@ -22,9 +22,10 @@ interface AdminModalState {
   missingItems?: string[];
 }
 
-const GRID_COLS = "grid-cols-[80px_90px_1fr_50px_110px_100px_80px_130px_80px_30px]";
+const GRID_COLS = "grid-cols-[80px_90px_1fr_50px_110px_100px_80px_130px_80px_100px_30px]";
 
 type AdminTab = 'new' | 'kp_sent' | 'ready_to_buy' | 'supplier_confirmed' | 'awaiting_payment' | 'in_transit' | 'completed' | 'annulled' | 'refused';
+
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -64,8 +65,17 @@ export const AdminInterface: React.FC = () => {
   // Пагинация и Сортировка
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'offers', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
   
+  // Авто-смена сортировки при переключении табов
+  useEffect(() => {
+      if (activeTab === 'new') {
+          setSortConfig({ key: 'offers', direction: 'desc' });
+      } else {
+          setSortConfig({ key: 'statusUpdatedAt', direction: 'desc' });
+      }
+  }, [activeTab]);
+
   const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
   const interactionLock = useRef<number>(0);
 
@@ -219,9 +229,7 @@ export const AdminInterface: React.FC = () => {
       
       console.log('executeApproval START for order:', orderId);
       
-      // Optimistic UI: Сразу говорим пользователю, что все хорошо
       showToast("Фиксация лидеров и формирование КП...");
-      setActiveTab('kp_sent'); // Мгновенное переключение
       
       try {
           const winnersPayload: any[] = [];
@@ -241,14 +249,17 @@ export const AdminInterface: React.FC = () => {
               } 
           }
           
-          // Отправляем ОДИН быстрый запрос
+          // Отправляем ОДИН быстрый запрос и ЖДЕМ его
           await SupabaseService.approveOrderFast(orderId, winnersPayload);
+          
+          // Только ПОСЛЕ успеха переключаем таб. 
+          // Так мы гарантируем, что fetchData увидит обновленный заказ.
+          setActiveTab('kp_sent'); 
+          setExpandedId(orderId); // Явно оставляем развернутым
           
       } catch (e) { 
           console.error(e);
           showToast("Ошибка при утверждении КП");
-          // Если ошибка - возвращаем пользователя назад (можно улучшить UX, но пока так)
-          setActiveTab('new');
       } finally { 
           setIsSubmitting(null); 
       }
@@ -405,6 +416,7 @@ export const AdminInterface: React.FC = () => {
                              <div className="cursor-pointer flex items-center h-full group" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
                              <div className="flex items-center h-full">СТАТУС</div>
                              <div className="flex items-center justify-end h-full">Дата</div>
+                             <div className="flex items-center justify-end h-full cursor-pointer group" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
                              <div></div>
                          </div>
 
@@ -448,6 +460,7 @@ export const AdminInterface: React.FC = () => {
                                      <div className="hidden md:block"><span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-nowrap ${offersCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-400'}`}>[{offersCount}] ОФФЕРОВ</span></div>
                                      <div className="hidden md:block"><span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-normal text-center leading-tight border ${statusBadgeColor}`}>{currentStatus}</span></div>
                                      <div className="text-left md:text-right font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
+                                     <div className="text-left md:text-right font-mono text-[9px] font-bold text-slate-500">{order.statusUpdatedAt ? order.statusUpdatedAt.split(',')[1]?.trim() : '-'}</div>
                                      <div className="hidden md:flex justify-end"><ChevronRight size={16} className={`text-slate-400 transition-transform ${expandedId === order.id ? 'rotate-90 text-indigo-600' : ''}`}/></div>
                                  </div>
                                  

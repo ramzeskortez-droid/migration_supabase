@@ -1,24 +1,11 @@
--- 1. Гарантируем наличие ВСЕХ необходимых колонок
-ALTER TABLE public.offer_items 
-ADD COLUMN IF NOT EXISTS delivery_rate NUMERIC DEFAULT 0;
-
-ALTER TABLE public.offer_items 
-ADD COLUMN IF NOT EXISTS admin_comment TEXT;
-
-ALTER TABLE public.offer_items 
-ADD COLUMN IF NOT EXISTS weight NUMERIC DEFAULT 0;
-
-ALTER TABLE public.offer_items 
-ADD COLUMN IF NOT EXISTS photo_url TEXT;
-
--- 2. Функция для МГНОВЕННОГО утверждения (с правами суперпользователя)
+-- Обновленная функция утверждения с записью ВРЕМЕНИ (status_updated_at)
 CREATE OR REPLACE FUNCTION public.approve_order_winners(
     p_order_id BIGINT,
     p_winners JSONB
 )
 RETURNS VOID
 LANGUAGE plpgsql
-SECURITY DEFINER -- Дает права на выполнение обновлений
+SECURITY DEFINER
 AS $$
 DECLARE
     w_item JSONB;
@@ -29,11 +16,12 @@ DECLARE
     w_comment TEXT;
     w_item_name TEXT;
 BEGIN
-    -- А. Обновляем статус заказа
+    -- А. Обновляем статус заказа и ВРЕМЯ ОБНОВЛЕНИЯ
     UPDATE public.orders
     SET 
         status_client = 'КП отправлено',
-        status_admin = 'КП готово'
+        status_admin = 'КП готово',
+        status_updated_at = timezone('utc'::text, now()) -- <--- ВАЖНО: Обновляем время
     WHERE id = p_order_id;
 
     -- Б. Обрабатываем победителей
@@ -45,10 +33,8 @@ BEGIN
         w_delivery := (w_item->>'delivery_rate')::NUMERIC;
         w_comment := (w_item->>'admin_comment')::TEXT;
 
-        -- Получаем имя детали для сброса конкурентов
         SELECT name INTO w_item_name FROM public.offer_items WHERE id = w_id;
 
-        -- Сбрасываем конкурентов
         UPDATE public.offer_items oi
         SET is_winner = FALSE
         FROM public.offers o
@@ -56,7 +42,6 @@ BEGIN
           AND o.order_id = p_order_id
           AND oi.name = w_item_name;
 
-        -- Проставляем победителя
         UPDATE public.offer_items
         SET 
             is_winner = TRUE,

@@ -90,6 +90,7 @@ export interface Order {
   items: OrderItem[];
   status: OrderStatus;
   createdAt: string; 
+  statusUpdatedAt?: string; // НОВОЕ: Время последнего изменения статуса
   location: string;
   clientName: string;
   clientPhone?: string; // Добавлено поле телефона

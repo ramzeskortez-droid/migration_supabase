@@ -1,5 +1,25 @@
 # Version History
 
+## 1.4.4 - Sorting & Formatting
+- **Admin Interface:**
+  - **Sorting:** "New" orders now sort by **Offer Count** (descending) by default, highlighting orders with more activity. All other tabs sort by **Last Status Change** (descending).
+  - **Formatting:** Time column now displays full seconds (`HH:mm:ss`).
+
+## 1.4.3 - Sort by Status Time
+- **Database:** Added `status_updated_at` column to `orders` table.
+- **Admin Interface:** 
+  - Added "Time" column to the listing.
+  - Implemented smart sorting: 
+    - "New" tab -> Sort by Creation Date (desc).
+    - Other tabs -> Sort by Status Change Time (desc).
+  - This ensures that recently approved/processed orders always appear at the top of their respective lists.
+
+## 1.4.2 - UX Fix
+- **Admin Interface:** Explicitly force `expandedId` to persist after order approval to ensure the order stays open in the new tab.
+
+## 1.4.1 - UX Polish
+- **Admin Interface:** Fixed "vanishing order" issue during approval. Switched from full optimistic tab switching to "confirm-then-switch" to avoid race conditions with server-side status updates. Order now stays expanded and correctly moves to the next tab.
+
 ## 1.4.0 - Server-Side Calculations
 - **Database:** Added Computed Columns `total_cost` and `goods_cost` to `offer_items` table. Logic is now centralized in PostgreSQL (`add_server_calculations.sql`).
 - **Client Interface:** Frontend now consumes pre-calculated totals from the server, improving security and consistency. Includes fallback to client-side math for optimistic UI.

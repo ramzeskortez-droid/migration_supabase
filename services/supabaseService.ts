@@ -61,6 +61,7 @@ export class SupabaseService {
     let dbSortCol = sortBy;
     if (sortBy === 'id') dbSortCol = 'id';
     else if (sortBy === 'createdAt' || sortBy === 'created_at' || sortBy === 'date') dbSortCol = 'created_at';
+    else if (sortBy === 'statusUpdatedAt') dbSortCol = 'status_updated_at'; // Маппинг для сортировки по времени статуса
     else if (sortBy === 'clientName') dbSortCol = 'client_name';
     else if (sortBy === 'offers') {
         // Используем computed column offers_count (нужно выполнить add_computed_column.sql)
@@ -223,6 +224,7 @@ export class SupabaseService {
       statusSeller: dbOrder.status_supplier,
       workflowStatus: dbOrder.status_client as WorkflowStatus,
       createdAt: new Date(dbOrder.created_at).toLocaleString('ru-RU'),
+      statusUpdatedAt: dbOrder.status_updated_at ? new Date(dbOrder.status_updated_at).toLocaleString('ru-RU') : undefined,
       location: dbOrder.location,
       visibleToClient: dbOrder.visible_to_client ? 'Y' : 'N',
       items: items,
@@ -384,7 +386,8 @@ export class SupabaseService {
     await supabase.from('orders').update({
       status_client: status,
       status_admin: status,
-      status_supplier: 'Торги завершены'
+      status_supplier: 'Торги завершены',
+      status_updated_at: new Date().toISOString()
     }).eq('id', orderId);
   }
 
@@ -400,7 +403,8 @@ export class SupabaseService {
   static async updateWorkflowStatus(orderId: string, status: string): Promise<void> {
     await supabase.from('orders').update({
       status_client: status,
-      status_admin: status
+      status_admin: status,
+      status_updated_at: new Date().toISOString()
     }).eq('id', orderId);
   }
 
