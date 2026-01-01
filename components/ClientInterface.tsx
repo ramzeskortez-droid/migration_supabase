@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { SupabaseService } from '../services/supabaseService';
-import { Order, OrderStatus, PartCategory } from '../types';
+import { Order, OrderStatus, PartCategory, WorkflowStatus } from '../types';
 import { Pagination } from './Pagination';
 import { POPULAR_BRANDS, ALL_BRANDS } from '../constants/cars';
 import { 
@@ -218,8 +218,6 @@ export const ClientInterface: React.FC = () => {
   const displayOrders = useMemo(() => {
       return orders.filter(o => {
         const status = o.workflowStatus || 'В обработке';
-        // 'В обработке' - это единственное состояние для активных новых заявок.
-        // Статус 'КП отправлено' (и все последующие) идет в историю.
         const isProcessing = status === 'В обработке';
         if (activeTab === 'active' && !isProcessing) return false;
         if (activeTab === 'history' && isProcessing) return false;
@@ -368,8 +366,12 @@ export const ClientInterface: React.FC = () => {
                     }
                 });
             });
-            // (Цена + Тариф) * Кол-во. Страховка: если adminPrice пуст, берем sellerPrice
-            const totalSum = winningItems.reduce((acc, item) => acc + (((item.adminPrice || item.sellerPrice || 0) + (item.deliveryRate || 0)) * (item.quantity || 1)), 0);
+
+            // Расчет сумм
+            const goodsTotal = winningItems.reduce((acc, item) => acc + ((item.adminPrice || item.sellerPrice || 0) * (item.quantity || 1)), 0);
+            const deliveryTotal = winningItems.reduce((acc, item) => acc + ((item.deliveryRate || 0) * (item.quantity || 1)), 0);
+            const totalSum = goodsTotal + deliveryTotal;
+            
             const showReadyToBuy = (currentStatus === 'КП отправлено') && winningItems.length > 0;
             
             return (
@@ -418,41 +420,46 @@ export const ClientInterface: React.FC = () => {
                       <div className="space-y-3">
                           {winningItems.length > 0 ? (
                               <div className="space-y-3">
-                                  {winningItems.map((item, idx) => (
-                                      <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                                          <div className="flex-grow">
-                                              <div className="text-xs font-black uppercase text-slate-900 mb-1">{item.AdminName || item.name}</div>
-                                              <div className="flex flex-wrap gap-3 items-center mb-2">
-                                                  <span className="text-[10px] text-slate-400 font-bold uppercase">{item.category} &bull; {item.quantity || 1} шт.</span>
-                                                  {item.photoUrl && (
-                                                      <a href={item.photoUrl} target="_blank" rel="noreferrer" className="text-[9px] font-black text-indigo-600 border-b border-indigo-200 uppercase leading-none pb-0.5">Посмотреть фото</a>
-                                                  )}
+                                  {winningItems.map((item, idx) => {
+                                      const price = item.adminPrice || item.sellerPrice || 0;
+                                      const rate = item.deliveryRate || 0;
+                                      const currency = getCurrencySymbol(item.adminCurrency);
+                                      
+                                      return (
+                                          <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                              <div className="flex-grow">
+                                                  <div className="text-xs font-black uppercase text-slate-900 mb-1">{item.AdminName || item.name}</div>
+                                                  <div className="flex flex-wrap gap-3 items-center mb-2">
+                                                      <span className="text-[10px] text-slate-400 font-bold uppercase">{item.category} &bull; {item.quantity || 1} шт.</span>
+                                                      {item.photoUrl && (
+                                                          <a href={item.photoUrl} target="_blank" rel="noreferrer" className="text-[9px] font-black text-indigo-600 border-b border-indigo-200 uppercase leading-none pb-0.5">Посмотреть фото</a>
+                                                      )}
+                                                  </div>
+                                                  <div className="flex flex-wrap gap-2 items-center">
+                                                      {item.deliveryWeeks && (
+                                                          <span className="text-[10px] bg-slate-100 text-slate-600 px-3 py-1 rounded-lg border border-slate-200 font-black uppercase shadow-sm flex items-center gap-1">
+                                                              <Clock size={12}/> Срок: {item.deliveryWeeks} нед.
+                                                          </span>
+                                                      )}
+                                                      <span className="text-[9px] font-bold text-slate-500">
+                                                          Цена: {price} {currency} {rate > 0 && <span className="text-indigo-600 ml-1">+ Доставка {rate} {currency}</span>}
+                                                      </span>
+                                                  </div>
                                               </div>
-                                              <div className="flex flex-wrap gap-2">
-                                                  {item.deliveryWeeks && (
-                                                      <span className="text-[10px] bg-slate-100 text-slate-600 px-3 py-1 rounded-lg border border-slate-200 font-black uppercase shadow-sm flex items-center gap-1">
-                                                          <Clock size={12}/> Срок: {item.deliveryWeeks} нед.
-                                                      </span>
-                                                  )}
-                                                  {item.deliveryRate > 0 && (
-                                                      <span className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg border border-indigo-100 font-black uppercase shadow-sm">
-                                                          Доставка: +{item.deliveryRate} {getCurrencySymbol(item.adminCurrency)}/шт.
-                                                      </span>
-                                                  )}
+                                              <div className="text-right w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                                  <div className="text-lg font-black text-slate-900">{( (price + rate) * (item.quantity || 1)).toLocaleString()} {currency}</div>
+                                                  <div className="text-[8px] font-bold text-slate-400 uppercase">Итого за позицию</div>
                                               </div>
                                           </div>
-                                          <div className="text-right w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-                                              <div className="text-lg font-black text-slate-900">{( ((item.adminPrice || item.sellerPrice || 0) + (item.deliveryRate || 0)) * (item.quantity || 1)).toLocaleString()} {getCurrencySymbol(item.adminCurrency)}</div>
-                                          </div>
-                                      </div>
-                                  ))}
+                                      );
+                                  })}
                               </div>
                           ) : (
                               <div className="space-y-2">
                                   {order.items.map((item, i) => (
                                     <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
                                         <div>
-                                            <p className="text-[11px] font-black uppercase text-slate-800">{item.name}</p>
+                                            <p className="text-[11px] font-black uppercase text-slate-800">{item.AdminName || item.name}</p>
                                             <p className="text-[9px] font-bold text-slate-400 uppercase">{item.category} &bull; {item.quantity} шт.</p>
                                         </div>
                                         <div className="px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">
@@ -465,20 +472,35 @@ export const ClientInterface: React.FC = () => {
                       </div>
 
                       {!order.readyToBuy && !isCancelled && (
-                          <div className="bg-slate-900 text-white p-4 rounded-xl flex flex-wrap justify-between items-center gap-4 mt-4 shadow-lg">
-                              <div className="flex flex-col gap-0.5">
-                                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">
-                                      {currentStatus === 'В обработке' ? 'Статус заявки' : 'Итого к оплате'}
-                                  </span>
-                                  <div className="text-xl font-black leading-none uppercase">
-                                      {currentStatus === 'В обработке' ? 'В ОБРАБОТКЕ' : `${totalSum.toLocaleString()} ${getCurrencySymbol(winningItems[0]?.adminCurrency)}`}
-                                  </div>
+                          <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6 mt-4 shadow-xl border border-white/10">
+                              <div className="w-full md:w-auto space-y-2">
+                                  {currentStatus === 'В обработке' ? (
+                                      <div className="flex flex-col gap-1">
+                                          <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Статус заявки</span>
+                                          <div className="text-xl font-black leading-none uppercase">В ОБРАБОТКЕ</div>
+                                      </div>
+                                  ) : (
+                                      <div className="grid grid-cols-1 gap-1">
+                                          <div className="flex justify-between md:justify-start md:gap-4 items-center border-b border-white/5 pb-1">
+                                              <span className="text-[9px] font-bold text-slate-400 uppercase">Итого по позициям:</span>
+                                              <span className="text-xs font-black">{goodsTotal.toLocaleString()} {getCurrencySymbol(winningItems[0]?.adminCurrency)}</span>
+                                          </div>
+                                          <div className="flex justify-between md:justify-start md:gap-4 items-center border-b border-white/5 pb-1">
+                                              <span className="text-[9px] font-bold text-slate-400 uppercase">Итого доставка:</span>
+                                              <span className="text-xs font-black text-indigo-400">{deliveryTotal.toLocaleString()} {getCurrencySymbol(winningItems[0]?.adminCurrency)}</span>
+                                          </div>
+                                          <div className="flex justify-between md:justify-start md:gap-4 items-center pt-1">
+                                              <span className="text-[10px] font-black text-white uppercase tracking-wider">Итого к оплате:</span>
+                                              <span className="text-2xl font-black text-emerald-400 leading-none">{totalSum.toLocaleString()} {getCurrencySymbol(winningItems[0]?.adminCurrency)}</span>
+                                          </div>
+                                      </div>
+                                  )}
                               </div>
-                              <div className="flex gap-2 w-full sm:w-auto">
-                                  <button onClick={(e) => openRefuseModal(e, order)} className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl font-bold text-[9px] uppercase bg-slate-700 text-slate-300 hover:bg-red-600 hover:text-white transition-all">Отказаться</button>
+                              <div className="flex gap-3 w-full md:w-auto">
+                                  <button onClick={(e) => openRefuseModal(e, order)} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-black text-[10px] uppercase bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all border border-white/5">Отказаться</button>
                                   {showReadyToBuy && (
-                                      <button onClick={() => handleConfirmPurchase(order.id)} disabled={!!isConfirming} className="flex-[2] sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2">
-                                          {isConfirming === order.id ? <Loader2 size={14} className="animate-spin"/> : <ShoppingCart size={14}/>} Готов купить
+                                      <button onClick={() => handleConfirmPurchase(order.id)} disabled={!!isConfirming} className="flex-[2] md:flex-none px-10 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20">
+                                          {isConfirming === order.id ? <Loader2 size={16} className="animate-spin"/> : <ShoppingCart size={16}/>} Готов купить
                                       </button>
                                   )}
                               </div>

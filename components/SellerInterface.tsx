@@ -170,31 +170,33 @@ export const SellerInterface: React.FC = () => {
       return optimisticSentIds.has(order.id) || !!getMyOffer(order);
     };
   
-    const getOfferStatus = (order: Order) => {
-      const myOffer = getMyOffer(order);
-      if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock size={10}/> };
-  
-      const isRefusal = myOffer.items.every(item => (item.offeredQuantity || 0) === 0);
-      if (isRefusal) {
-          return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: <Ban size={10}/> };
-      }
-  
-      if (!order.isProcessed) {
-          return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: <Loader2 size={10} className="animate-spin"/> };
-      }
-  
-      const winningItems = myOffer.items.filter(i => i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
-      const totalItems = myOffer.items.length;
-  
-      if (winningItems.length === totalItems) {
-          return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 size={10}/> };
-      } else if (winningItems.length === 0) {
-          return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: <XCircle size={10}/> };
-      } else {
-          return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <AlertTriangle size={10}/> };
-      }
-    };
-  
+        const getOfferStatus = (order: Order) => {
+        const myOffer = getMyOffer(order);
+        if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Clock size={10}/> };
+    
+        const isRefusal = myOffer.items.every(item => (item.offeredQuantity || 0) === 0);
+        if (isRefusal) {
+            return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: <Ban size={10}/> };
+        }
+    
+        // Если статус админа все еще "В обработке" или "ОТКРЫТ", значит торги идут
+        const isBiddingActive = order.statusAdmin === 'В обработке' || order.statusAdmin === 'ОТКРЫТ';
+    
+        if (isBiddingActive && !order.isProcessed) {
+            return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: <Loader2 size={10} className="animate-spin"/> };
+        }
+    
+        const winningItems = myOffer.items.filter(i => i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
+        const totalItems = myOffer.items.length;
+    
+        if (winningItems.length === totalItems) {
+            return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <CheckCircle2 size={10}/> };
+        } else if (winningItems.length === 0) {
+            return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: <XCircle size={10}/> };
+        } else {
+            return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <AlertTriangle size={10}/> };
+        }
+      };  
     // ... (Stats Logic - Simplified for Supabase)
     const parseRuDate = (dateStr: any): Date => {
       if (!dateStr) return new Date(0);

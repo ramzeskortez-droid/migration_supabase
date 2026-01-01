@@ -62,7 +62,10 @@ export class SupabaseService {
     if (sortBy === 'id') dbSortCol = 'id';
     else if (sortBy === 'createdAt' || sortBy === 'created_at' || sortBy === 'date') dbSortCol = 'created_at';
     else if (sortBy === 'clientName') dbSortCol = 'client_name';
-    else if (sortBy === 'offers') dbSortCol = 'created_at'; // Fallback
+    else if (sortBy === 'offers') {
+        // Используем computed column offers_count (нужно выполнить add_computed_column.sql)
+        dbSortCol = 'offers_count';
+    }
 
     // Первичная сортировка
     query = query.order(dbSortCol, { ascending: sortDirection === 'asc' });
@@ -84,16 +87,6 @@ export class SupabaseService {
 
     const mappedData = data.map(order => this.mapDbOrderToAppOrder(order));
     
-    // Если просили сортировку по офферам, сделаем её на клиенте для текущей страницы
-    // (так как пагинация уже ограничила выборку 10 записями)
-    if (sortBy === 'offers') {
-        mappedData.sort((a, b) => {
-            const countA = a.offers?.length || 0;
-            const countB = b.offers?.length || 0;
-            return sortDirection === 'asc' ? countA - countB : countB - countA;
-        });
-    }
-
     return { data: mappedData, count: count || 0 };
   }
 
@@ -140,6 +133,33 @@ export class SupabaseService {
       return { today: today || 0, week: week || 0, month: month || 0, total: total || 0, leader };
   }
 
+  static async getStatusCounts(): Promise<Record<string, number>> {
+      const statuses = [
+          { key: 'new', val: 'В обработке' },
+          { key: 'kp_sent', val: 'КП готово' }, // Админский статус
+          { key: 'ready_to_buy', val: 'Готов купить' },
+          { key: 'supplier_confirmed', val: 'Подтверждение от поставщика' },
+          { key: 'awaiting_payment', val: 'Ожидает оплаты' },
+          { key: 'in_transit', val: 'В пути' },
+          { key: 'completed', val: 'Выполнен' },
+          { key: 'annulled', val: 'Аннулирован' },
+          { key: 'refused', val: 'Отказ' }
+      ];
+
+      const promises = statuses.map(s => 
+          supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status_admin', s.val)
+      );
+
+      const results = await Promise.all(promises);
+      
+      const counts: Record<string, number> = {};
+      results.forEach((res, idx) => {
+          counts[statuses[idx].key] = res.count || 0;
+      });
+      
+      return counts;
+  }
+
   /**
    * Вспомогательный метод для маппинга заказа
    */
@@ -179,6 +199,7 @@ export class SupabaseService {
         rank: oi.is_winner ? 'ЛИДЕР' : 'РЕЗЕРВ',
         deliveryWeeks: oi.delivery_days !== null && oi.delivery_days !== undefined ? Math.ceil(oi.delivery_days / 7) : undefined,
         deliveryDays: oi.delivery_days,
+        deliveryRate: oi.delivery_rate, // Маппинг тарифа доставки
         weight: oi.weight, // Убедимся что в БД есть колонка weight
         photoUrl: oi.photo_url,
         adminComment: oi.admin_comment
@@ -302,16 +323,31 @@ export class SupabaseService {
         .in('offer_id', offerIds)
         .eq('name', itemName);
       
-      await supabase.from('offer_items')
+      const { error: updateError } = await supabase.from('offer_items')
         .update({ 
           is_winner: true,
           admin_price: adminPrice,
           admin_currency: adminCurrency,
-          delivery_days: deliveryRate,
+          delivery_rate: deliveryRate,
           admin_comment: adminComment
         })
         .eq('offer_id', offerId)
         .eq('name', itemName);
+
+      if (updateError) {
+          console.warn("delivery_rate update failed, falling back to delivery_days", updateError);
+          // Fallback: if delivery_rate column is missing, save to delivery_days
+          await supabase.from('offer_items')
+          .update({ 
+            is_winner: true,
+            admin_price: adminPrice,
+            admin_currency: adminCurrency,
+            delivery_days: deliveryRate, 
+            admin_comment: adminComment
+          })
+          .eq('offer_id', offerId)
+          .eq('name', itemName);
+      }
     }
   }
 
