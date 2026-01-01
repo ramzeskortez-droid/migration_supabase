@@ -1,5 +1,15 @@
 # Version History
 
+## 1.3.1 - Delivery Logic Fix
+- **Client Interface:** Fixed delivery cost calculation logic. Delivery rate is now treated as a *fixed cost per position* (line item), not multiplied by item quantity.
+
+## 1.3.0 - Performance Optimization
+- **Admin Interface:** Implemented "Instant Approval" for Orders.
+  - Replaced multiple sequential requests with a single RPC call (`approve_order_winners`).
+  - Added Optimistic UI: Tab switches immediately, background process handles the data.
+- **Database:** Added `approve_order_winners` stored function.
+- **Schema:** Enforced existence of `delivery_rate` column in `offer_items`.
+
 ## 1.2.3 - Hotfix for Delivery Rate
 - **Supabase Service:** Added fallback mechanism for `delivery_rate`. If the column is missing (migration not applied), it falls back to saving cost in `delivery_days` to prevent data loss and UI breakage.
 

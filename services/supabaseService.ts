@@ -358,6 +358,18 @@ export class SupabaseService {
     }).eq('id', orderId);
   }
 
+  /**
+   * МГНОВЕННОЕ Утверждение КП (RPC вызов)
+   */
+  static async approveOrderFast(orderId: string, winners: any[]): Promise<void> {
+    const { error } = await supabase.rpc('approve_order_winners', {
+      p_order_id: Number(orderId),
+      p_winners: winners
+    });
+
+    if (error) throw error;
+  }
+
   static async confirmPurchase(orderId: string): Promise<void> {
     await supabase.from('orders').update({
       status_client: 'Подтверждение от поставщика',

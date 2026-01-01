@@ -219,42 +219,36 @@ export const AdminInterface: React.FC = () => {
       
       console.log('executeApproval START for order:', orderId);
       
+      // Optimistic UI: Сразу говорим пользователю, что все хорошо
       showToast("Фиксация лидеров и формирование КП...");
+      setActiveTab('kp_sent'); // Мгновенное переключение
       
       try {
-          const rankPromises: Promise<void>[] = []; 
+          const winnersPayload: any[] = [];
           if (order.offers) { 
               for (const off of order.offers) { 
                   for (const item of off.items) { 
                       if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { 
-                          // Используем adminPrice или падаем к sellerPrice
-                          const finalPrice = item.adminPrice || item.sellerPrice;
-                          const finalCurrency = item.adminCurrency || item.sellerCurrency;
-                          const deliveryVal = item.deliveryRate || 0;
-
-                          console.log(' -> Saving RANK for:', item.name, 'Delivery:', deliveryVal, 'Price:', finalPrice);
-                          
-                          rankPromises.push(SupabaseService.updateRank(
-                              order.vin, 
-                              item.name, 
-                              off.id, 
-                              finalPrice, 
-                              finalCurrency, 
-                              undefined, 
-                              item.adminComment, 
-                              deliveryVal
-                          )); 
+                          winnersPayload.push({
+                              id: item.id,
+                              admin_price: item.adminPrice || item.sellerPrice,
+                              admin_currency: item.adminCurrency || item.sellerCurrency,
+                              delivery_rate: item.deliveryRate || 0,
+                              admin_comment: item.adminComment || ''
+                          });
                       } 
                   } 
               } 
-          } 
-          await Promise.all(rankPromises); 
-          await SupabaseService.formCP(orderId); 
+          }
           
-          setActiveTab('kp_sent');
+          // Отправляем ОДИН быстрый запрос
+          await SupabaseService.approveOrderFast(orderId, winnersPayload);
+          
       } catch (e) { 
           console.error(e);
           showToast("Ошибка при утверждении КП");
+          // Если ошибка - возвращаем пользователя назад (можно улучшить UX, но пока так)
+          setActiveTab('new');
       } finally { 
           setIsSubmitting(null); 
       }

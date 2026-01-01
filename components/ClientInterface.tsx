@@ -369,7 +369,8 @@ export const ClientInterface: React.FC = () => {
 
             // Расчет сумм
             const goodsTotal = winningItems.reduce((acc, item) => acc + ((item.adminPrice || item.sellerPrice || 0) * (item.quantity || 1)), 0);
-            const deliveryTotal = winningItems.reduce((acc, item) => acc + ((item.deliveryRate || 0) * (item.quantity || 1)), 0);
+            // Доставка теперь считается за позицию (фиксированная), а не за штуку
+            const deliveryTotal = winningItems.reduce((acc, item) => acc + (item.deliveryRate || 0), 0);
             const totalSum = goodsTotal + deliveryTotal;
             
             const showReadyToBuy = (currentStatus === 'КП отправлено') && winningItems.length > 0;
@@ -442,12 +443,12 @@ export const ClientInterface: React.FC = () => {
                                                           </span>
                                                       )}
                                                       <span className="text-[9px] font-bold text-slate-500">
-                                                          Цена: {price} {currency} {rate > 0 && <span className="text-indigo-600 ml-1">+ Доставка {rate} {currency}</span>}
+                                                          Цена: {price} {currency} {rate > 0 && <span className="text-indigo-600 ml-1">+ Доставка {rate} {currency} (за всю позицию)</span>}
                                                       </span>
                                                   </div>
                                               </div>
                                               <div className="text-right w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-                                                  <div className="text-lg font-black text-slate-900">{( (price + rate) * (item.quantity || 1)).toLocaleString()} {currency}</div>
+                                                  <div className="text-lg font-black text-slate-900">{( (price * (item.quantity || 1)) + rate).toLocaleString()} {currency}</div>
                                                   <div className="text-[8px] font-bold text-slate-400 uppercase">Итого за позицию</div>
                                               </div>
                                           </div>
