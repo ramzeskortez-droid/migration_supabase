@@ -36,15 +36,16 @@ export const SellerInterface: React.FC = () => {
 
   // --- Pagination ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(100); // Load more for client-side filtering
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
 
   // --- Effects ---
   const fetchOrders = useCallback(async (silent = false) => {
       if (!silent) setIsSyncing(true);
       try {
-          // Fetch raw data without complex filtering here, filtering is done in useMemo
-          const { data, count } = await SupabaseService.getOrders(currentPage, itemsPerPage, 'created_at', 'desc', searchQuery);
+          // Fetch raw data without server-side search (we filter locally to support complex seller logic)
+          // We fetch a larger batch to simulate "all active orders" for now. Ideally should be server-side filtered.
+          const { data, count } = await SupabaseService.getOrders(currentPage, itemsPerPage, 'created_at', 'desc', ''); 
           setOrders(data);
           setTotalOrders(count); 
 
@@ -58,7 +59,7 @@ export const SellerInterface: React.FC = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [currentPage, itemsPerPage, searchQuery]);
+  }, [currentPage, itemsPerPage]); // Removed searchQuery from dependencies
 
   useEffect(() => {
       fetchOrders();
@@ -139,6 +140,17 @@ export const SellerInterface: React.FC = () => {
         if (activeBrand) {
             const brand = o.car?.model?.split(' ')[0].toUpperCase() || '';
             if (brand !== activeBrand) return false;
+        }
+
+        // Search Filter (Local)
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            const match = 
+                o.id.toLowerCase().includes(q) ||
+                o.vin.toLowerCase().includes(q) ||
+                (o.car?.model || '').toLowerCase().includes(q) ||
+                (o.car?.brand || '').toLowerCase().includes(q);
+            if (!match) return false;
         }
         
         return true;
