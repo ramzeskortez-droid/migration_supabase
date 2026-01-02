@@ -235,6 +235,87 @@ export class SupabaseService {
   }
 
   /**
+   * Получение ленты заказов для ПОСТАВЩИКА (RPC)
+   */
+  static async getSellerFeed(
+    sellerName: string,
+    tab: 'new' | 'history',
+    page: number,
+    limit: number,
+    search: string,
+    sortCol: string = 'created_at',
+    sortDir: 'asc' | 'desc' = 'desc',
+    brandFilter: string | null = null // Новый параметр
+  ): Promise<{ data: Order[], count: number, counts: { new: number, history: number } }> {
+    
+    const { data, error } = await supabase.rpc('get_seller_feed', {
+        p_seller_name: sellerName,
+        p_tab: tab,
+        p_page: page,
+        p_limit: limit,
+        p_search: search,
+        p_sort_col: sortCol,
+        p_sort_dir: sortDir,
+        p_brand_filter: brandFilter
+    });
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) return { data: [], count: 0, counts: { new: 0, history: 0 } };
+
+    const totalCount = data[0].total_count || 0;
+    const countNew = data[0].count_new || 0;
+    const countHistory = data[0].count_history || 0;
+
+    const mappedOrders: Order[] = data.map((d: any) => ({
+        id: String(d.id),
+        type: RowType.ORDER,
+        createdAt: new Date(d.created_at).toLocaleString('ru-RU'),
+        clientName: d.client_name,
+        vin: d.vin,
+        car: {
+            brand: d.car_brand,
+            model: d.car_model,
+            year: d.car_year,
+            bodyType: '', 
+            engine: '', 
+            transmission: ''
+        },
+        status: d.status_admin === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
+        statusAdmin: d.status_admin,
+        statusClient: d.status_client,
+        statusSeller: d.status_supplier,
+        visibleToClient: d.visible_to_client ? 'Y' : 'N',
+        isProcessed: d.status_admin !== 'В обработке' && d.status_admin !== 'ОТКРЫТ',
+        items: (d.items || []).map((i: any) => ({
+            id: i.id,
+            name: i.name,
+            quantity: i.quantity,
+            category: i.category
+        })),
+        offers: d.my_offer ? [{
+            id: String(d.my_offer.id),
+            clientName: d.my_offer.supplier_name,
+            items: d.my_offer.items || []
+        } as any] : []
+    }));
+
+    return { 
+        data: mappedOrders, 
+        count: Number(totalCount),
+        counts: { new: Number(countNew), history: Number(countHistory) }
+    };
+  }
+
+  static async getSellerBrands(sellerName: string): Promise<string[]> {
+      const { data, error } = await supabase.rpc('get_seller_brands', {
+          p_seller_name: sellerName
+      });
+      if (error) throw error;
+      return data?.map((d: any) => d.brand) || [];
+  }
+
+  /**
    * Создание нового заказа
    */
   static async createOrder(vin: string, items: any[], clientName: string, car: any, clientPhone?: string): Promise<string> {

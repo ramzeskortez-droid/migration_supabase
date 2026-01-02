@@ -17,11 +17,10 @@ export const SellerInterface: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(!sellerAuth);
 
   // --- Data ---
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]); // Raw orders (up to 1000)
   const [marketStats, setMarketStats] = useState({ today: 0, week: 0, month: 0, total: 0, leader: 'N/A' });
-  const [totalOrders, setTotalOrders] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
@@ -31,35 +30,29 @@ export const SellerInterface: React.FC = () => {
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- Editing Drafts (In-Memory) ---
+  // --- Editing Drafts ---
   const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
 
-  // --- Pagination ---
+  // --- Pagination & Sort ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(100); // Load more for client-side filtering
+  const [itemsPerPage, setItemsPerPage] = useState(20); // Default 20 items per page
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
 
   // --- Effects ---
+  
+  // 1. Load Orders (Polling) - Hybrid Approach (Load 1000, Filter Client-Side)
   const fetchOrders = useCallback(async (silent = false) => {
+      if (!sellerAuth) return;
       if (!silent) setIsSyncing(true);
       try {
-          // Fetch raw data without server-side search (we filter locally to support complex seller logic)
-          // We fetch a larger batch to simulate "all active orders" for now. Ideally should be server-side filtered.
-          const { data, count } = await SupabaseService.getOrders(currentPage, itemsPerPage, 'created_at', 'desc', ''); 
+          const { data } = await SupabaseService.getOrders(1, 1000, 'created_at', 'desc', '');
           setOrders(data);
-          setTotalOrders(count); 
-
-          // Stats
-          if (!silent) {
-              const stats = await SupabaseService.getMarketStats();
-              setMarketStats(stats);
-          }
       } catch (e) {
           console.error(e);
       } finally {
           setIsSyncing(false);
       }
-  }, [currentPage, itemsPerPage]); // Removed searchQuery from dependencies
+  }, [sellerAuth]);
 
   useEffect(() => {
       fetchOrders();
@@ -67,13 +60,31 @@ export const SellerInterface: React.FC = () => {
       return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  // 2. Load Stats (Independent)
+  useEffect(() => {
+      if (!sellerAuth) return;
+      const loadStats = async () => {
+          setStatsLoading(true);
+          try {
+              const stats = await SupabaseService.getMarketStats();
+              setMarketStats(stats);
+          } catch (e) { console.error(e); }
+          finally { setStatsLoading(false); }
+      };
+      loadStats();
+  }, [sellerAuth]);
+
+  // Reset page when filters change
+  useEffect(() => {
+      setCurrentPage(1);
+  }, [activeTab, searchQuery, activeBrand]);
+
   // --- Handlers ---
   const handleLogin = (name: string, phone: string) => {
       const auth = { name, phone };
       setSellerAuth(auth);
       localStorage.setItem('seller_auth', JSON.stringify(auth));
       setShowAuthModal(false);
-      fetchOrders();
   };
 
   const handleLogout = () => {
@@ -85,22 +96,18 @@ export const SellerInterface: React.FC = () => {
   const handleSubmitOffer = async (orderId: string, items: any[]) => {
       if (isSubmitting) return;
       setIsSubmitting(true);
-      
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
       try {
-          // Send offer
           await SupabaseService.createOffer(orderId, sellerAuth.name, items, order.vin, sellerAuth.phone);
-          
-          // Optimistic update: Remove from 'new' list or mark as sent
-          setOrders(prev => prev.map(o => o.id === orderId ? { ...o, statusSeller: 'Отправлено', offers: [{ clientName: sellerAuth.name, items } as any] } : o));
+          // Optimistic update
+          setOrders(prev => prev.map(o => o.id === orderId ? { 
+              ...o, 
+              offers: [...(o.offers || []), { clientName: sellerAuth.name, items } as any] 
+          } : o));
           setExpandedId(null);
-          
           setSuccessToast({ message: 'Предложение отправлено!', id: Date.now().toString() });
-          
-          // Refresh stats
-          fetchOrders(true);
       } catch (e) {
           alert('Ошибка при отправке');
       } finally {
@@ -108,7 +115,7 @@ export const SellerInterface: React.FC = () => {
       }
   };
 
-  // --- Derived Data ---
+  // --- Derived Data (Client-Side Logic) ---
   
   const getMyOffer = useCallback((order: Order) => {
       if (!sellerAuth?.name) return null;
@@ -120,16 +127,19 @@ export const SellerInterface: React.FC = () => {
 
   const hasSentOfferByMe = useCallback((order: Order) => {
       if (!sellerAuth) return false;
-      // Check optimistic sent IDs (if we had them in a set, but here we update orders directly)
-      // In new logic we update order.offers immediately, so check offers
       return !!getMyOffer(order);
   }, [getMyOffer, sellerAuth]);
 
+  // Filter & Sort
   const filteredOrders = useMemo(() => {
       if (!sellerAuth) return [];
       
       let result = orders.filter(o => {
         const isSentByMe = hasSentOfferByMe(o);
+        
+        // Tab Logic (Status Check)
+        // Seller sees order if it is 'OPEN'/'PROCESSING' AND not processed yet
+        // OR if he already participated (History tab)
         const isRelevant = activeTab === 'new' 
           ? ((o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !isSentByMe && !o.isRefused)
           : isSentByMe;
@@ -139,24 +149,26 @@ export const SellerInterface: React.FC = () => {
         // Brand Filter
         if (activeBrand) {
             const brand = o.car?.model?.split(' ')[0].toUpperCase() || '';
-            if (brand !== activeBrand) return false;
+            const carBrand = o.car?.brand?.toUpperCase() || '';
+            if (brand !== activeBrand && carBrand !== activeBrand) return false;
         }
 
-        // Search Filter (Local)
+        // Search Filter (Deep Search)
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             const match = 
                 o.id.toLowerCase().includes(q) ||
                 o.vin.toLowerCase().includes(q) ||
                 (o.car?.model || '').toLowerCase().includes(q) ||
-                (o.car?.brand || '').toLowerCase().includes(q);
+                (o.car?.brand || '').toLowerCase().includes(q) ||
+                o.items.some(i => i.name.toLowerCase().includes(q));
             if (!match) return false;
         }
         
         return true;
       });
 
-      // Client-side Sorting
+      // Sorting
       if (sortConfig) {
           result.sort((a, b) => {
               let valA: any = '';
@@ -164,8 +176,8 @@ export const SellerInterface: React.FC = () => {
 
               switch (sortConfig.key) {
                   case 'id':
-                      valA = Number(a.id);
-                      valB = Number(b.id);
+                      valA = parseInt(a.id.replace(/\D/g, '')) || 0;
+                      valB = parseInt(b.id.replace(/\D/g, '')) || 0;
                       break;
                   case 'brand':
                       valA = (a.car?.brand || '').toLowerCase();
@@ -199,24 +211,23 @@ export const SellerInterface: React.FC = () => {
       }
 
       return result;
-  }, [orders, activeTab, activeBrand, sellerAuth, hasSentOfferByMe, sortConfig]);
+  }, [orders, activeTab, activeBrand, searchQuery, sortConfig, sellerAuth, hasSentOfferByMe]);
 
-  // Dynamic Brands List
+  // Dynamic Brands (from loaded orders)
   const availableBrands = useMemo(() => {
       const brands = new Set<string>();
       orders.forEach(o => {
-          // Use same logic as list to show relevant brands
-          if (o.status !== 'ЗАКРЫТ' && !hasSentOfferByMe(o) && !o.isRefused) {
+          if (o.status !== 'ЗАКРЫТ' && !o.isRefused) {
              const brand = o.car?.model?.split(' ')[0].toUpperCase();
              if (brand) brands.add(brand);
           }
       });
       return Array.from(brands).sort();
-  }, [orders, hasSentOfferByMe]);
+  }, [orders]);
 
   // Counts
   const tabCounts = useMemo(() => {
-      const newCount = orders.filter(o => !hasSentOfferByMe(o) && (o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !o.isRefused).length;
+      const newCount = orders.filter(o => !hasSentOfferByMe(o) && (o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !o.isRefused && o.visibleToClient === 'Y').length;
       const historyCount = orders.filter(o => hasSentOfferByMe(o)).length;
       return {
           new: newCount,
@@ -272,7 +283,7 @@ export const SellerInterface: React.FC = () => {
                     onLogout={handleLogout} 
                 />
 
-                <SellerStats stats={marketStats} loading={isSyncing} />
+                <SellerStats stats={marketStats} loading={statsLoading} />
 
                 <SellerToolbar 
                     activeTab={activeTab}
@@ -289,7 +300,7 @@ export const SellerInterface: React.FC = () => {
 
                 <SellerOrdersList 
                     orders={filteredOrders}
-                    totalOrders={totalOrders}
+                    totalOrders={filteredOrders.length}
                     expandedId={expandedId}
                     onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
                     editingItemsMap={editingItemsMap}

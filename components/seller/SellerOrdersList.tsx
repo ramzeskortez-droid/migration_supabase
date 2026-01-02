@@ -56,7 +56,7 @@ export const SellerOrdersList: React.FC<SellerOrdersListProps> = ({
 
         {orders.length === 0 && <div className="p-12 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">Список пуст</div>}
         
-        {orders.map(order => (
+        {orders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(order => (
             <SellerOrderRow 
                 key={order.id} 
                 order={order}
