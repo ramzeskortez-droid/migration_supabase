@@ -168,7 +168,7 @@ export const AdminInterface: React.FC = () => {
 
   const handleLocalUpdateRank = (offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number) => {
       const newAction = currentRank === 'ЛИДЕР' || currentRank === 'LEADER' ? 'RESET' : undefined;
-      setOrders(prev => prev.map(o => { if (o.vin !== vin) return o; return { ...o, offers: o.offers?.map(off => ({ ...off, items: off.items.map(i => { if (i.name === itemName) { if (off.id === offerId) return { ...i, rank: newAction === 'RESET' ? 'РЕЗЕРВ' : 'ЛИДЕР' as RankType, adminPrice, adminCurrency, adminComment, deliveryRate }; else if (!newAction) return { ...i, rank: 'РЕЗЕРВ' as RankType }; } return i; }) })) }; }));
+      setOrders(prev => prev.map(o => { if (o.vin !== vin) return o; return { ...o, offers: o.offers?.map(off => ({ ...off, items: off.items.map(i => { if (i.name?.trim().toLowerCase() === itemName?.trim().toLowerCase()) { if (off.id === offerId) return { ...i, rank: newAction === 'RESET' ? 'РЕЗЕРВ' : 'ЛИДЕР' as RankType, adminPrice, adminCurrency, adminComment, deliveryRate }; else if (!newAction) return { ...i, rank: 'РЕЗЕРВ' as RankType }; } return i; }) })) }; }));
   };
 
   // Универсальная функция для обновления полей оффера (цена, валюта, тариф, коммент)
@@ -515,7 +515,7 @@ export const AdminInterface: React.FC = () => {
                                                  const itemOffers: any[] = []; 
                                                  if (order.offers) { 
                                                      for (const off of order.offers) { 
-                                                         const matching = off.items.find(i => i.name === item.name); 
+                                                         const matching = off.items.find(i => i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase()); 
                                                          if (matching && (matching.offeredQuantity || 0) > 0) 
                                                              itemOffers.push({ offerId: off.id, clientName: off.clientName, item: matching }); 
                                                      } 

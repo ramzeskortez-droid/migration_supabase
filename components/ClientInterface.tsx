@@ -58,8 +58,8 @@ export const ClientInterface: React.FC = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-        await SupabaseService.createOrder(vin || 'N/A', items, clientAuth.name, car, clientAuth.phone);
-        showToast(`Заказ создан`);
+        const newOrderId = await SupabaseService.createOrder(vin || 'N/A', items, clientAuth.name, car, clientAuth.phone);
+        showToast(`Заказ №${newOrderId} создан`);
         refresh();
     } catch (err) { 
         alert("Ошибка при создании заказа."); 

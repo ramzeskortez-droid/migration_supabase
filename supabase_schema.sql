@@ -17,6 +17,7 @@ CREATE TABLE public.orders (
     car_year TEXT,
     vin TEXT,
     
+    status_updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     status_admin TEXT DEFAULT 'В обработке',
     status_client TEXT DEFAULT 'В обработке',
     status_supplier TEXT DEFAULT 'Сбор предложений',
@@ -35,6 +36,7 @@ CREATE TABLE public.order_items (
     name TEXT NOT NULL,
     quantity INTEGER DEFAULT 1,
     comment TEXT,
+    category TEXT,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

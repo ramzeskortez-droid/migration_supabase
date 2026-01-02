@@ -108,8 +108,9 @@ export const SellerInterface: React.FC = () => {
           } : o));
           setExpandedId(null);
           setSuccessToast({ message: 'Предложение отправлено!', id: Date.now().toString() });
-      } catch (e) {
-          alert('Ошибка при отправке');
+      } catch (e: any) {
+          console.error(e);
+          alert('Ошибка при отправке: ' + (e.message || JSON.stringify(e)));
       } finally {
           setIsSubmitting(false);
       }
