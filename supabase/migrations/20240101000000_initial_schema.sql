@@ -17,7 +17,6 @@ CREATE TABLE public.orders (
     car_year TEXT,
     vin TEXT,
     
-    status_updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     status_admin TEXT DEFAULT 'В обработке',
     status_client TEXT DEFAULT 'В обработке',
     status_supplier TEXT DEFAULT 'Сбор предложений',
@@ -36,7 +35,6 @@ CREATE TABLE public.order_items (
     name TEXT NOT NULL,
     quantity INTEGER DEFAULT 1,
     comment TEXT,
-    category TEXT,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -69,9 +67,6 @@ CREATE TABLE public.offer_items (
     admin_price NUMERIC,
     admin_currency TEXT,
     is_winner BOOLEAN DEFAULT FALSE,
-    
-    comment TEXT,
-    admin_comment TEXT,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

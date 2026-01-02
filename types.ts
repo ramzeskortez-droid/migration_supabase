@@ -115,3 +115,18 @@ export interface Order {
   // НОВОЕ: Единый статус процесса (Колонка O?)
   workflowStatus?: WorkflowStatus;
 }
+
+export interface ActionLog {
+  id: string;
+  time: string;
+  text: string;
+  type: 'info' | 'success' | 'error';
+}
+
+export interface AdminModalState {
+  type: 'ANNUL' | 'VALIDATION';
+  orderId?: string;
+  missingItems?: string[];
+}
+
+export type AdminTab = 'new' | 'kp_sent' | 'ready_to_buy' | 'supplier_confirmed' | 'awaiting_payment' | 'in_transit' | 'completed' | 'annulled' | 'refused';

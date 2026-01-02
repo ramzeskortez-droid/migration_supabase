@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Order } from '../../types';
 import { SellerOrderDetails } from './SellerOrderDetails';
 
@@ -32,7 +32,6 @@ export const SellerOrderRow: React.FC<SellerOrderRowProps> = ({
 
   return (
     <div className={`transition-all duration-500 border-l-4 ${containerStyle}`}>
-      {/* ORIGINAL ROW CONTENT */}
       <div onClick={onToggle} className="p-3 cursor-pointer select-none grid grid-cols-1 md:grid-cols-[70px_100px_2fr_1.5fr_60px_90px_140px_20px] gap-2 md:gap-4 items-center text-[10px] text-left">
           <div className="flex items-center justify-between md:justify-start">
              <div className="font-mono font-bold truncate flex items-center gap-2">

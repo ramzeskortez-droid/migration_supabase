@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle } from 'lucide-react';
 import { SellerItemCard } from './SellerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
+import { ChatModal } from '../shared/ChatModal';
 
 interface SellerOrderDetailsProps {
   order: Order;
@@ -18,6 +19,12 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
   order, editingItems, setEditingItems, onSubmit, isSubmitting, myOffer, statusInfo 
 }) => {
   const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const sellerAuth = useMemo(() => {
+      try { return JSON.parse(localStorage.getItem('seller_auth') || 'null'); } catch { return null; }
+  }, []);
+
   const fullModel = order.car?.AdminModel || order.car?.model || 'N/A';
   const brandPart = fullModel.split(' ')[0] || '-';
   const modelPart = fullModel.split(' ').slice(1).join(' ') || '-';
@@ -49,6 +56,7 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
         {showCopiedToast && <div className="absolute top-4 right-4 z-50"><Toast message="VIN скопирован" duration={1500} onClose={() => setShowCopiedToast(false)}/></div>}
         
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 text-[10px] shadow-sm">
+            {/* ... vehicle info ... */}
             <div className="flex items-center gap-2 mb-3">
                 <FileText size={12} className="text-slate-400"/> 
                 <span className="font-black uppercase text-slate-500">Характеристики автомобиля</span>
@@ -91,8 +99,15 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
                 />
             ))}
             
-            {!myOffer && !order.isProcessed && (
-                <div className="flex justify-end pt-3 border-t border-slate-100">
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                <button 
+                    onClick={() => setIsChatOpen(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all text-[10px] font-black uppercase border border-indigo-100 shadow-sm"
+                >
+                    <MessageCircle size={16} /> Чат с менеджером
+                </button>
+
+                {!myOffer && !order.isProcessed && (
                     <button 
                         disabled={!isValid || isSubmitting} 
                         onClick={() => onSubmit(order.id, editingItems)} 
@@ -101,8 +116,8 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
                         {isValid ? (isAllDeclined ? 'Отказаться' : 'Отправить предложение') : 'Заполните цены'} 
                         {isAllDeclined ? <XCircle size={14}/> : <CheckCircle size={14}/>}
                     </button>
-                </div>
-            )}
+                )}
+            </div>
 
             {order.isProcessed && (
                 <div className="flex items-center gap-2 justify-center py-3 bg-slate-50 rounded-lg border border-slate-200 border-dashed text-center">
@@ -116,6 +131,17 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
                 </div>
             )}
         </div>
+
+        {isChatOpen && (
+            <ChatModal 
+                isOpen={isChatOpen} 
+                onClose={() => setIsChatOpen(false)} 
+                orderId={order.id} 
+                offerId={myOffer?.id} 
+                supplierName={sellerAuth?.name || 'Поставщик'}
+                currentUserRole="SUPPLIER"
+            />
+        )}
     </div>
   );
 };

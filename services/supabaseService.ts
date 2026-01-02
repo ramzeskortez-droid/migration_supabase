@@ -204,6 +204,7 @@ export class SupabaseService {
         weight: oi.weight, // Убедимся что в БД есть колонка weight
         photoUrl: oi.photo_url,
         adminComment: oi.admin_comment,
+        comment: oi.comment, // Комментарий поставщика
         totalCost: oi.total_cost, // Computed Column
         goodsCost: oi.goods_cost  // Computed Column
       })),
@@ -376,7 +377,8 @@ export class SupabaseService {
       currency: item.sellerCurrency || 'RUB',
       delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
       weight: item.weight || 0,
-      photo_url: item.photoUrl || ''
+      photo_url: item.photoUrl || '',
+      comment: item.comment || ''
     }));
 
     const { error: oiError } = await supabase
@@ -554,5 +556,108 @@ export class SupabaseService {
 
       onProgress(Math.min((i + 1) * BATCH_SIZE, count));
     }
+  }
+
+  // --- CHAT SYSTEM ---
+
+  static async getChatMessages(orderId: string, offerId?: string, supplierName?: string): Promise<any[]> {
+      let query = supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('order_id', orderId)
+          .order('created_at', { ascending: true });
+
+      if (offerId) {
+          query = query.eq('offer_id', offerId);
+      } else if (supplierName) {
+          // Ищем сообщения, где я отправитель ИЛИ я получатель
+          // Внимание: синтаксис .or требует экранирования строк, если они содержат спецсимволы, но Supabase обычно справляется
+          query = query.or(`sender_name.eq.${supplierName},recipient_name.eq.${supplierName}`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+  }
+
+  static async sendChatMessage(payload: {
+      order_id: string,
+      offer_id?: string | null,
+      sender_role: 'ADMIN' | 'SUPPLIER',
+      sender_name: string,
+      recipient_name?: string,
+      message: string,
+      item_name?: string
+  }): Promise<void> {
+      const { error } = await supabase.from('chat_messages').insert(payload);
+      if (error) throw error;
+  }
+
+  static async getUnreadChatCount(): Promise<number> {
+      const { count, error } = await supabase
+          .from('chat_messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('sender_role', 'SUPPLIER')
+          .eq('is_read', false);
+      
+      if (error) throw error;
+      return count || 0;
+  }
+
+  static async markChatAsRead(orderId: string, supplierName: string): Promise<void> {
+      await supabase
+          .from('chat_messages')
+          .update({ is_read: true })
+          .eq('order_id', orderId)
+          .eq('sender_name', supplierName)
+          .eq('sender_role', 'SUPPLIER');
+  }
+
+  static async getGlobalChatThreads(): Promise<Record<string, Record<string, { lastMessage: string, time: string, unread: number }>>> {
+      const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(500);
+
+      if (error) throw error;
+
+      const threads: Record<string, Record<string, any>> = {};
+
+      data?.forEach((msg: any) => {
+          const oid = String(msg.order_id);
+          // Имя собеседника: если писал админ, то имя "ADMIN", значит собеседник - это кто-то другой? 
+          // Нет, в таблице sender_name = "ADMIN" или "ИмяПоставщика". 
+          // Нам нужно знать имя поставщика для треда.
+          // Если msg.sender_role === 'SUPPLIER', то sender_name = Поставщик.
+          // Если msg.sender_role === 'ADMIN', то мы не знаем кому писали, если нет offer_id или контекста.
+          // У нас сложный кейс. Давайте пока группировать только по сообщениям ОТ поставщиков, 
+          // так как админ отвечает ИМ.
+          
+          let supplierName = '';
+          if (msg.sender_role === 'SUPPLIER') {
+              supplierName = msg.sender_name;
+          } else {
+              // Если писал админ, берем получателя
+              supplierName = msg.recipient_name || 'Unknown';
+          }
+
+          if (supplierName === 'Unknown') return; // Пропускаем системные или битые сообщения
+
+          if (!threads[oid]) threads[oid] = {};
+          if (!threads[oid][supplierName]) {
+              threads[oid][supplierName] = {
+                  lastMessage: msg.message,
+                  time: msg.created_at,
+                  unread: 0
+              };
+          }
+          
+          if (!msg.is_read && msg.sender_role === 'SUPPLIER') {
+              threads[oid][supplierName].unread++;
+          }
+      });
+
+      return threads;
   }
 }
