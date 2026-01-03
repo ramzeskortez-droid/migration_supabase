@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Link, Package, X } from 'lucide-react';
+import { Send, Link, Package, X, Archive } from 'lucide-react';
 import { SupabaseService } from '../../services/supabaseService';
+import { ConfirmationModal } from './ConfirmationModal';
+import { Toast } from './Toast';
 
 interface ChatWindowProps {
   orderId: string;
@@ -22,6 +24,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [orderItems, setOrderItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(itemName || null);
   const [showItemSelector, setShowItemSelector] = useState(false);
+  
+  // UI State for Actions
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [toast, setToast] = useState<{message: string} | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,11 +45,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // Загрузка сообщений
   const fetchMessages = async () => {
-      console.log('ChatWindow fetchMessages:', { orderId, supplierName });
+      // console.log('ChatWindow fetchMessages:', { orderId, supplierName });
       if (!orderId || !supplierName) return;
       try {
           const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, supplierName);
-          console.log('ChatWindow messages received:', data.length);
+          // console.log('ChatWindow messages received:', data.length);
           setMessages(data);
           
           if (currentUserRole === 'ADMIN') {
@@ -97,8 +103,31 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
   };
 
+  const confirmArchive = async () => {
+      try {
+          await SupabaseService.archiveChat(orderId, supplierName);
+          setToast({ message: currentUserRole === 'ADMIN' ? 'Чат отправлен в архив' : 'Спасибо! Чат закрыт.' });
+          setShowArchiveConfirm(false);
+      } catch (e) {
+          console.error(e);
+          alert('Ошибка при архивации');
+      }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-50 relative">
+        {toast && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[300]"><Toast message={toast.message} onClose={() => setToast(null)} duration={2000}/></div>}
+        
+        <ConfirmationModal 
+            isOpen={showArchiveConfirm}
+            title={currentUserRole === 'ADMIN' ? "В архив" : "Закрыть вопрос"}
+            message={currentUserRole === 'ADMIN' ? "Перенести этот чат в архив?" : "Отметить вопрос как решенный и перенести в архив?"}
+            confirmLabel="Да"
+            variant="primary"
+            onConfirm={confirmArchive}
+            onCancel={() => setShowArchiveConfirm(false)}
+        />
+
         {/* Context Link Header */}
         <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center justify-between shadow-sm z-10 shrink-0">
             <div 
@@ -113,14 +142,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     }
                 </span>
             </div>
-            {onNavigateToOrder && (
+            <div className="flex items-center gap-2">
                 <button 
-                    onClick={() => onNavigateToOrder(orderId)}
-                    className="text-[9px] font-black uppercase text-indigo-600 hover:text-indigo-800 hover:underline shrink-0"
+                    onClick={() => setShowArchiveConfirm(true)}
+                    className="text-[9px] font-black uppercase text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors mr-2"
+                    title={currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
                 >
-                    Перейти к заказу &rarr;
+                    <Archive size={12}/> {currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
                 </button>
-            )}
+                {onNavigateToOrder && (
+                    <button 
+                        onClick={() => onNavigateToOrder(orderId)}
+                        className="text-[9px] font-black uppercase text-indigo-600 hover:text-indigo-800 hover:underline shrink-0"
+                    >
+                        Перейти к заказу &rarr;
+                    </button>
+                )}
+            </div>
         </div>
 
         {/* Messages */}

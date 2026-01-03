@@ -438,11 +438,18 @@ export class SupabaseService {
     }
   }
 
+  static async archiveAllChatsForOrder(orderId: string): Promise<void> {
+      await supabase.from('chat_messages').update({ is_archived: true }).eq('order_id', orderId);
+  }
+
   static async formCP(orderId: string): Promise<void> {
     await supabase.from('orders').update({
       status_client: 'КП отправлено',
       status_admin: 'КП готово'
     }).eq('id', orderId);
+    
+    // Закрываем торги -> архивируем все чаты по этому заказу
+    await this.archiveAllChatsForOrder(orderId);
   }
 
   /**
@@ -455,6 +462,9 @@ export class SupabaseService {
     });
 
     if (error) throw error;
+    
+    // После утверждения КП все чаты должны уйти в архив
+    await this.archiveAllChatsForOrder(orderId);
   }
 
   static async confirmPurchase(orderId: string): Promise<void> {
@@ -472,6 +482,9 @@ export class SupabaseService {
       status_supplier: 'Торги завершены',
       status_updated_at: new Date().toISOString()
     }).eq('id', orderId);
+    
+    // Отказ или Аннулирование -> архивируем чаты
+    await this.archiveAllChatsForOrder(orderId);
   }
 
   static async updateOrderJson(orderId: string, newItems: any[]): Promise<void> {
@@ -595,6 +608,23 @@ export class SupabaseService {
   }): Promise<void> {
       const { error } = await supabase.from('chat_messages').insert(payload);
       if (error) throw error;
+
+      // При новом сообщении "достаем" переписку из архива, если она там была
+      // Чтобы не делать лишний SELECT, просто делаем UPDATE для всей ветки
+      // У нас нет supplier_name в явном виде "собеседника", но мы можем вычислить его.
+      // Если пишет Админ - собеседник recipient_name. Если Поставщик - собеседник sender_name.
+      
+      const supplierName = payload.sender_role === 'SUPPLIER' ? payload.sender_name : payload.recipient_name;
+      
+      if (supplierName) {
+          const escapedName = supplierName.replace(/"/g, '\\"');
+          // Используем .or() для надежности
+          await supabase.from('chat_messages')
+              .update({ is_archived: false })
+              .eq('order_id', payload.order_id)
+              .or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`)
+              .eq('is_archived', true); // Обновляем только если было в архиве
+      }
   }
 
   static async getUnreadChatCount(): Promise<number> {
@@ -659,12 +689,19 @@ export class SupabaseService {
       return data?.map((i: any) => i.name) || [];
   }
 
-  static async getGlobalChatThreads(filterBySupplierName?: string): Promise<Record<string, Record<string, { lastMessage: string, time: string, unread: number }>>> {
-      // console.log('getGlobalChatThreads filtering by:', filterBySupplierName);
-      
+  static async getGlobalChatThreads(filterBySupplierName?: string, isArchived: boolean = false): Promise<Record<string, Record<string, { lastMessage: string, time: string, unread: number }>>> {
+      // Авто-запуск архивации "ленивым" способом (при открытии списка активных чатов)
+      if (!isArchived) {
+          // Не блокируем UI, запускаем фоном
+          supabase.rpc('archive_old_chats').then(({ error }) => {
+              if (error) console.error('Auto-archive failed:', error);
+          });
+      }
+
       let query = supabase
           .from('chat_messages')
           .select('*')
+          .eq('is_archived', isArchived)
           .order('created_at', { ascending: false })
           .limit(500);
 
@@ -681,8 +718,6 @@ export class SupabaseService {
           console.error('getGlobalChatThreads error:', error);
           throw error;
       }
-      
-      // console.log('getGlobalChatThreads found:', data?.length);
 
       const threads: Record<string, Record<string, any>> = {};
 
@@ -698,10 +733,12 @@ export class SupabaseService {
 
           if (supplierName === 'Unknown') return;
           
-          // Для поставщика мы можем группировать все под "Менеджер", но для унификации структуры
-          // оставим ключ как имя поставщика (т.е. самого себя), чтобы структура совпадала с админской.
-          
           if (!threads[oid]) threads[oid] = {};
+          
+          // Если уже есть сообщение в этом треде (более новое, т.к. сортировка DESC), не перезаписываем lastMessage
+          // Но нам нужно убедиться, что мы обрабатываем все сообщения для подсчета unread
+          // В текущем цикле мы идем от новых к старым.
+          
           if (!threads[oid][supplierName]) {
               threads[oid][supplierName] = {
                   lastMessage: msg.message,
@@ -711,8 +748,6 @@ export class SupabaseService {
           }
           
           // Считаем непрочитанные:
-          // Если я Админ (нет фильтра), то считаю сообщения от SUPPLIER.
-          // Если я Поставщик (есть фильтр), то считаю сообщения от ADMIN.
           const isMsgFromOther = filterBySupplierName 
               ? (msg.sender_role === 'ADMIN') 
               : (msg.sender_role === 'SUPPLIER');
@@ -723,5 +758,17 @@ export class SupabaseService {
       });
 
       return threads;
+  }
+
+  static async archiveChat(orderId: string, supplierName: string): Promise<void> {
+      const escapedName = supplierName.replace(/"/g, '\\"');
+      // Архивируем все сообщения в этой ветке
+      const { error } = await supabase
+          .from('chat_messages')
+          .update({ is_archived: true })
+          .eq('order_id', orderId)
+          .or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      
+      if (error) throw error;
   }
 }

@@ -15,11 +15,13 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
 
   const fetchThreads = async () => {
       setLoading(true);
       try {
-          const data = await SupabaseService.getGlobalChatThreads();
+          const isArchived = activeTab === 'archive';
+          const data = await SupabaseService.getGlobalChatThreads(undefined, isArchived);
           setThreads(data);
       } catch (e) {
           console.error(e);
@@ -29,12 +31,10 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
   };
 
   useEffect(() => {
-      if (isOpen) {
-          fetchThreads();
-          const interval = setInterval(fetchThreads, 10000); // Обновляем список тредов раз в 10 сек
-          return () => clearInterval(interval);
-      }
-  }, [isOpen]);
+      fetchThreads();
+      const interval = setInterval(fetchThreads, 10000); // Обновляем список тредов раз в 10 сек
+      return () => clearInterval(interval);
+  }, [isOpen, activeTab]); // Added activeTab dependency
 
     const handleDelete = async (e: React.MouseEvent, orderId: string, supplierName?: string) => {
       e.stopPropagation();
@@ -69,13 +69,30 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
             
             {/* Sidebar: Orders List */}
             <div className="w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col">
-                <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
-                    <h2 className="font-black uppercase text-slate-800 flex items-center gap-2">
-                        <MessageCircle size={18} className="text-indigo-600"/> Сообщения
-                    </h2>
-                    <button onClick={fetchThreads} className={`text-xs font-bold text-indigo-600 hover:text-indigo-800 ${loading ? 'opacity-50' : ''}`}>
-                        Обновить
-                    </button>
+                <div className="p-4 border-b border-slate-200 bg-white">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="font-black uppercase text-slate-800 flex items-center gap-2">
+                            <MessageCircle size={18} className="text-indigo-600"/> Сообщения
+                        </h2>
+                        <button onClick={fetchThreads} className={`text-xs font-bold text-indigo-600 hover:text-indigo-800 ${loading ? 'opacity-50' : ''}`}>
+                            Обновить
+                        </button>
+                    </div>
+
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button 
+                            onClick={() => setActiveTab('active')}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Активные
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('archive')}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Архив
+                        </button>
+                    </div>
                 </div>
                 
                 <div className="flex-grow overflow-y-auto p-2 space-y-2">
