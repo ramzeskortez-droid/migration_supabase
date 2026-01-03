@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { Send, Link, Package, X, Archive } from 'lucide-react';
 import { SupabaseService } from '../../services/supabaseService';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -9,159 +9,14 @@ interface ChatWindowProps {
   offerId?: string | null;
   supplierName: string;
   currentUserRole: 'ADMIN' | 'SUPPLIER';
-  itemName?: string; // Начальный контекст
+  itemName?: string;
   onNavigateToOrder?: (orderId: string) => void;
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({
-  orderId, offerId, supplierName, currentUserRole, itemName, onNavigateToOrder
-}) => {
-  const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  
-  // Выбор товара
-  const [orderItems, setOrderItems] = useState<string[]>([]);
-  const [selectedItem, setSelectedItem] = useState<string | null>(itemName || null);
-  const [showItemSelector, setShowItemSelector] = useState(false);
-  
-  // UI State for Actions
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-  const [toast, setToast] = useState<{message: string} | null>(null);
+// -- Sub-components for Optimization --
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Загрузка товаров для выбора
-  useEffect(() => {
-      const loadItems = async () => {
-          if (!orderId) return;
-          try {
-              const items = await SupabaseService.getOrderItemsSimple(orderId);
-              setOrderItems(items);
-          } catch (e) { console.error(e); }
-      };
-      loadItems();
-  }, [orderId]);
-
-  // Загрузка сообщений
-  const fetchMessages = async () => {
-      // console.log('ChatWindow fetchMessages:', { orderId, supplierName });
-      if (!orderId || !supplierName) return;
-      try {
-          const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, supplierName);
-          // console.log('ChatWindow messages received:', data.length);
-          setMessages(data);
-          
-          if (currentUserRole === 'ADMIN') {
-             const hasUnread = data.some(m => m.sender_role === 'SUPPLIER' && !m.is_read);
-             if (hasUnread) {
-                 await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
-             }
-          } else {
-             // Я Поставщик, читаю сообщения от Админа
-             const hasUnread = data.some(m => m.sender_role === 'ADMIN' && !m.is_read);
-             if (hasUnread) {
-                 await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
-             }
-          }
-      } catch (e) {
-          console.error(e);
-      }
-  };
-
-  useEffect(() => {
-      fetchMessages();
-      const interval = setInterval(fetchMessages, 3000); 
-      return () => clearInterval(interval);
-  }, [orderId, offerId, supplierName]);
-
-  useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const handleSend = async () => {
-      if (!newMessage.trim()) return;
-      setLoading(true);
-      try {
-          await SupabaseService.sendChatMessage({
-              order_id: orderId,
-              offer_id: offerId || null,
-              sender_role: currentUserRole,
-              sender_name: currentUserRole === 'ADMIN' ? 'ADMIN' : supplierName,
-              recipient_name: currentUserRole === 'ADMIN' ? supplierName : 'ADMIN',
-              message: newMessage,
-              item_name: selectedItem || undefined
-          });
-          setNewMessage('');
-          // Не сбрасываем selectedItem, чтобы удобно было продолжать диалог по позиции
-          fetchMessages();
-      } catch (e: any) {
-          console.error('Send error:', e);
-          alert('Ошибка отправки: ' + (e.message || JSON.stringify(e)));
-      } finally {
-          setLoading(false);
-      }
-  };
-
-  const confirmArchive = async () => {
-      try {
-          await SupabaseService.archiveChat(orderId, supplierName);
-          setToast({ message: currentUserRole === 'ADMIN' ? 'Чат отправлен в архив' : 'Спасибо! Чат закрыт.' });
-          setShowArchiveConfirm(false);
-      } catch (e) {
-          console.error(e);
-          alert('Ошибка при архивации');
-      }
-  };
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden bg-slate-50 relative">
-        {toast && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[300]"><Toast message={toast.message} onClose={() => setToast(null)} duration={2000}/></div>}
-        
-        <ConfirmationModal 
-            isOpen={showArchiveConfirm}
-            title={currentUserRole === 'ADMIN' ? "В архив" : "Закрыть вопрос"}
-            message={currentUserRole === 'ADMIN' ? "Перенести этот чат в архив?" : "Отметить вопрос как решенный и перенести в архив?"}
-            confirmLabel="Да"
-            variant="primary"
-            onConfirm={confirmArchive}
-            onCancel={() => setShowArchiveConfirm(false)}
-        />
-
-        {/* Context Link Header */}
-        <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center justify-between shadow-sm z-10 shrink-0">
-            <div 
-                className={`flex items-center gap-2 overflow-hidden ${onNavigateToOrder ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                onClick={() => onNavigateToOrder && onNavigateToOrder(orderId)}
-            >
-                <Link size={12} className="text-indigo-400 shrink-0"/>
-                <span className="text-[10px] font-bold text-indigo-700 truncate">
-                    {currentUserRole === 'ADMIN' 
-                        ? `Поставщик инициировал диалог из заказа #${orderId}` 
-                        : `Чат по заказу #${orderId}`
-                    }
-                </span>
-            </div>
-            <div className="flex items-center gap-2">
-                <button 
-                    onClick={() => setShowArchiveConfirm(true)}
-                    className="text-[9px] font-black uppercase text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors mr-2"
-                    title={currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
-                >
-                    <Archive size={12}/> {currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
-                </button>
-                {onNavigateToOrder && (
-                    <button 
-                        onClick={() => onNavigateToOrder(orderId)}
-                        className="text-[9px] font-black uppercase text-indigo-600 hover:text-indigo-800 hover:underline shrink-0"
-                    >
-                        Перейти к заказу &rarr;
-                    </button>
-                )}
-            </div>
-        </div>
-
-        {/* Messages */}
+const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { messages: any[], currentUserRole: string, messagesEndRef: React.RefObject<HTMLDivElement | null> }) => {
+    return (
         <div className="flex-grow p-4 overflow-y-auto space-y-4">
             {messages.length === 0 && (
                 <div className="text-center text-slate-400 text-xs font-bold mt-10">Сообщений пока нет...</div>
@@ -188,8 +43,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             })}
             <div ref={messagesEndRef} />
         </div>
+    );
+});
 
-        {/* Input Area */}
+const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (msg: string, item?: string) => void, loading: boolean, orderItems: string[], itemName?: string }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [selectedItem, setSelectedItem] = useState<string | null>(itemName || null);
+    const [showItemSelector, setShowItemSelector] = useState(false);
+
+    const handleSendClick = () => {
+        const val = inputRef.current?.value;
+        if (!val?.trim()) return;
+        onSend(val, selectedItem || undefined);
+        if (inputRef.current) inputRef.current.value = '';
+    };
+
+    return (
         <div className="bg-white border-t border-slate-100 shrink-0">
             {/* Item Selection Bar */}
             <div className="px-3 pt-2 flex items-center gap-2">
@@ -223,21 +92,183 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
             <div className="p-3 flex gap-2">
                 <input 
-                    value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSend()}
+                    ref={inputRef}
+                    onKeyDown={e => e.key === 'Enter' && handleSendClick()}
                     placeholder="Напишите сообщение..." 
                     className="flex-grow bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
                 />
                 <button 
                     disabled={loading}
-                    onClick={handleSend}
+                    onClick={handleSendClick}
                     className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-lg disabled:opacity-50"
                 >
                     <Send size={18} />
                 </button>
             </div>
         </div>
+    );
+});
+
+// -- Main Component --
+
+const ChatWindowComponent: React.FC<ChatWindowProps> = ({
+  orderId, offerId, supplierName, currentUserRole, itemName, onNavigateToOrder
+}) => {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [orderItems, setOrderItems] = useState<string[]>([]);
+  
+  // UI State for Actions
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [toast, setToast] = useState<{message: string} | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Загрузка товаров для выбора
+  useEffect(() => {
+      const loadItems = async () => {
+          if (!orderId) return;
+          try {
+              const items = await SupabaseService.getOrderItemsSimple(orderId);
+              setOrderItems(items);
+          } catch (e) { console.error(e); }
+      };
+      loadItems();
+  }, [orderId]);
+
+  // Загрузка сообщений
+  const fetchMessages = async () => {
+      if (!orderId || !supplierName) return;
+      try {
+          const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, supplierName);
+          
+          setMessages(prev => {
+              if (prev.length !== data.length) return data;
+              if (data.length > 0 && prev.length > 0) {
+                  if (data[data.length - 1].id !== prev[prev.length - 1].id) return data;
+              }
+              if (data.length === 0 && prev.length === 0) return prev;
+              return JSON.stringify(prev) !== JSON.stringify(data) ? data : prev;
+          });
+          
+          if (currentUserRole === 'ADMIN') {
+             const hasUnread = data.some(m => m.sender_role === 'SUPPLIER' && !m.is_read);
+             if (hasUnread) {
+                 await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
+             }
+          } else {
+             const hasUnread = data.some(m => m.sender_role === 'ADMIN' && !m.is_read);
+             if (hasUnread) {
+                 await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
+             }
+          }
+      } catch (e) {
+          console.error(e);
+      }
+  };
+
+  useEffect(() => {
+      fetchMessages();
+      const interval = setInterval(fetchMessages, 3000); 
+      return () => clearInterval(interval);
+  }, [orderId, offerId, supplierName]);
+
+  useEffect(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = useCallback(async (msgText: string, selectedItemName?: string) => {
+      setLoading(true);
+      try {
+          await SupabaseService.sendChatMessage({
+              order_id: orderId,
+              offer_id: offerId || null,
+              sender_role: currentUserRole,
+              sender_name: currentUserRole === 'ADMIN' ? 'ADMIN' : supplierName,
+              recipient_name: currentUserRole === 'ADMIN' ? supplierName : 'ADMIN',
+              message: msgText,
+              item_name: selectedItemName
+          });
+          fetchMessages();
+      } catch (e: any) {
+          console.error('Send error:', e);
+          alert('Ошибка отправки: ' + (e.message || JSON.stringify(e)));
+      } finally {
+          setLoading(false);
+      }
+  }, [orderId, offerId, supplierName, currentUserRole]);
+
+  const confirmArchive = async () => {
+      try {
+          await SupabaseService.archiveChat(orderId, supplierName);
+          setToast({ message: currentUserRole === 'ADMIN' ? 'Чат отправлен в архив' : 'Спасибо! Чат закрыт.' });
+          setShowArchiveConfirm(false);
+      } catch (e) {
+          console.error(e);
+          alert('Ошибка при архивации');
+      }
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden bg-slate-50 relative">
+        {toast && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[300]"><Toast message={toast.message} onClose={() => setToast(null)} duration={2000}/></div>}
+        
+        <ConfirmationModal 
+            isOpen={showArchiveConfirm}
+            title={currentUserRole === 'ADMIN' ? "В архив" : "Закрыть вопрос"}
+            message={currentUserRole === 'ADMIN' ? "Перенести этот чат в архив?" : "Отметить вопрос как решенный и перенести в архив?"}
+            confirmLabel="Да"
+            variant="primary"
+            onConfirm={confirmArchive}
+            onCancel={() => setShowArchiveConfirm(false)}
+        />
+
+        <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center justify-between shadow-sm z-10 shrink-0">
+            <div 
+                className={`flex items-center gap-2 overflow-hidden ${onNavigateToOrder ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={() => onNavigateToOrder && onNavigateToOrder(orderId)}
+            >
+                <Link size={12} className="text-indigo-400 shrink-0"/>
+                <span className="text-[10px] font-bold text-indigo-700 truncate">
+                    {currentUserRole === 'ADMIN' 
+                        ? `Поставщик инициировал диалог из заказа #${orderId}` 
+                        : `Чат по заказу #${orderId}`
+                    }
+                </span>
+            </div>
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={() => setShowArchiveConfirm(true)}
+                    className="text-[9px] font-black uppercase text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors mr-2"
+                    title={currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
+                >
+                    <Archive size={12}/> {currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
+                </button>
+                {onNavigateToOrder && (
+                    <button 
+                        onClick={() => onNavigateToOrder(orderId)}
+                        className="text-[9px] font-black uppercase text-indigo-600 hover:text-indigo-800 hover:underline shrink-0"
+                    >
+                        Перейти к заказу &rarr;
+                    </button>
+                )}
+            </div>
+        </div>
+
+        <MessagesList 
+            messages={messages} 
+            currentUserRole={currentUserRole} 
+            messagesEndRef={messagesEndRef} 
+        />
+
+        <ChatInput 
+            onSend={handleSend} 
+            loading={loading} 
+            orderItems={orderItems} 
+            itemName={itemName}
+        />
     </div>
   );
 };
+
+export const ChatWindow = memo(ChatWindowComponent);

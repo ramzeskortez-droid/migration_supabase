@@ -61,6 +61,13 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
       }
   };
 
+  const handleNavigate = React.useCallback((oid: string) => {
+      if (onNavigateToOrder) {
+          onNavigateToOrder(oid);
+          onClose();
+      }
+  }, [onNavigateToOrder, onClose]);
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -184,12 +191,7 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                                 orderId={selectedOrder}
                                 supplierName={selectedSupplier}
                                 currentUserRole="ADMIN"
-                                onNavigateToOrder={(oid) => {
-                                    if (onNavigateToOrder) {
-                                        onNavigateToOrder(oid);
-                                        onClose();
-                                    }
-                                }}
+                                onNavigateToOrder={handleNavigate}
                             />
                         </div>
                     </div>

@@ -42,6 +42,13 @@ export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({
       return () => clearInterval(interval);
   }, [isOpen, currentUserRole, currentSupplierName, activeTab]); // Added activeTab dependency
 
+  const handleNavigate = React.useCallback((oid: string) => {
+      if (onNavigateToOrder) {
+          onNavigateToOrder(oid);
+          onClose();
+      }
+  }, [onNavigateToOrder, onClose]);
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -149,12 +156,7 @@ export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({
                                 orderId={selectedOrder}
                                 supplierName={selectedSupplier}
                                 currentUserRole={currentUserRole}
-                                onNavigateToOrder={(oid) => {
-                                    if (onNavigateToOrder) {
-                                        onNavigateToOrder(oid);
-                                        onClose();
-                                    }
-                                }}
+                                onNavigateToOrder={handleNavigate}
                             />
                         </div>
                     </div>
