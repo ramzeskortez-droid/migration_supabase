@@ -282,6 +282,14 @@ export const AdminInterface: React.FC = () => {
       return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-indigo-600 ml-1" /> : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
   };
 
+  const handleNavigateToOrder = (orderId: string) => {
+      setSearchQuery(orderId);
+      setExpandedId(orderId);
+      // Определяем в какой вкладке может быть заказ и переключаем
+      // В идеале можно запросить статус у заказа, но пока просто ищем
+      // Если поиск сработает, то пользователь увидит заказ
+  };
+
   const renderStatusSettings = () => (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 animate-in fade-in slide-in-from-left-4 duration-500">
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
@@ -395,7 +403,7 @@ export const AdminInterface: React.FC = () => {
               )}
           </main>
           
-          <AdminGlobalChat isOpen={isGlobalChatOpen} onClose={() => setIsGlobalChatOpen(false)} />
+          <AdminGlobalChat isOpen={isGlobalChatOpen} onClose={() => setIsGlobalChatOpen(false)} onNavigateToOrder={handleNavigateToOrder} />
 
           {adminModal && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">

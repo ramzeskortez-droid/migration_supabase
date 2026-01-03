@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, User, ShieldCheck, MessageCircle } from 'lucide-react';
 import { ChatWindow } from './ChatWindow';
 
@@ -17,7 +18,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden h-[600px] animate-in zoom-in-95 duration-200">
             {/* Header */}
@@ -43,6 +44,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({
                 itemName={itemName}
             />
         </div>
-    </div>
+    </div>,
+    document.body
   );
 };

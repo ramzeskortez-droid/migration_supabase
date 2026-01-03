@@ -561,22 +561,26 @@ export class SupabaseService {
   // --- CHAT SYSTEM ---
 
   static async getChatMessages(orderId: string, offerId?: string, supplierName?: string): Promise<any[]> {
+      console.log('getChatMessages called with:', { orderId, offerId, supplierName });
       let query = supabase
           .from('chat_messages')
           .select('*')
           .eq('order_id', orderId)
           .order('created_at', { ascending: true });
 
-      if (offerId) {
-          query = query.eq('offer_id', offerId);
-      } else if (supplierName) {
-          // Ищем сообщения, где я отправитель ИЛИ я получатель
-          // Внимание: синтаксис .or требует экранирования строк, если они содержат спецсимволы, но Supabase обычно справляется
-          query = query.or(`sender_name.eq.${supplierName},recipient_name.eq.${supplierName}`);
+      // Логика изменилась: мы всегда ищем переписку "Админ <-> Поставщик" в рамках заказа.
+      // offer_id больше не является строгим фильтром, так как сообщения могут быть без него.
+      if (supplierName) {
+          const escapedName = supplierName.replace(/"/g, '\\"');
+          query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+          console.error('getChatMessages DB error:', error);
+          throw error;
+      }
+      // console.log('getChatMessages returned:', data?.length);
       return data || [];
   }
 
@@ -604,46 +608,99 @@ export class SupabaseService {
       return count || 0;
   }
 
-  static async markChatAsRead(orderId: string, supplierName: string): Promise<void> {
-      await supabase
+  static async getUnreadChatCountForSupplier(supplierName: string): Promise<{ count: number }> {
+      const { count, error } = await supabase
           .from('chat_messages')
-          .update({ is_read: true })
-          .eq('order_id', orderId)
-          .eq('sender_name', supplierName)
-          .eq('sender_role', 'SUPPLIER');
+          .select('*', { count: 'exact', head: true })
+          .eq('recipient_name', supplierName)
+          .eq('is_read', false);
+      
+      if (error) throw error;
+      return { count: count || 0 };
   }
 
-  static async getGlobalChatThreads(): Promise<Record<string, Record<string, { lastMessage: string, time: string, unread: number }>>> {
-      const { data, error } = await supabase
+  static async markChatAsRead(orderId: string, supplierName: string, readerRole: 'ADMIN' | 'SUPPLIER'): Promise<void> {
+      let query = supabase.from('chat_messages').update({ is_read: true }).eq('order_id', orderId);
+
+      if (readerRole === 'ADMIN') {
+          // Админ читает сообщения от Поставщика
+          const escapedName = supplierName.replace(/"/g, '\\"');
+          query = query.eq('sender_name', escapedName).eq('sender_role', 'SUPPLIER');
+      } else {
+          // Поставщик читает сообщения от Админа, адресованные ему
+          const escapedName = supplierName.replace(/"/g, '\\"');
+          query = query.eq('sender_role', 'ADMIN').eq('recipient_name', escapedName);
+      }
+
+      await query;
+  }
+
+  static async deleteChatHistory(orderId: string, supplierName?: string): Promise<void> {
+      let query = supabase.from('chat_messages').delete().eq('order_id', orderId);
+      
+      if (supplierName) {
+          // Удаляем переписку только с конкретным поставщиком
+          const escapedName = supplierName.replace(/"/g, '\\"');
+          // (Sender = Supplier AND Recipient = Admin) OR (Sender = Admin AND Recipient = Supplier)
+          // PostgREST .or() filter
+          query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      }
+      
+      const { error } = await query;
+      if (error) throw error;
+  }
+
+  // Получение простых названий товаров для выпадающего списка в чате
+  static async getOrderItemsSimple(orderId: string): Promise<string[]> {
+      const { data } = await supabase
+          .from('order_items')
+          .select('name')
+          .eq('order_id', orderId);
+      return data?.map((i: any) => i.name) || [];
+  }
+
+  static async getGlobalChatThreads(filterBySupplierName?: string): Promise<Record<string, Record<string, { lastMessage: string, time: string, unread: number }>>> {
+      // console.log('getGlobalChatThreads filtering by:', filterBySupplierName);
+      
+      let query = supabase
           .from('chat_messages')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(500);
 
-      if (error) throw error;
+      // Если запрашивает поставщик, он должен видеть только те сообщения, 
+      // где он отправитель или он получатель.
+      if (filterBySupplierName) {
+          const escapedName = filterBySupplierName.replace(/"/g, '\\"');
+          query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+          console.error('getGlobalChatThreads error:', error);
+          throw error;
+      }
+      
+      // console.log('getGlobalChatThreads found:', data?.length);
 
       const threads: Record<string, Record<string, any>> = {};
 
       data?.forEach((msg: any) => {
           const oid = String(msg.order_id);
-          // Имя собеседника: если писал админ, то имя "ADMIN", значит собеседник - это кто-то другой? 
-          // Нет, в таблице sender_name = "ADMIN" или "ИмяПоставщика". 
-          // Нам нужно знать имя поставщика для треда.
-          // Если msg.sender_role === 'SUPPLIER', то sender_name = Поставщик.
-          // Если msg.sender_role === 'ADMIN', то мы не знаем кому писали, если нет offer_id или контекста.
-          // У нас сложный кейс. Давайте пока группировать только по сообщениям ОТ поставщиков, 
-          // так как админ отвечает ИМ.
           
           let supplierName = '';
           if (msg.sender_role === 'SUPPLIER') {
               supplierName = msg.sender_name;
           } else {
-              // Если писал админ, берем получателя
               supplierName = msg.recipient_name || 'Unknown';
           }
 
-          if (supplierName === 'Unknown') return; // Пропускаем системные или битые сообщения
-
+          if (supplierName === 'Unknown') return;
+          
+          // Для поставщика мы можем группировать все под "Менеджер", но для унификации структуры
+          // оставим ключ как имя поставщика (т.е. самого себя), чтобы структура совпадала с админской.
+          
           if (!threads[oid]) threads[oid] = {};
           if (!threads[oid][supplierName]) {
               threads[oid][supplierName] = {
@@ -653,7 +710,14 @@ export class SupabaseService {
               };
           }
           
-          if (!msg.is_read && msg.sender_role === 'SUPPLIER') {
+          // Считаем непрочитанные:
+          // Если я Админ (нет фильтра), то считаю сообщения от SUPPLIER.
+          // Если я Поставщик (есть фильтр), то считаю сообщения от ADMIN.
+          const isMsgFromOther = filterBySupplierName 
+              ? (msg.sender_role === 'ADMIN') 
+              : (msg.sender_role === 'SUPPLIER');
+
+          if (!msg.is_read && isMsgFromOther) {
               threads[oid][supplierName].unread++;
           }
       });

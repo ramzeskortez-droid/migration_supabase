@@ -1,18 +1,34 @@
 import React from 'react';
-import { UserCircle2, Phone, LogOut } from 'lucide-react';
+import { UserCircle2, Phone, LogOut, MessageCircle } from 'lucide-react';
 
 interface SellerHeaderProps {
   sellerName: string;
   sellerPhone: string;
   onLogout: () => void;
+  onOpenChat: () => void;
+  unreadCount?: number;
 }
 
-export const SellerHeader: React.FC<SellerHeaderProps> = ({ sellerName, sellerPhone, onLogout }) => {
+export const SellerHeader: React.FC<SellerHeaderProps> = ({ sellerName, sellerPhone, onLogout, onOpenChat, unreadCount = 0 }) => {
   return (
     <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
        <div className="flex flex-col">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">MARKET DASHBOARD</span>
-          <span className="text-lg font-black text-slate-900 uppercase tracking-tight">Личный кабинет</span>
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-black text-slate-900 uppercase tracking-tight">Личный кабинет</span>
+            <button 
+                onClick={onOpenChat}
+                className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all relative"
+                title="Ваши сообщения"
+            >
+                <MessageCircle size={20} />
+                {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                        {unreadCount}
+                    </span>
+                )}
+            </button>
+          </div>
        </div>
        <div className="flex items-center gap-3 w-full sm:w-auto">
            {sellerName && (

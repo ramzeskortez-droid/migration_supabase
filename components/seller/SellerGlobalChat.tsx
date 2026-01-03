@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MessageCircle, ChevronRight, User, Hash } from 'lucide-react';
+import { X, MessageCircle, ChevronRight, User, Hash, Package } from 'lucide-react';
 import { ChatWindow } from '../shared/ChatWindow';
 import { SupabaseService } from '../../services/supabaseService';
 
-interface AdminGlobalChatProps {
+interface SellerGlobalChatProps {
   isOpen: boolean;
   onClose: () => void;
+  currentUserRole: 'ADMIN' | 'SUPPLIER';
+  currentSupplierName?: string; // Для фильтрации чатов поставщика
   onNavigateToOrder?: (orderId: string) => void;
 }
 
-export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClose, onNavigateToOrder }) => {
+export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({ 
+  isOpen, onClose, currentUserRole, currentSupplierName, onNavigateToOrder 
+}) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
@@ -19,7 +23,9 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
   const fetchThreads = async () => {
       setLoading(true);
       try {
-          const data = await SupabaseService.getGlobalChatThreads();
+          // Если я поставщик, передаю свое имя для фильтрации
+          const filter = currentUserRole === 'SUPPLIER' ? currentSupplierName : undefined;
+          const data = await SupabaseService.getGlobalChatThreads(filter);
           setThreads(data);
       } catch (e) {
           console.error(e);
@@ -31,35 +37,10 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
   useEffect(() => {
       if (isOpen) {
           fetchThreads();
-          const interval = setInterval(fetchThreads, 10000); // Обновляем список тредов раз в 10 сек
+          const interval = setInterval(fetchThreads, 10000); 
           return () => clearInterval(interval);
       }
-  }, [isOpen]);
-
-    const handleDelete = async (e: React.MouseEvent, orderId: string, supplierName?: string) => {
-      e.stopPropagation();
-      const confirmMsg = supplierName 
-          ? `Удалить переписку с ${supplierName} по заказу #${orderId}?` 
-          : `Удалить ВСЮ историю чатов по заказу #${orderId}?`;
-      
-      if (!confirm(confirmMsg)) return;
-
-      try {
-          await SupabaseService.deleteChatHistory(orderId, supplierName);
-          // Обновляем локально или ждем поллинга
-          fetchThreads();
-          // Если был выбран этот чат - сбрасываем выбор
-          if (selectedOrder === orderId) {
-              if (!supplierName || selectedSupplier === supplierName) {
-                  setSelectedOrder(null);
-                  setSelectedSupplier(null);
-              }
-          }
-      } catch (e) {
-          console.error(e);
-          alert('Ошибка удаления');
-      }
-  };
+  }, [isOpen, currentUserRole, currentSupplierName]);
 
   if (!isOpen) return null;
 
@@ -88,7 +69,7 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                         const isExpanded = selectedOrder === orderId;
 
                         return (
-                            <div key={orderId} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm group/order">
+                            <div key={orderId} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div 
                                     className={`p-3 flex justify-between items-center cursor-pointer transition-colors ${isExpanded ? 'bg-slate-100' : 'hover:bg-slate-50'}`}
                                     onClick={() => setSelectedOrder(isExpanded ? null : orderId)}
@@ -99,13 +80,6 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {totalUnread > 0 && <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{totalUnread}</span>}
-                                        <button 
-                                            onClick={(e) => handleDelete(e, orderId)}
-                                            className="opacity-0 group-hover/order:opacity-100 p-1 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded transition-all"
-                                            title="Удалить все чаты заказа"
-                                        >
-                                            <X size={12}/>
-                                        </button>
                                         <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90' : ''}`}/>
                                     </div>
                                 </div>
@@ -116,29 +90,20 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                                             <div 
                                                 key={supplier}
                                                 onClick={() => setSelectedSupplier(supplier)}
-                                                className={`p-2 rounded-lg cursor-pointer flex justify-between items-center group/supplier ${selectedSupplier === supplier ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
+                                                className={`p-2 rounded-lg cursor-pointer flex justify-between items-center ${selectedSupplier === supplier ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
                                             >
-                                                <div className="flex flex-col overflow-hidden">
-                                                    <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1">
-                                                        <User size={10}/> {supplier}
+                                                <div className="flex flex-col overflow-hidden w-full">
+                                                    <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1 justify-between">
+                                                        <span className="flex items-center gap-1"><User size={10}/> {currentUserRole === 'SUPPLIER' ? 'Чат с менеджером' : supplier}</span>
+                                                        {info.unread > 0 && (
+                                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplier ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
+                                                                +{info.unread}
+                                                            </span>
+                                                        )}
                                                     </span>
-                                                    <span className={`text-[9px] truncate ${selectedSupplier === supplier ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                                    <span className={`text-[9px] truncate mt-1 ${selectedSupplier === supplier ? 'text-indigo-200' : 'text-slate-400'}`}>
                                                         {info.lastMessage}
                                                     </span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    {info.unread > 0 && (
-                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplier ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
-                                                            +{info.unread}
-                                                        </span>
-                                                    )}
-                                                    <button 
-                                                        onClick={(e) => handleDelete(e, orderId, supplier)}
-                                                        className={`opacity-0 group-hover/supplier:opacity-100 p-1 rounded transition-all ${selectedSupplier === supplier ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-red-50 text-slate-300 hover:text-red-500'}`}
-                                                        title="Удалить чат"
-                                                    >
-                                                        <X size={10}/>
-                                                    </button>
                                                 </div>
                                             </div>
                                         ))}
@@ -159,14 +124,14 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                         <div className="p-4 border-b border-slate-100 bg-white">
                             <h3 className="font-black text-lg text-slate-800 uppercase">Заказ #{selectedOrder}</h3>
                             <p className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
-                                <User size={12}/> {selectedSupplier}
+                                <User size={12}/> {currentUserRole === 'SUPPLIER' ? 'Менеджер' : selectedSupplier}
                             </p>
                         </div>
                         <div className="flex-grow overflow-hidden">
                             <ChatWindow 
                                 orderId={selectedOrder}
                                 supplierName={selectedSupplier}
-                                currentUserRole="ADMIN"
+                                currentUserRole={currentUserRole}
                                 onNavigateToOrder={(oid) => {
                                     if (onNavigateToOrder) {
                                         onNavigateToOrder(oid);
