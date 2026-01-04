@@ -1,6 +1,6 @@
 import React from 'react';
 import { Order } from '../../types';
-import { ChevronDown, ChevronUp, User } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check } from 'lucide-react';
 
 interface OperatorOrderRowProps {
   order: Order;
@@ -14,12 +14,12 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   const handleProcessed = () => {
       if (onStatusChange) {
-          onStatusChange(order.id, 'КП готово');
+          // Двигаем на статус "КП отправлено"
+          onStatusChange(order.id, 'КП отправлено');
       }
   };
 
-  // Извлекаем тему из первого комментария (предполагаем, что тема сохраняется там)
-  // В OperatorInterface мы сохраняем комментарий как: `[Тема: ...] Бренд: ...`
+  // Извлекаем тему из первого комментария
   const subjectMatch = order.items?.[0]?.comment?.match(/\[Тема: (.*?)\]/);
   const subject = subjectMatch ? subjectMatch[1] : '-';
 
@@ -72,7 +72,6 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                 <span className="font-bold text-slate-700">{item.name}</span>
                                 <div className="flex items-center gap-4 text-slate-500 font-black">
                                     <span>{item.quantity} ШТ</span>
-                                    {/* Show Price if available */}
                                     {item.adminPriceRub && (
                                         <span className="text-indigo-600 bg-indigo-50 px-2 py-1 rounded shadow-sm">{new Intl.NumberFormat('ru-RU').format(item.adminPriceRub)} ₽</span>
                                     )}
@@ -85,12 +84,12 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                 </div>
 
                 <div className="mt-4 flex justify-end">
-                    {order.statusAdmin === 'В обработке' && (
+                    {order.statusAdmin === 'КП готово' && (
                         <button 
                             onClick={handleProcessed}
-                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-lg hover:shadow-indigo-200 transition-all flex items-center gap-2 active:scale-95"
+                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2 active:scale-95"
                         >
-                            Обработано
+                            <Check size={14} /> Отправлено клиенту (Обработано)
                         </button>
                     )}
                 </div>

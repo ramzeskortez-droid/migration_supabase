@@ -46,14 +46,11 @@ export class SupabaseService {
     if (date) {
       query = query.eq('date', date);
     } else {
-      // Если дата не указана, берем последнюю
       query = query.order('date', { ascending: false }).limit(1);
     }
     
-    const { data, error } = await query.maybeSingle(); // maybeSingle чтобы не кидать ошибку если пусто
+    const { data, error } = await query.maybeSingle();
     if (error) throw error;
-    if (!data) return null;
-
     return data as ExchangeRates;
   }
 
@@ -73,49 +70,25 @@ export class SupabaseService {
   // --- BUYER TOOLS (Labels & Filters) ---
 
   static async toggleOrderLabel(userToken: string, orderId: string, color: string): Promise<void> {
-    console.log('[Sticker] Toggling:', { userToken, orderId, color });
-
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing } = await supabase
       .from('buyer_order_labels')
-      .select('*')
+      .select('id, color')
       .eq('user_token', userToken)
       .eq('order_id', orderId)
       .maybeSingle();
 
-    if (fetchError) {
-        console.error('[Sticker] Fetch error:', fetchError);
-        throw fetchError;
-    }
-
     if (existing) {
-        console.log('[Sticker] Found existing:', existing);
         if (existing.color === color) {
-            console.log('[Sticker] Deleting (toggle off)...');
             await supabase.from('buyer_order_labels').delete().eq('id', existing.id);
         } else {
-            console.log('[Sticker] Updating color...');
             await supabase.from('buyer_order_labels').update({ color }).eq('id', existing.id);
         }
     } else {
-        console.log('[Sticker] Inserting new...');
-        const { error: insertError } = await supabase.from('buyer_order_labels').insert({
+        await supabase.from('buyer_order_labels').insert({
             user_token: userToken,
             order_id: orderId,
             color
         });
-
-        if (insertError) {
-            if (insertError.code === '23505') { // Unique violation (Conflict)
-                console.warn('[Sticker] Conflict detected (already exists). Updating instead.');
-                await supabase.from('buyer_order_labels')
-                    .update({ color })
-                    .eq('user_token', userToken)
-                    .eq('order_id', orderId);
-            } else {
-                console.error('[Sticker] Insert error:', insertError);
-                throw insertError;
-            }
-        }
     }
   }
 
@@ -135,7 +108,7 @@ export class SupabaseService {
   }
 
   /**
-   * Получение облегченного списка заказов для бесконечного скролла
+   * Облегченное получение списка заказов
    */
   static async getOrders(
     cursor?: number, 
@@ -145,62 +118,64 @@ export class SupabaseService {
     searchQuery: string = '',
     statusFilter?: string,
     clientPhoneFilter?: string,
-    brandFilter?: string | null,
+    brandFilter?: string[], 
     onlyWithMyOffersName?: string,
-    ownerToken?: string, // НОВЫЙ ФИЛЬТР: Изоляция для Оператора
-    buyerToken?: string, // НОВЫЙ ФИЛЬТР: Стикеры для Закупщика
-    excludeOffersFrom?: string // НОВЫЙ ФИЛЬТР: Исключить заказы с моими офферами
+    ownerToken?: string, 
+    buyerToken?: string, 
+    excludeOffersFrom?: string 
   ): Promise<{ data: Order[], nextCursor?: number }> {
     
-    // Выбираем поля заказа + джойним стикеры если передан buyerToken
-    // Добавляем order_items и offers для отображения в списках (счетчики, первая позиция)
-    let selectQuery = `
+    // 1. Предварительно получаем вложенные данные только если они нужны для фильтрации
+    let excludedIds: any[] = [];
+    if (excludeOffersFrom) {
+        const { data: off } = await supabase.from('offers').select('order_id').eq('supplier_name', excludeOffersFrom);
+        excludedIds = off?.map(o => o.order_id) || [];
+    }
+
+    let matchingBrandIds: any[] = [];
+    if (brandFilter && brandFilter.length > 0) {
+        const { data: items } = await supabase.from('order_items').select('order_id').in('brand', brandFilter);
+        matchingBrandIds = items?.map(i => i.order_id) || [];
+    }
+
+    // 2. Основной запрос (Облегченный для стабильности)
+    // Мы подтягиваем order_items и offers, но БЕЗ глубокой вложенности
+    let query = supabase.from('orders').select(`
         id, created_at, vin, client_name, client_phone, 
         car_brand, car_model, car_year,
         status_admin, status_client, status_supplier,
         visible_to_client, location, status_updated_at,
         owner_token,
         order_items (id, name, comment, quantity),
-        offers (id, supplier_name, created_at, offer_items (id, is_winner, name, quantity))
-    `;
-    
-    let query = supabase.from('orders').select(selectQuery);
+        offers (id, supplier_name, offer_items (is_winner, quantity))
+    `);
 
-    if (excludeOffersFrom) {
-        const { data: existingOffers } = await supabase
-            .from('offers')
-            .select('order_id')
-            .eq('supplier_name', excludeOffersFrom);
-        
-        const excludedIds = existingOffers?.map(o => o.order_id) || [];
-        if (excludedIds.length > 0) {
-            query = query.not('id', 'in', `(${excludedIds.join(',')})`);
+    if (ownerToken) query = query.eq('owner_token', ownerToken);
+    if (clientPhoneFilter) query = query.eq('client_phone', clientPhoneFilter);
+    
+    if (excludeOffersFrom && excludedIds.length > 0) {
+        query = query.not('id', 'in', `(${excludedIds.join(',')})`);
+    }
+
+    if (brandFilter && brandFilter.length > 0) {
+        if (matchingBrandIds.length > 0) {
+            query = query.in('id', matchingBrandIds);
+        } else {
+            return { data: [], nextCursor: undefined }; // Ничего не найдено
         }
     }
 
-    if (ownerToken) {
-        query = query.eq('owner_token', ownerToken);
-    }
-
-    if (clientPhoneFilter) query = query.eq('client_phone', clientPhoneFilter);
-    if (brandFilter) query = query.eq('car_brand', brandFilter);
     if (statusFilter) {
         if (statusFilter.includes(',')) {
-            const statuses = statusFilter.split(',').map(s => s.trim());
-            query = query.in('status_admin', statuses);
-        } else if (statusFilter === 'КП отправлено') {
-            query = query.eq('status_admin', 'КП готово');
+            query = query.in('status_admin', statusFilter.split(',').map(s => s.trim()));
         } else {
             query = query.eq('status_admin', statusFilter);
         }
     }
 
     if (onlyWithMyOffersName) {
-        const { data: myOfferOrderIds } = await supabase
-            .from('offers')
-            .select('order_id')
-            .eq('supplier_name', onlyWithMyOffersName);
-        const ids = myOfferOrderIds?.map(o => o.order_id) || [];
+        const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
+        const ids = myOff?.map(o => o.order_id) || [];
         query = query.in('id', ids);
     }
 
@@ -218,17 +193,16 @@ export class SupabaseService {
         else query = query.gt('id', cursor);
     }
 
-    query = query.order('id', { ascending: sortDirection === 'asc' }).limit(limit);
+    const { data, error } = await query.order('id', { ascending: sortDirection === 'asc' }).limit(limit);
+    if (error) {
+        console.error('Ошибка getOrders:', error);
+        throw error;
+    }
 
-    const { data, error } = await query;
-    if (error) throw error;
-
-    // Подгрузка стикеров если это Закупщик
+    // 3. Подгрузка стикеров (отдельно для стабильности)
     let labelsMap: Record<string, BuyerLabel> = {};
     if (buyerToken && data.length > 0) {
         const ids = data.map(o => o.id);
-        
-        // Используем токен (телефон) для поиска стикеров
         const { data: labels } = await supabase
             .from('buyer_order_labels')
             .select('*')
@@ -240,53 +214,56 @@ export class SupabaseService {
         });
     }
 
-    const mappedData = data.map(order => ({
-        id: String(order.id),
-        type: RowType.ORDER,
-        vin: order.vin,
-        clientName: order.client_name,
-        clientPhone: order.client_phone,
-        status: order.status_admin === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
-        statusAdmin: order.status_admin,
-        statusClient: order.status_client,
-        statusSeller: order.status_supplier,
-        workflowStatus: order.status_client as WorkflowStatus,
-        createdAt: new Date(order.created_at).toLocaleString('ru-RU'),
-        statusUpdatedAt: order.status_updated_at ? new Date(order.status_updated_at).toLocaleString('ru-RU') : undefined,
-        location: order.location,
-        visibleToClient: order.visible_to_client ? 'Y' : 'N',
-        ownerToken: order.owner_token, // Прокидываем токен владельца
-        buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [], // Прикрепляем стикер
-        items: order.order_items?.map((i: any) => ({ 
-            id: i.id, name: i.name, quantity: i.quantity, comment: i.comment 
-        })) || [], 
-        offers: order.offers?.map((o: any) => ({
-            id: o.id,
-            clientName: o.supplier_name,
-            createdAt: o.created_at,
-            items: o.offer_items?.map((oi: any) => ({
-                id: oi.id,
-                name: oi.name,
-                rank: oi.is_winner ? 'ЛИДЕР' : '',
-                offeredQuantity: oi.quantity // Map quantity to offeredQuantity to fix "Refused" status check
-            })) || []
-        })) || [],
-        car: {
-            brand: order.car_brand,
-            model: order.car_model,
-            year: order.car_year
-        },
-        isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
-    } as Order));
+    // 4. Маппинг
+    const mappedData = data.map(order => {
+        const items = order.order_items || [];
+        const offers = order.offers || [];
+        
+        // Считаем статистику для менеджера
+        const totalItems = items.length;
+        const winnerNames = new Set();
+        offers.forEach((o: any) => {
+            o.offer_items?.forEach((oi: any) => {
+                if (oi.is_winner) winnerNames.add(oi.name);
+            });
+        });
+
+        return {
+            id: String(order.id),
+            type: RowType.ORDER,
+            vin: order.vin,
+            clientName: order.client_name,
+            clientPhone: order.client_phone,
+            status: order.status_admin === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
+            statusAdmin: order.status_admin,
+            statusClient: order.status_client,
+            statusSeller: order.status_supplier,
+            workflowStatus: order.status_client as WorkflowStatus,
+            createdAt: new Date(order.created_at).toLocaleString('ru-RU'),
+            statusUpdatedAt: order.status_updated_at ? new Date(order.status_updated_at).toLocaleString('ru-RU') : undefined,
+            location: order.location,
+            visibleToClient: order.visible_to_client ? 'Y' : 'N',
+            ownerToken: order.owner_token,
+            buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
+            items: items.map((i: any) => ({
+                id: i.id, name: i.name, quantity: i.quantity, comment: i.comment
+            })), 
+            offers: offers.map((o: any) => ({
+                id: o.id, clientName: o.supplier_name, items: o.offer_items || []
+            })), 
+            car: {
+                brand: order.car_brand,
+                model: order.car_model,
+                year: order.car_year
+            },
+            isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
+        } as Order;
+    });
     
     const nextCursor = data.length === limit ? data[data.length - 1].id : undefined;
-    
     return { data: mappedData, nextCursor };
   }
 
-  /**
-   * Загрузка детальной информации (items, offers) при раскрытии заказа
-   */
   static async getOrderDetails(orderId: string): Promise<{ items: OrderItem[], offers: Order[] }> {
       const { data, error } = await supabase
           .from('orders')
@@ -309,8 +286,8 @@ export class SupabaseService {
         quantity: item.quantity,
         comment: item.comment,
         category: item.category,
-        photoUrl: item.photo_url, // Map photo_url
-        adminPriceRub: item.admin_price_rub // Map this field
+        photoUrl: item.photo_url,
+        adminPriceRub: item.admin_price_rub
       }));
 
       const offers: Order[] = data.offers.map((offer: any) => ({
@@ -414,26 +391,30 @@ export class SupabaseService {
       return data?.map((b: any) => b.name) || [];
   }
 
+  static async getSupplierUsedBrands(supplierName: string): Promise<string[]> {
+      const { data: ordersWithOffers } = await supabase
+        .from('offers')
+        .select('order_id')
+        .eq('supplier_name', supplierName);
+        
+      if (!ordersWithOffers?.length) return [];
+      
+      const orderIds = ordersWithOffers.map(o => o.order_id);
+      
+      const { data: brands } = await supabase
+        .from('order_items')
+        .select('brand')
+        .in('order_id', orderIds)
+        .not('brand', 'is', null)
+        .neq('brand', '');
+        
+      const unique = Array.from(new Set(brands?.map(b => b.brand))).sort().slice(0, 7);
+      return unique;
+  }
+
   static async addBrand(name: string): Promise<void> {
       const { error } = await supabase.from('brands').insert({ name });
       if (error) throw error;
-  }
-
-  static async uploadFile(file: File, folder: 'orders' | 'offers'): Promise<string> {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-
-      const { error } = await supabase.storage
-          .from('attachments')
-          .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data } = supabase.storage
-          .from('attachments')
-          .getPublicUrl(fileName);
-      
-      return data.publicUrl;
   }
 
   static async createOrder(vin: string, items: any[], clientName: string, car: any, clientPhone?: string, ownerToken?: string): Promise<string> {
@@ -443,7 +424,7 @@ export class SupabaseService {
         vin, client_name: clientName, client_phone: clientPhone,
         car_brand: car.brand, car_model: car.AdminModel || car.model,
         car_year: car.AdminYear || car.year, location: 'РФ',
-        owner_token: ownerToken // Сохраняем владельца
+        owner_token: ownerToken
       })
       .select().single();
 
@@ -455,7 +436,8 @@ export class SupabaseService {
       quantity: item.quantity || 1,
       comment: item.comment, 
       category: item.category,
-      photo_url: item.photoUrl || null // Сохраняем фото
+      photo_url: item.photoUrl || null,
+      brand: item.brand || null
     }));
 
     const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
@@ -464,7 +446,6 @@ export class SupabaseService {
   }
 
   static async createOffer(orderId: string, sellerName: string, items: any[], vin: string, sellerPhone?: string): Promise<void> {
-    // 1. Проверка на дубликат: Один поставщик = Один оффер на заказ
     const { data: existing } = await supabase
         .from('offers')
         .select('id')
@@ -494,7 +475,6 @@ export class SupabaseService {
     const { error: oiError } = await supabase.from('offer_items').insert(offerItemsToInsert);
     if (oiError) throw oiError;
 
-    // 2. Обновляем статус поставщика в заказе, чтобы показать активность
     await supabase.from('orders')
         .update({ 
             status_supplier: 'Идут торги',
@@ -515,7 +495,7 @@ export class SupabaseService {
 
     if (actionType !== 'RESET') {
       await supabase.from('offer_items')
-        .update({ 
+        .update({
             is_winner: true, 
             admin_price: adminPrice || 0, 
             admin_currency: adminCurrency || 'RUB', 
@@ -525,18 +505,16 @@ export class SupabaseService {
         })
         .eq('offer_id', offerId).eq('name', itemName);
 
-      // Sync to order_items for Operator view
       const { data: offerData } = await supabase.from('offers').select('order_id').eq('id', offerId).single();
       if (offerData) {
           await supabase.from('order_items')
-            .update({ 
+            .update({
                 admin_price_rub: isNaN(Number(adminPriceRub)) ? 0 : adminPriceRub 
             })
             .eq('order_id', offerData.order_id)
             .eq('name', itemName);
       }
     } else {
-        // Reset logic: clear price in order_items
         const { data: offerData } = await supabase.from('offers').select('order_id').eq('id', offerId).single();
         if (offerData) {
             await supabase.from('order_items')
@@ -620,7 +598,7 @@ export class SupabaseService {
   static async getChatMessages(orderId: string, offerId?: string, supplierName?: string): Promise<any[]> {
       let query = supabase.from('chat_messages').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
       if (supplierName) {
-          const escapedName = supplierName.split('"').join('\\"');
+          const escapedName = supplierName.split('"').join('\"');
           query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
       }
       const { data, error } = await query;
@@ -636,7 +614,7 @@ export class SupabaseService {
       if (error) throw error;
       const supplierName = payload.sender_role === 'SUPPLIER' ? payload.sender_name : payload.recipient_name;
       if (supplierName) {
-          const escapedName = supplierName.split('"').join('\\"');
+          const escapedName = supplierName.split('"').join('\"');
           await supabase.from('chat_messages').update({ is_archived: false }).eq('order_id', payload.order_id).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`).eq('is_archived', true);
       }
       return data;
@@ -656,7 +634,7 @@ export class SupabaseService {
 
   static async markChatAsRead(orderId: string, supplierName: string, readerRole: 'ADMIN' | 'SUPPLIER'): Promise<void> {
       let query = supabase.from('chat_messages').update({ is_read: true }).eq('order_id', orderId);
-      const escapedName = supplierName.split('"').join('\"'); 
+      const escapedName = supplierName.split('"').join('"'); 
       
       if (readerRole === 'ADMIN') {
           query = query.eq('sender_name', escapedName).eq('sender_role', 'SUPPLIER');
@@ -671,7 +649,7 @@ export class SupabaseService {
   static async deleteChatHistory(orderId: string, supplierName?: string): Promise<void> {
       let query = supabase.from('chat_messages').delete().eq('order_id', orderId);
       if (supplierName) {
-          const escapedName = supplierName.split('"').join('\\"');
+          const escapedName = supplierName.split('"').join('\"');
           query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
       }
       const { error } = await query;
@@ -687,7 +665,7 @@ export class SupabaseService {
       if (!isArchived) supabase.rpc('archive_old_chats').then(() => {});
       let query = supabase.from('chat_messages').select('*').eq('is_archived', isArchived).order('created_at', { ascending: false }).limit(500);
       if (filterBySupplierName) {
-          const escapedName = filterBySupplierName.split('"').join('\\"');
+          const escapedName = filterBySupplierName.split('"').join('\"');
           query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
       }
       const { data, error } = await query;
@@ -701,7 +679,7 @@ export class SupabaseService {
           if (!threads[oid][supplierKey]) {
               threads[oid][supplierKey] = { 
                   lastMessage: msg.message, 
-                  lastAuthorName: msg.sender_name, // Сохраняем автора последнего сообщения
+                  lastAuthorName: msg.sender_name, 
                   time: msg.created_at, 
                   unread: 0 
               };
@@ -713,7 +691,7 @@ export class SupabaseService {
   }
 
   static async archiveChat(orderId: string, supplierName: string): Promise<void> {
-      const escapedName = supplierName.split('"').join('\\"');
+      const escapedName = supplierName.split('"').join('\"');
       const { error } = await supabase.from('chat_messages').update({ is_archived: true }).eq('order_id', orderId).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
       if (error) throw error;
   }

@@ -5,7 +5,7 @@ interface UseOrdersInfiniteProps {
     searchQuery: string;
     statusFilter?: string;
     clientPhone?: string;
-    brandFilter?: string | null;
+    brandFilter?: string[] | null; // Changed to array
     onlyWithMyOffersName?: string;
     sortDirection: 'asc' | 'desc';
     limit?: number;

@@ -21,12 +21,17 @@ export const BuyerInterface: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'new' | 'history' | 'hot'>('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [activeBrand, setActiveBrand] = useState<string | null>(null);
+  
+  const [activeBrands, setActiveBrands] = useState<string[]>([]);
+  
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
-  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]); // Все бренды
+  const [historyBrands, setHistoryBrands] = useState<string[]>([]); // Бренды поставщика
+  
   const [marketStats, setMarketStats] = useState({ today: 0, week: 0, month: 0, total: 0, leader: 'N/A' });
   const [statsLoading, setStatsLoading] = useState(false);
 
@@ -64,36 +69,29 @@ export const BuyerInterface: React.FC = () => {
   } = useOrdersInfinite({
       searchQuery,
       statusFilter: activeTab === 'new' ? 'В обработке' : undefined,
-      brandFilter: activeBrand,
+      brandFilter: activeBrands.length > 0 ? activeBrands : null,
       onlyWithMyOffersName: activeTab === 'history' ? buyerAuth?.name : undefined,
       excludeOffersFrom: activeTab === 'new' ? buyerAuth?.name : undefined,
       sortDirection: 'desc',
       limit: 20,
-      buyerToken: buyerAuth?.token // Используем ТОКЕН из базы, а не телефон
+      buyerToken: buyerAuth?.token 
   });
 
   const orders = useMemo(() => {
       let result = data?.pages.flatMap(page => page.data) || [];
-      
-      // Задача 2.4: Таб "Горящие" (created_at > 3 дней и 0 предложений)
       if (activeTab === 'hot') {
           const threeDaysAgo = new Date();
           threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-          
           return result.filter(o => {
-              // Парсим дату "04.01.2026, 12:00:00"
               const parts = o.createdAt.split(',')[0].split('.');
               const orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
               return orderDate < threeDaysAgo && (!o.offers || o.offers.length === 0);
           });
       }
-      
       return result;
   }, [data, activeTab]);
 
   // --- Effects ---
-  
-  // Чат: получение количества непрочитанных
   const fetchUnreadCount = useCallback(async () => {
       if (!buyerAuth?.name) return;
       try {
@@ -108,17 +106,18 @@ export const BuyerInterface: React.FC = () => {
       return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
-  // Load Brands & Stats
   useEffect(() => {
       if (!buyerAuth) return;
       const loadInitialData = async () => {
           setStatsLoading(true);
           try {
-              const [brands, stats] = await Promise.all([
-                  SupabaseService.getSellerBrands(buyerAuth.name),
+              const [brands, histBrands, stats] = await Promise.all([
+                  SupabaseService.getBrandsList(),
+                  SupabaseService.getSupplierUsedBrands(buyerAuth.name), // Ваши бренды
                   SupabaseService.getMarketStats()
               ]);
               setAvailableBrands(brands);
+              setHistoryBrands(histBrands);
               setMarketStats(stats);
           } catch (e) { console.error(e); }
           finally { setStatsLoading(false); }
@@ -134,7 +133,9 @@ export const BuyerInterface: React.FC = () => {
           await SupabaseService.createOffer(orderId, buyerAuth.name, items, '', buyerAuth.phone);
           setExpandedId(null);
           setSuccessToast({ message: 'Предложение отправлено!', id: Date.now().toString() });
-          refetch(); // Обновляем список
+          refetch();
+          // Обновляем список "моих" брендов, если добавился новый
+          SupabaseService.getSupplierUsedBrands(buyerAuth.name).then(setHistoryBrands);
       } catch (e: any) {
           alert('Ошибка при отправке: ' + (e.message || JSON.stringify(e)));
       } finally {
@@ -179,8 +180,10 @@ export const BuyerInterface: React.FC = () => {
                 <BuyerToolbar 
                     activeTab={activeTab} setActiveTab={setActiveTab}
                     searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-                    activeBrand={activeBrand} setActiveBrand={setActiveBrand}
-                    availableBrands={availableBrands} counts={{ new: 0, history: 0 }} 
+                    activeBrands={activeBrands} setActiveBrands={setActiveBrands}
+                    availableBrands={availableBrands} // Все
+                    historyBrands={historyBrands}     // Персональные
+                    counts={{ new: 0, history: 0 }} 
                     onRefresh={() => refetch()} isSyncing={isLoading || isFetchingNextPage}
                 />
                 <BuyerOrdersList 

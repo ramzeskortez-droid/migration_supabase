@@ -1,107 +1,275 @@
 import React, { useState } from 'react';
-import { Search, RefreshCw, Car, Flame, X } from 'lucide-react';
+import { Search, RefreshCw, Car, Flame, X, Plus } from 'lucide-react';
 
 interface BuyerToolbarProps {
+
   activeTab: 'new' | 'history' | 'hot';
+
   setActiveTab: (tab: 'new' | 'history' | 'hot') => void;
+
   searchQuery: string;
+
   setSearchQuery: (query: string) => void;
-  activeBrand: string | null;
-  setActiveBrand: (brand: string | null) => void;
+
+  activeBrands: string[]; 
+
+  setActiveBrands: (brands: string[]) => void;
+
   availableBrands: string[];
+
+  historyBrands?: string[]; // Новое свойство
+
   counts: { new: number, history: number };
+
   onRefresh: () => void;
+
   isSyncing: boolean;
+
 }
 
+
+
 export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
+
   activeTab, setActiveTab, searchQuery, setSearchQuery, 
-  activeBrand, setActiveBrand, availableBrands, counts, 
+
+  activeBrands = [], setActiveBrands, availableBrands = [], historyBrands = [], counts, 
+
   onRefresh, isSyncing
+
 }) => {
+
   const [brandSearch, setBrandSearch] = useState('');
+
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
 
+
+
   const filteredBrands = availableBrands.filter(b => 
+
     b.toLowerCase().includes(brandSearch.toLowerCase())
+
   );
 
+
+
+  const toggleBrand = (brand: string) => {
+
+      if (activeBrands.includes(brand)) {
+
+          setActiveBrands(activeBrands.filter(b => b !== brand));
+
+      } else {
+
+          setActiveBrands([...activeBrands, brand]);
+
+      }
+
+  };
+
+
+
   return (
+
     <>
+
       <div className="space-y-4">
+
          {/* Основной поиск */}
+
          <div className="relative group flex items-center">
+
             <Search className="absolute left-6 text-slate-400" size={20}/>
+
             <input 
+
                 value={searchQuery} 
+
                 onChange={e => setSearchQuery(e.target.value)} 
-                placeholder="Поиск по VIN или модели..." 
+
+                placeholder="Поиск по VIN, модели или ID..." 
+
                 className="w-full pl-14 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-300 shadow-sm transition-all" 
+
             />
+
          </div>
 
-         {/* Умный фильтр брендов (Задача 2.3) */}
+
+
+         {/* Умный фильтр брендов (Мультивыбор) */}
+
          <div className="flex flex-wrap items-center gap-3">
+
             <div className="relative">
-                <button 
-                    onClick={() => setShowBrandDropdown(!showBrandDropdown)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${activeBrand ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'}`}
-                >
-                    <Car size={14} />
-                    {activeBrand || 'Все марки'}
-                </button>
 
-                {showBrandDropdown && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
-                        <input 
-                            autoFocus
-                            value={brandSearch}
-                            onChange={(e) => setBrandSearch(e.target.value)}
-                            placeholder="Найти бренд..."
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs outline-none mb-2 font-bold"
-                        />
-                        <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                            <button 
-                                onClick={() => { setActiveBrand(null); setShowBrandDropdown(false); }}
-                                className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-[10px] font-bold uppercase text-slate-400"
-                            >
-                                Все марки
-                            </button>
-                            {filteredBrands.map(brand => (
-                                <button 
-                                    key={brand}
-                                    onClick={() => { setActiveBrand(brand); setShowBrandDropdown(false); }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-[10px] font-black uppercase ${activeBrand === brand ? 'text-indigo-600 bg-indigo-50' : 'text-slate-600'}`}
-                                >
-                                    {brand}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
+                <div className="flex gap-2">
 
-            {activeBrand && (
-                <button 
-                    onClick={() => setActiveBrand(null)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase hover:bg-slate-200 transition-colors"
-                >
-                    {activeBrand} <X size={12} />
-                </button>
-            )}
-
-            {/* Быстрые теги (Топ-5 марок для удобства) */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
-                {availableBrands.slice(0, 5).map(brand => (
                     <button 
-                        key={brand} 
-                        onClick={() => setActiveBrand(activeBrand === brand ? null : brand)}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeBrand === brand ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50'}`}
+
+                        onClick={() => setShowBrandDropdown(!showBrandDropdown)}
+
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${activeBrands?.length > 0 ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'}`}
+
                     >
-                        {brand}
+
+                            <Car size={14} />
+
+                            Бренды {activeBrands?.length > 0 && `(${activeBrands.length})`}
+
+                        </button>
+
+                        
+
+                        {/* Кнопка Плюс (для дополнительного добавления, как просили) */}
+
+                        <button 
+
+                            onClick={() => setShowBrandDropdown(true)}
+
+                            className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-500 border border-slate-200 transition-colors"
+
+                        >
+
+                            <Plus size={14}/>
+
+                        </button>
+
+                    </div>
+
+
+
+                    {showBrandDropdown && (
+
+                        <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
+
+                            <input 
+
+                                autoFocus
+
+                                value={brandSearch}
+
+                                onChange={(e) => setBrandSearch(e.target.value)}
+
+                                placeholder="Найти бренд..."
+
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs outline-none mb-2 font-bold"
+
+                            />
+
+                            <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
+
+                                {filteredBrands.length === 0 && (
+
+                                    <div className="p-2 text-center text-[10px] text-slate-400">Ничего не найдено</div>
+
+                                )}
+
+                                {filteredBrands.map(brand => {
+
+                                    const isSelected = activeBrands.includes(brand);
+
+                                    return (
+
+                                        <button 
+
+                                            key={brand}
+
+                                            onClick={() => toggleBrand(brand)}
+
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-black uppercase flex justify-between items-center ${isSelected ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+
+                                        >
+
+                                            {brand}
+
+                                            {isSelected && <Check size={12} />}
+
+                                        </button>
+
+                                    );
+
+                                })}
+
+                            </div>
+
+                        </div>
+
+                    )}
+
+                </div>
+
+
+
+                {/* Выбранные бренды (Теги) */}
+
+                {activeBrands.map(brand => (
+
+                    <button 
+
+                        key={brand}
+
+                        onClick={() => toggleBrand(brand)}
+
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[9px] font-black uppercase hover:bg-indigo-200 transition-colors"
+
+                    >
+
+                        {brand} <X size={12} />
+
                     </button>
+
                 ))}
-            </div>
+
+
+
+                {activeBrands.length > 0 && (
+
+                    <button 
+
+                        onClick={() => setActiveBrands([])}
+
+                        className="text-[9px] font-bold text-slate-400 hover:text-red-500 underline decoration-dashed"
+
+                    >
+
+                        Сбросить
+
+                    </button>
+
+                )}
+
+
+
+                {/* Быстрые теги (Персональные бренды поставщика) */}
+
+                {activeBrands.length === 0 && historyBrands.length > 0 && (
+
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+
+                        {historyBrands.map(brand => (
+
+                            <button 
+
+                                key={brand} 
+
+                                onClick={() => toggleBrand(brand)}
+
+                                className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all whitespace-nowrap bg-white border border-slate-100 text-slate-400 hover:bg-slate-50"
+
+                            >
+
+                                {brand}
+
+                            </button>
+
+                        ))}
+
+                    </div>
+
+                )}
+
+
          </div>
       </div>
 
@@ -150,3 +318,8 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
     </>
   );
 };
+
+// Simple Check Icon Component
+const Check = ({ size }: { size: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+);
