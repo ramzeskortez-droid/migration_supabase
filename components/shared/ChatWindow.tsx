@@ -11,6 +11,7 @@ interface ChatWindowProps {
   currentUserRole: 'ADMIN' | 'SUPPLIER';
   itemName?: string;
   onNavigateToOrder?: (orderId: string) => void;
+  onRead?: (orderId: string, supplierName: string) => void;
 }
 
 // -- Sub-components for Optimization --
@@ -112,7 +113,7 @@ const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (ms
 // -- Main Component --
 
 const ChatWindowComponent: React.FC<ChatWindowProps> = ({
-  orderId, offerId, supplierName, currentUserRole, itemName, onNavigateToOrder
+  orderId, offerId, supplierName, currentUserRole, itemName, onNavigateToOrder, onRead
 }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -147,25 +148,31 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               if (data.length > 0 && prev.length > 0) {
                   if (data[data.length - 1].id !== prev[prev.length - 1].id) return data;
               }
+              if (JSON.stringify(prev) !== JSON.stringify(data)) return data;
               if (data.length === 0 && prev.length === 0) return prev;
-              return JSON.stringify(prev) !== JSON.stringify(data) ? data : prev;
+              return prev;
           });
-          
-          if (currentUserRole === 'ADMIN') {
-             const hasUnread = data.some(m => m.sender_role === 'SUPPLIER' && !m.is_read);
-             if (hasUnread) {
-                 await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
-             }
-          } else {
-             const hasUnread = data.some(m => m.sender_role === 'ADMIN' && !m.is_read);
-             if (hasUnread) {
-                 await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
-             }
-          }
       } catch (e) {
           console.error(e);
       }
   };
+
+  // Автоматически помечать сообщения как прочитанные
+  useEffect(() => {
+      if (!messages.length) return;
+
+      const markRead = async () => {
+          if (onRead) onRead(orderId, supplierName);
+
+          if (currentUserRole === 'ADMIN') {
+             await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
+          } else {
+             await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
+          }
+      };
+      
+      markRead();
+  }, [messages, currentUserRole, orderId, supplierName, onRead]);
 
   useEffect(() => {
       fetchMessages();

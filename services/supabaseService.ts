@@ -380,11 +380,27 @@ export class SupabaseService {
   }
 
   static async markChatAsRead(orderId: string, supplierName: string, readerRole: 'ADMIN' | 'SUPPLIER'): Promise<void> {
+      console.log('markChatAsRead CALL:', { orderId, supplierName, readerRole });
+      
       let query = supabase.from('chat_messages').update({ is_read: true }).eq('order_id', orderId);
-      const escapedName = supplierName.split('"').join('\\"');
-      if (readerRole === 'ADMIN') query = query.eq('sender_name', escapedName).eq('sender_role', 'SUPPLIER');
-      else query = query.eq('sender_role', 'ADMIN').eq('recipient_name', escapedName);
-      await query;
+      const escapedName = supplierName.split('"').join('\"'); // Используем одинарную экранизацию для JS строки, которая станет \" в JSON
+      
+      if (readerRole === 'ADMIN') {
+          // Админ читает сообщения от Поставщика
+          // sender_name должен быть равен supplierName
+          console.log('markChatAsRead QUERY (ADMIN): sender_name =', escapedName);
+          query = query.eq('sender_name', escapedName).eq('sender_role', 'SUPPLIER');
+      } else {
+          // Поставщик читает сообщения от Админа
+          // recipient_name должен быть равен supplierName (так как Админ писал ЕМУ)
+          console.log('markChatAsRead QUERY (SUPPLIER): recipient_name =', escapedName);
+          query = query.eq('sender_role', 'ADMIN').eq('recipient_name', escapedName);
+      }
+
+      const { data, error } = await query.select(); // Добавляем select, чтобы увидеть результат
+      
+      if (error) console.error('markChatAsRead ERROR:', error);
+      else console.log('markChatAsRead SUCCESS. Updated rows:', data?.length);
   }
 
   static async deleteChatHistory(orderId: string, supplierName?: string): Promise<void> {

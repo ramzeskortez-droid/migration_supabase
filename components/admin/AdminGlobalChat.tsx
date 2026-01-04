@@ -68,6 +68,19 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
       }
   }, [onNavigateToOrder, onClose]);
 
+  const handleRead = (orderId: string, supplierName: string) => {
+      setThreads(prev => {
+          const newThreads = { ...prev };
+          if (newThreads[orderId] && newThreads[orderId][supplierName]) {
+              newThreads[orderId][supplierName] = {
+                  ...newThreads[orderId][supplierName],
+                  unread: 0
+              };
+          }
+          return newThreads;
+      });
+  };
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -192,6 +205,7 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                                 supplierName={selectedSupplier}
                                 currentUserRole="ADMIN"
                                 onNavigateToOrder={handleNavigate}
+                                onRead={handleRead}
                             />
                         </div>
                     </div>
