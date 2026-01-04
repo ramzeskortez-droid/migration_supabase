@@ -8,6 +8,7 @@ import { SellerStats } from './seller/SellerStats';
 import { SellerToolbar } from './seller/SellerToolbar';
 import { SellerOrdersList } from './seller/SellerOrdersList';
 import { SellerGlobalChat } from './seller/SellerGlobalChat';
+import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
 
 export const SellerInterface: React.FC = () => {
   // --- Auth ---
@@ -15,12 +16,6 @@ export const SellerInterface: React.FC = () => {
       try { return JSON.parse(localStorage.getItem('seller_auth') || 'null'); } catch { return null; }
   });
   const [showAuthModal, setShowAuthModal] = useState(!sellerAuth);
-
-  // --- Data ---
-  const [orders, setOrders] = useState<Order[]>([]); // Raw orders (up to 1000)
-  const [marketStats, setMarketStats] = useState({ today: 0, week: 0, month: 0, total: 0, leader: 'N/A' });
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [statsLoading, setStatsLoading] = useState(false);
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
@@ -31,70 +26,14 @@ export const SellerInterface: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  const [marketStats, setMarketStats] = useState({ today: 0, week: 0, month: 0, total: 0, leader: 'N/A' });
+  const [statsLoading, setStatsLoading] = useState(false);
 
   // --- Editing Drafts ---
   const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
 
-  // --- Pagination & Sort ---
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20); // Default 20 items per page
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
-
-  // --- Effects ---
-  
-  // 1. Load Orders (Polling)
-  const fetchOrders = useCallback(async (silent = false) => {
-      if (!sellerAuth) return;
-      if (!silent) setIsSyncing(true);
-      try {
-          const { data } = await SupabaseService.getOrders(1, 1000, 'created_at', 'desc', '');
-          setOrders(data);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setIsSyncing(false);
-      }
-  }, [sellerAuth]);
-
-  // Чат: получение количества непрочитанных
-  const fetchUnreadCount = useCallback(async () => {
-      if (!sellerAuth?.name) return;
-      try {
-          const { count } = await SupabaseService.getUnreadChatCountForSupplier(sellerAuth.name);
-          setUnreadChatCount(count);
-      } catch (e) {}
-  }, [sellerAuth]);
-
-  useEffect(() => {
-      fetchOrders();
-      fetchUnreadCount();
-      const interval = setInterval(() => {
-          fetchOrders(true);
-          fetchUnreadCount();
-      }, 15000);
-      return () => clearInterval(interval);
-  }, [fetchOrders, fetchUnreadCount]);
-
-  // 2. Load Stats (Independent)
-  useEffect(() => {
-      if (!sellerAuth) return;
-      const loadStats = async () => {
-          setStatsLoading(true);
-          try {
-              const stats = await SupabaseService.getMarketStats();
-              setMarketStats(stats);
-          } catch (e) { console.error(e); }
-          finally { setStatsLoading(false); }
-      };
-      loadStats();
-  }, [sellerAuth]);
-
-  // Reset page when filters change
-  useEffect(() => {
-      setCurrentPage(1);
-  }, [activeTab, searchQuery, activeBrand]);
-
-  // --- Handlers ---
+  // --- Handlers Pre-definition ---
   const handleLogin = (name: string, phone: string) => {
       const auth = { name, phone };
       setSellerAuth(auth);
@@ -108,22 +47,76 @@ export const SellerInterface: React.FC = () => {
       setShowAuthModal(true);
   };
 
+  const getMyOffer = useCallback((order: Order) => {
+      if (!sellerAuth?.name) return null;
+      return order.offers?.find(off => 
+        String(off.clientName || '').trim().toUpperCase() === sellerAuth.name.trim().toUpperCase()
+      ) || null;
+  }, [sellerAuth]);
+
+  // --- React Query Infinite Scroll ---
+  const {
+      data,
+      fetchNextPage,
+      hasNextPage,
+      isFetchingNextPage,
+      isLoading,
+      refetch
+  } = useOrdersInfinite({
+      searchQuery,
+      statusFilter: activeTab === 'new' ? 'В обработке' : undefined,
+      brandFilter: activeBrand,
+      onlyWithMyOffersName: activeTab === 'history' ? sellerAuth?.name : undefined,
+      sortDirection: 'desc',
+      limit: 20
+  });
+
+  const orders = useMemo(() => data?.pages.flatMap(page => page.data) || [], [data]);
+
+  // --- Effects ---
+  
+  // Чат: получение количества непрочитанных
+  const fetchUnreadCount = useCallback(async () => {
+      if (!sellerAuth?.name) return;
+      try {
+          const { count } = await SupabaseService.getUnreadChatCountForSupplier(sellerAuth.name);
+          setUnreadChatCount(count);
+      } catch (e) {}
+  }, [sellerAuth]);
+
+  useEffect(() => {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  // Load Brands & Stats
+  useEffect(() => {
+      if (!sellerAuth) return;
+      const loadInitialData = async () => {
+          setStatsLoading(true);
+          try {
+              const [brands, stats] = await Promise.all([
+                  SupabaseService.getSellerBrands(sellerAuth.name),
+                  SupabaseService.getMarketStats()
+              ]);
+              setAvailableBrands(brands);
+              setMarketStats(stats);
+          } catch (e) { console.error(e); }
+          finally { setStatsLoading(false); }
+      };
+      loadInitialData();
+  }, [sellerAuth]);
+
   const handleSubmitOffer = async (orderId: string, items: any[]) => {
       if (isSubmitting) return;
       setIsSubmitting(true);
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
       try {
-          await SupabaseService.createOffer(orderId, sellerAuth.name, items, order.vin, sellerAuth.phone);
-          setOrders(prev => prev.map(o => o.id === orderId ? { 
-              ...o, 
-              offers: [...(o.offers || []), { clientName: sellerAuth.name, items } as any] 
-          } : o));
+          await SupabaseService.createOffer(orderId, sellerAuth.name, items, '', sellerAuth.phone);
           setExpandedId(null);
           setSuccessToast({ message: 'Предложение отправлено!', id: Date.now().toString() });
+          refetch(); // Обновляем список
       } catch (e: any) {
-          console.error(e);
           alert('Ошибка при отправке: ' + (e.message || JSON.stringify(e)));
       } finally {
           setIsSubmitting(false);
@@ -132,120 +125,8 @@ export const SellerInterface: React.FC = () => {
 
   const handleNavigateToOrder = (orderId: string) => {
       setSearchQuery(orderId);
-      const order = orders.find(o => o.id === orderId);
-      if (order) {
-          const isHistory = !!order.offers?.find(off => 
-            off.clientName?.trim().toUpperCase() === sellerAuth.name.trim().toUpperCase()
-          );
-          setActiveTab(isHistory ? 'history' : 'new');
-          setExpandedId(orderId);
-      }
+      setExpandedId(orderId);
   };
-
-  // --- Derived Data ---
-  
-  const getMyOffer = useCallback((order: Order) => {
-      if (!sellerAuth?.name) return null;
-      const nameToMatch = sellerAuth.name.trim().toUpperCase();
-      return order.offers?.find(off => 
-        String(off.clientName || '').trim().toUpperCase() === nameToMatch
-      ) || null;
-  }, [sellerAuth]);
-
-  const hasSentOfferByMe = useCallback((order: Order) => {
-      if (!sellerAuth) return false;
-      return !!getMyOffer(order);
-  }, [getMyOffer, sellerAuth]);
-
-  // Filter & Sort
-  const filteredOrders = useMemo(() => {
-      if (!sellerAuth) return [];
-      
-      let result = orders.filter(o => {
-        const isSentByMe = hasSentOfferByMe(o);
-        const isRelevant = activeTab === 'new' 
-          ? ((o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !isSentByMe && !o.isRefused)
-          : isSentByMe;
-        
-        if (!isRelevant) return false;
-        
-        if (activeBrand) {
-            const brand = o.car?.model?.split(' ')[0].toUpperCase() || '';
-            const carBrand = o.car?.brand?.toUpperCase() || '';
-            if (brand !== activeBrand && carBrand !== activeBrand) return false;
-        }
-
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            const match = 
-                o.id.toLowerCase().includes(q) ||
-                o.vin.toLowerCase().includes(q) ||
-                (o.car?.model || '').toLowerCase().includes(q) ||
-                (o.car?.brand || '').toLowerCase().includes(q) ||
-                o.items.some(i => i.name.toLowerCase().includes(q));
-            if (!match) return false;
-        }
-        
-        return true;
-      });
-
-      if (sortConfig) {
-          result.sort((a, b) => {
-              let valA: any = '';
-              let valB: any = '';
-              switch (sortConfig.key) {
-                  case 'id':
-                      valA = parseInt(a.id.replace(/\D/g, '')) || 0;
-                      valB = parseInt(b.id.replace(/\D/g, '')) || 0;
-                      break;
-                  case 'brand':
-                      valA = (a.car?.brand || '').toLowerCase();
-                      valB = (b.car?.brand || '').toLowerCase();
-                      break;
-                  case 'model':
-                      valA = (a.car?.model || '').toLowerCase();
-                      valB = (b.car?.model || '').toLowerCase();
-                      break;
-                  case 'year':
-                      valA = Number(a.car?.year || 0);
-                      valB = Number(b.car?.year || 0);
-                      break;
-                  case 'date':
-                      valA = new Date(a.createdAt).getTime();
-                      valB = new Date(b.createdAt).getTime();
-                      break;
-                  case 'status':
-                      valA = (a.statusAdmin || '').toLowerCase();
-                      valB = (b.statusAdmin || '').toLowerCase();
-                      break;
-                  default:
-                      valA = a.id;
-                      valB = b.id;
-              }
-              if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-              if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-              return 0;
-          });
-      }
-      return result;
-  }, [orders, activeTab, activeBrand, searchQuery, sortConfig, sellerAuth, hasSentOfferByMe]);
-
-  const availableBrands = useMemo(() => {
-      const brands = new Set<string>();
-      orders.forEach(o => {
-          if (o.status !== 'ЗАКРЫТ' && !o.isRefused) {
-             const brand = o.car?.model?.split(' ')[0].toUpperCase();
-             if (brand) brands.add(brand);
-          }
-      });
-      return Array.from(brands).sort();
-  }, [orders]);
-
-  const tabCounts = useMemo(() => {
-      const newCount = orders.filter(o => !hasSentOfferByMe(o) && (o.statusAdmin === 'ОТКРЫТ' || o.statusAdmin === 'В обработке') && !o.isProcessed && !o.isRefused && o.visibleToClient === 'Y').length;
-      const historyCount = orders.filter(o => hasSentOfferByMe(o)).length;
-      return { new: newCount, history: historyCount };
-  }, [orders, hasSentOfferByMe]);
 
   const getOfferStatus = useCallback((order: Order) => {
     const myOffer = getMyOffer(order);
@@ -260,12 +141,7 @@ export const SellerInterface: React.FC = () => {
     else return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
   }, [getMyOffer]);
 
-  const handleSort = (key: string) => {
-      setSortConfig(current => {
-          if (current?.key === key) return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
-          return { key, direction: 'asc' };
-      });
-  };
+  const sortConfig = { key: 'id', direction: 'desc' as const };
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
@@ -285,17 +161,18 @@ export const SellerInterface: React.FC = () => {
                     activeTab={activeTab} setActiveTab={setActiveTab}
                     searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                     activeBrand={activeBrand} setActiveBrand={setActiveBrand}
-                    availableBrands={availableBrands} counts={tabCounts}
-                    onRefresh={() => fetchOrders()} isSyncing={isSyncing}
+                    availableBrands={availableBrands} counts={{ new: 0, history: 0 }} 
+                    onRefresh={() => refetch()} isSyncing={isLoading || isFetchingNextPage}
                 />
                 <SellerOrdersList 
-                    orders={filteredOrders} totalOrders={filteredOrders.length}
+                    orders={orders}
                     expandedId={expandedId} onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
+                    onLoadMore={() => fetchNextPage()}
+                    hasMore={!!hasNextPage}
+                    isLoading={isFetchingNextPage}
                     editingItemsMap={editingItemsMap} setEditingItemsMap={setEditingItemsMap}
                     onSubmit={handleSubmitOffer} isSubmitting={isSubmitting}
-                    currentPage={currentPage} itemsPerPage={itemsPerPage}
-                    setCurrentPage={setCurrentPage} setItemsPerPage={setItemsPerPage}
-                    sortConfig={sortConfig} onSort={handleSort}
+                    sortConfig={sortConfig} onSort={() => {}}
                     getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
                 />
                 <SellerGlobalChat 

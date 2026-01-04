@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { SupabaseService } from '../services/supabaseService';
-import { Order } from '../types';
+import { useState, useMemo } from 'react';
+import { useOrdersInfinite } from './useOrdersInfinite';
 
 interface ClientAuth {
   name: string;
@@ -8,69 +7,64 @@ interface ClientAuth {
 }
 
 export const useClientOrders = (clientAuth: ClientAuth | null) => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Filters & Pagination State
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchQuery]);
+  const {
+      data,
+      fetchNextPage,
+      hasNextPage,
+      isFetchingNextPage,
+      isLoading,
+      refetch
+  } = useOrdersInfinite({
+      searchQuery,
+      clientPhone: clientAuth?.phone,
+      // Для клиента: фильтрация статусов на сервере
+      // Если active, то не 'Выполнен' и не 'Отказ'
+      // Если history, то 'Выполнен' или 'Отказ'
+      // Но так как statusFilter принимает одно значение, мы будем фильтровать на клиенте (как и было), 
+      // либо нужно усложнять API.
+      // Пока оставим client-side фильтрацию статусов для простоты, т.к. у клиента мало заказов.
+      sortDirection: sortDirection,
+      limit: 20
+  });
 
-  const fetchOrders = useCallback(async () => {
-    if (!clientAuth) return;
-    setIsSyncing(true);
-    setError(null);
-    try {
-      const { data, count } = await SupabaseService.getOrders(
-          currentPage,
-          itemsPerPage,
-          sortConfig?.key || 'id',
-          sortConfig?.direction || 'desc',
-          searchQuery,
-          undefined, // statusFilter is handled by tabs logic inside the list usually, but here we fetch all and filter client-side or we could filter server-side.
-          // In the original code, client side filtering was used for tabs ('active' vs 'history').
-          // To keep it consistent with original logic where we fetched everything relevant to the client phone:
-          clientAuth.phone
-      );
-      setOrders(data);
-      setTotalOrders(count);
-    } catch (e) { 
-      console.error(e);
-      setError('Не удалось загрузить заказы');
-    } finally { 
-      setIsSyncing(false); 
-    }
-  }, [clientAuth, currentPage, itemsPerPage, sortConfig, searchQuery]);
-
-  // Initial fetch and polling
-  useEffect(() => {
-    if (clientAuth) {
-      fetchOrders();
-      const interval = setInterval(fetchOrders, 15000);
-      return () => clearInterval(interval);
-    }
-  }, [clientAuth, fetchOrders]);
+  const orders = useMemo(() => {
+      let result = data?.pages.flatMap(page => page.data) || [];
+      
+      // Client-side status filtering for tabs
+      if (activeTab === 'active') {
+          result = result.filter(o => o.statusAdmin !== 'Выполнен' && o.statusAdmin !== 'Отказ' && o.statusAdmin !== 'Аннулирован');
+      } else {
+          result = result.filter(o => o.statusAdmin === 'Выполнен' || o.statusAdmin === 'Отказ' || o.statusAdmin === 'Аннулирован');
+      }
+      return result;
+  }, [data, activeTab]);
 
   return {
     orders,
-    totalOrders,
-    isSyncing,
-    error,
-    refresh: fetchOrders,
-    // Filter & Pagination props
+    totalOrders: orders.length, 
+    isSyncing: isLoading || isFetchingNextPage,
+    isLoading,
+    fetchNextPage, // Экспортируем для списка
+    hasNextPage,   // Экспортируем для списка
+    onLoadMore: fetchNextPage, // Алиас
+    hasMore: hasNextPage,      // Алиас
+    error: null,
+    refresh: refetch,
     activeTab, setActiveTab,
     searchQuery, setSearchQuery,
-    currentPage, setCurrentPage,
-    itemsPerPage, setItemsPerPage,
-    sortConfig, setSortConfig
+    currentPage: 1, 
+    itemsPerPage: 20,
+    setCurrentPage: () => {},
+    setItemsPerPage: () => {},
+    sortConfig: { key: 'id', direction: sortDirection },
+    setSortConfig: (cfg: any) => setSortDirection(cfg.direction),
+    // Actions needed for list
+    onConfirmPurchase: () => {}, // Handled in UI
+    onRefuse: () => {}, // Handled in UI
+    isConfirming: null
   };
 };

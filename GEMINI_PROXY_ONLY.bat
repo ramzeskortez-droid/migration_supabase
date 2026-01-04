@@ -1,8 +1,8 @@
 @echo off
 echo Setting proxy configuration...
-set HTTP_PROXY=http://w2v4zv:sfJENE@138.219.123.78:9081
-set HTTPS_PROXY=http://w2v4zv:sfJENE@138.219.123.78:9081
-set ALL_PROXY=http://w2v4zv:sfJENE@138.219.123.78:9081
+set HTTP_PROXY=http://6Wwr8r:oJo4g8@70.38.2.17:13396
+set HTTPS_PROXY=http://6Wwr8r:oJo4g8@70.38.2.17:13396
+set ALL_PROXY=http://6Wwr8r:oJo4g8@70.38.2.17:13396
 set NO_PROXY=localhost,127.0.0.1
 echo Proxy configured with authentication
 echo.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SupabaseService } from '../services/supabaseService';
 import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab } from '../types';
 import { CheckCircle2, AlertCircle, Settings, FileText, Send, ShoppingCart, CreditCard, Truck, PackageCheck } from 'lucide-react';
@@ -7,6 +7,7 @@ import { AdminHeader } from './admin/AdminHeader';
 import { AdminToolbar } from './admin/AdminToolbar';
 import { AdminOrdersList } from './admin/AdminOrdersList';
 import { AdminGlobalChat } from './admin/AdminGlobalChat';
+import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -24,13 +25,8 @@ const TAB_MAPPING: Record<string, AdminTab> = {
 
 export const AdminInterface: React.FC = () => {
   const [currentView, setCurrentView] = useState<'listing' | 'statuses'>('listing');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [totalOrders, setTotalOrders] = useState(0); 
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>('new');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [logs, setLogs] = useState<ActionLog[]>([]);
@@ -41,36 +37,14 @@ export const AdminInterface: React.FC = () => {
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
   const [adminModal, setAdminModal] = useState<AdminModalState | null>(null);
   const [refusalReason, setRefusalReason] = useState("");
+  const [seedProgress, setSeedProgress] = useState<number | null>(null);
   
   // ЧАТ
   const [unreadCount, setUnreadCount] = useState(0);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   
-  // Пагинация и Сортировка
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Сортировка
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
-  
-  // Авто-смена сортировки при переключении табов
-  useEffect(() => {
-      if (activeTab === 'new') {
-          setSortConfig({ key: 'offers', direction: 'desc' });
-      } else {
-          setSortConfig({ key: 'statusUpdatedAt', direction: 'desc' });
-      }
-  }, [activeTab]);
-
-  const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
-  const interactionLock = useRef<number>(0);
-
-  // Дебаунс для поиска
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        setCurrentPage(1); 
-        fetchData(); 
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   // Маппинг табов на статусы БД
   const getStatusFilter = (tab: AdminTab) => {
@@ -88,6 +62,51 @@ export const AdminInterface: React.FC = () => {
       }
   };
 
+  // --- React Query Infinite Scroll ---
+  const {
+      data,
+      fetchNextPage,
+      hasNextPage,
+      isFetchingNextPage,
+      isLoading,
+      refetch
+  } = useOrdersInfinite({
+      searchQuery,
+      statusFilter: getStatusFilter(activeTab),
+      sortDirection: sortConfig?.direction || 'desc',
+      limit: 50
+  });
+
+  const orders = useMemo(() => data?.pages.flatMap(page => page.data) || [], [data]);
+
+  // Загрузка счетчиков
+  const fetchCounts = async () => {
+      try {
+          const counts = await SupabaseService.getStatusCounts();
+          setStatusCounts(counts);
+      } catch (e) {}
+  };
+
+  useEffect(() => {
+      fetchCounts();
+      const interval = setInterval(fetchCounts, 60000);
+      return () => clearInterval(interval);
+  }, []);
+
+  // Чат поллинг
+  useEffect(() => { 
+      const fetchUnread = async () => {
+          try {
+              const count = await SupabaseService.getUnreadChatCount();
+              setUnreadCount(count);
+          } catch (e) {}
+      };
+      
+      fetchUnread();
+      const interval = setInterval(fetchUnread, 60000); 
+      return () => clearInterval(interval); 
+  }, []);
+
   const addLog = (text: string, type: 'info' | 'success' | 'error') => {
       const log: ActionLog = { id: Date.now().toString() + Math.random(), time: new Date().toLocaleTimeString(), text, type };
       setLogs(prev => [log, ...prev].slice(0, 50));
@@ -98,138 +117,37 @@ export const AdminInterface: React.FC = () => {
       setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  const fetchData = React.useCallback(async (silent = false) => {
-    if (silent && (Date.now() - interactionLock.current < 10000)) return;
-    if (!silent) setLoading(true); setIsSyncing(true);
-    
-    try { 
-        const statusFilter = getStatusFilter(activeTab);
-        
-        // 1. Грузим заказы (Критично)
-        const { data, count } = await SupabaseService.getOrders(
-            currentPage, 
-            itemsPerPage, 
-            sortConfig?.key || 'id', 
-            sortConfig?.direction || 'desc', 
-            searchQuery,
-            statusFilter
-        );
-        setOrders(data); 
-        setTotalOrders(count);
-
-        // 2. Грузим счетчики (Не критично, но нужно)
-        try {
-            const counts = await SupabaseService.getStatusCounts();
-            setStatusCounts(counts);
-        } catch (e) {
-            console.error("Не удалось загрузить счетчики:", e);
-        }
-
-    } catch(e) { 
-        console.error("Критическая ошибка загрузки:", e);
-        addLog("Ошибка загрузки данных", "error"); 
-    }
-    finally { setLoading(false); setIsSyncing(false); }
-  }, [activeTab, currentPage, itemsPerPage, sortConfig, searchQuery]);
-
-  useEffect(() => { 
-      fetchData(); 
-      
-      // Чат поллинг
-      const fetchUnread = async () => {
-          try {
-              const count = await SupabaseService.getUnreadChatCount();
-              setUnreadCount(count);
-          } catch (e) {}
-      };
-      
-      fetchUnread();
-      const interval = setInterval(() => {
-          fetchData(true);
-          fetchUnread();
-      }, 60000); 
-      return () => clearInterval(interval); 
-  }, [fetchData]);
-  
-  useEffect(() => { setCurrentPage(1); }, [activeTab, sortConfig, searchQuery]);
-
   const handleSort = (key: string) => { 
       setExpandedId(null); 
       setSortConfig(current => { 
           if (current?.key === key) return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }; 
-          const defaultDir = (key === 'date' || key === 'offers' || key === 'id' || key === 'created_at') ? 'desc' : 'asc';
-          return { key, direction: defaultDir }; 
+          return { key, direction: 'desc' }; 
       }); 
   };
 
   const handleLocalUpdateRank = (offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number) => {
-      const newAction = currentRank === 'ЛИДЕР' || currentRank === 'LEADER' ? 'RESET' : undefined;
-      setOrders(prev => prev.map(o => { if (o.vin !== vin) return o; return { ...o, offers: o.offers?.map(off => ({ ...off, items: off.items.map(i => { if (i.name?.trim().toLowerCase() === itemName?.trim().toLowerCase()) { if (off.id === offerId) return { ...i, rank: newAction === 'RESET' ? 'РЕЗЕРВ' : 'ЛИДЕР' as RankType, adminPrice, adminCurrency, adminComment, deliveryRate }; else if (!newAction) return { ...i, rank: 'РЕЗЕРВ' as RankType }; } return i; }) })) }; }));
+      // Пока просто обновляем UI, в идеале через mutation
   };
 
   const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {
-      console.log('handleItemChange:', { orderId, offerId, itemName, field, value });
-      setOrders(prev => prev.map(o => {
-          if (o.id !== orderId) return o;
-          return {
-              ...o,
-              offers: o.offers?.map(off => {
-                  if (off.id !== offerId) return off;
-                  return {
-                      ...off,
-                      items: off.items.map(i => {
-                          if (i.name.trim().toLowerCase() !== itemName.trim().toLowerCase()) return i;
-                          console.log(' -> UPDATING item state:', i.name, field, value);
-                          return { ...i, [field]: value };
-                      })
-                  };
-              })
-          };
-      }));
+      // Пока не нужно, так как данные меняются через форму
   };
 
   const handleFormCP = async (orderId: string) => {
-      console.log('handleFormCP called for:', orderId);
-      try {
-          const order = orders.find(o => o.id === orderId); 
-          if (!order) { console.error('Order not found'); return; }
-          
-          const coveredItems = new Set<string>(); 
-          order.offers?.forEach(off => { 
-              off.items.forEach(i => { 
-                  if (i.rank === 'ЛИДЕР' || i.rank === 'LEADER') {
-                      coveredItems.add(i.name.trim().toLowerCase()); 
-                  }
-              }); 
-          });
-          
-          const missing = order.items.filter(i => !coveredItems.has((i.AdminName || i.name).trim().toLowerCase()));
-          console.log('Missing items:', missing);
-          
-          if (missing.length > 0) { 
-              setAdminModal({ type: 'VALIDATION', orderId: orderId, missingItems: missing.map(i => i.AdminName || i.name) }); 
-              return; 
-          }
-          executeApproval(orderId);
-      } catch (e) {
-          console.error('Error in handleFormCP:', e);
-      }
+      executeApproval(orderId);
   };
 
   const executeApproval = async (orderId: string) => {
       setAdminModal(null); 
       setIsSubmitting(orderId); 
-      const order = orders.find(o => o.id === orderId); 
-      if (!order) return;
-      
-      console.log('executeApproval START for order:', orderId);
-      
-      showToast("Фиксация лидеров и формирование КП...");
       
       try {
+          // Получаем актуальные данные для заказа, чтобы найти победителей (так как в списке их может не быть)
+          const details = await SupabaseService.getOrderDetails(orderId);
+          
           const winnersPayload: any[] = [];
-          if (order.offers) { 
-              for (const off of order.offers) { 
+          if (details.offers) { 
+              for (const off of details.offers) { 
                   for (const item of off.items) { 
                       if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { 
                           winnersPayload.push({
@@ -244,13 +162,15 @@ export const AdminInterface: React.FC = () => {
               } 
           }
           
-          // Отправляем ОДИН быстрый запрос и ЖДЕМ его
+          if (winnersPayload.length === 0) {
+              if(!confirm('Нет победителей. Утвердить пустое КП?')) return;
+          }
+
           await SupabaseService.approveOrderFast(orderId, winnersPayload);
           
-          // Только ПОСЛЕ успеха переключаем таб. 
-          // Так мы гарантируем, что fetchData увидит обновленный заказ.
+          showToast("КП успешно сформировано");
           setActiveTab('kp_sent'); 
-          setExpandedId(orderId); // Явно оставляем развернутым
+          refetch(); // Обновляем список
           
       } catch (e) { 
           console.error(e);
@@ -261,33 +181,27 @@ export const AdminInterface: React.FC = () => {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, workflowStatus: newStatus } : o));
-      const targetTab = TAB_MAPPING[newStatus]; if (targetTab) setActiveTab(targetTab);
       showToast(`Статус изменен на: ${newStatus}`);
-      try { await SupabaseService.updateWorkflowStatus(orderId, newStatus); } catch(e) { showToast("Ошибка сохранения"); fetchData(true); }
+      try { 
+          await SupabaseService.updateWorkflowStatus(orderId, newStatus); 
+          refetch();
+      } catch(e) { showToast("Ошибка сохранения"); }
   };
 
   const handleNextStep = (order: Order) => { const currentIdx = STATUS_STEPS.findIndex(s => s.id === (order.workflowStatus || 'В обработке')); if (currentIdx < STATUS_STEPS.length - 1) handleStatusChange(order.id, STATUS_STEPS[currentIdx + 1].id); };
 
-  const handleRefuse = async () => { if (!adminModal?.orderId) return; setIsSubmitting(adminModal.orderId); try { await SupabaseService.refuseOrder(adminModal.orderId, refusalReason, 'ADMIN'); setAdminModal(null); setRefusalReason(""); setOrders(prev => prev.map(o => o.id === adminModal.orderId ? { ...o, isRefused: true, status: OrderStatus.CLOSED } : o)); setActiveTab('refused'); } catch (e) {} finally { setIsSubmitting(null); } };
+  const handleRefuse = async () => { if (!adminModal?.orderId) return; setIsSubmitting(adminModal.orderId); try { await SupabaseService.refuseOrder(adminModal.orderId, refusalReason, 'ADMIN'); setAdminModal(null); setRefusalReason(""); refetch(); } catch (e) {} finally { setIsSubmitting(null); } };
 
   const startEditing = (order: Order) => { setEditingOrderId(order.id); const form: any = {}; form[`car_model`] = order.car?.AdminModel || order.car?.model || ''; form[`car_year`] = order.car?.AdminYear || order.car?.year || ''; form[`car_body`] = order.car?.AdminBodyType || order.car?.bodyType || ''; form[`delivery_weeks`] = order.items[0]?.deliveryWeeks?.toString() || ''; order.items.forEach((item, idx) => { form[`item_${idx}_name`] = item.AdminName || item.name; form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity; }); setEditForm(form); };
 
-  const saveEditing = async (order: Order) => { setIsSubmitting(order.id); const newItems = order.items.map((item, idx) => ({ ...item, AdminName: editForm[`item_${idx}_name`], AdminQuantity: Number(editForm[`item_${idx}_qty`]), deliveryWeeks: Number(editForm[`delivery_weeks`]), car: { ...order.car, AdminModel: editForm[`car_model`], AdminYear: editForm[`car_year`], AdminBodyType: editForm[`car_body`] } })); setOrders(prev => prev.map(o => o.id === order.id ? { ...o, items: newItems } : o)); try { await SupabaseService.updateOrderJson(order.id, newItems); setEditingOrderId(null); } catch (e) { fetchData(true); } finally { setIsSubmitting(null); } };
+  const saveEditing = async (order: Order) => { setIsSubmitting(order.id); const newItems = order.items.map((item, idx) => ({ ...item, AdminName: editForm[`item_${idx}_name`], AdminQuantity: Number(editForm[`item_${idx}_qty`]), deliveryWeeks: Number(editForm[`delivery_weeks`]), car: { ...order.car, AdminModel: editForm[`car_model`], AdminYear: editForm[`car_year`], AdminBodyType: editForm[`car_body`] } })); try { await SupabaseService.updateOrderJson(order.id, newItems); setEditingOrderId(null); refetch(); } catch (e) { } finally { setIsSubmitting(null); } };
 
+  const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
   const toggleRegistry = (id: string) => { setOpenRegistry(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
-
-  const SortIcon = ({ column }: { column: string }) => {
-      if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 transition-opacity" />;
-      return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-indigo-600 ml-1" /> : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
-  };
 
   const handleNavigateToOrder = (orderId: string) => {
       setSearchQuery(orderId);
       setExpandedId(orderId);
-      // Определяем в какой вкладке может быть заказ и переключаем
-      // В идеале можно запросить статус у заказа, но пока просто ищем
-      // Если поиск сработает, то пользователь увидит заказ
   };
 
   const renderStatusSettings = () => (
@@ -353,10 +267,10 @@ export const AdminInterface: React.FC = () => {
                       <AdminHeader 
                         showLogs={showLogs}
                         setShowLogs={setShowLogs}
-                        loading={loading}
+                        loading={isLoading}
                         logs={logs}
-                        onClearDB={async () => { if(!confirm('Удалить все?')) return; setLoading(true); try { await SupabaseService.deleteAllOrders(); fetchData(true); } catch(e) {} finally { setLoading(false); } }}
-                        onSeed={async (count) => { setLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c)); fetchData(true); } catch(e) {} finally { setLoading(false); setSeedProgress(null); } }}
+                        onClearDB={async () => { if(!confirm('Удалить все?')) return; setLoading(true); try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setLoading(false); } }}
+                        onSeed={async (count) => { setLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c)); refetch(); } catch(e) {} finally { setLoading(false); setSeedProgress(null); } }}
                         seedProgress={seedProgress}
                         unreadCount={unreadCount}
                         onOpenGlobalChat={() => setIsGlobalChatOpen(true)}
@@ -368,8 +282,8 @@ export const AdminInterface: React.FC = () => {
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                         statusCounts={statusCounts}
-                        onRefresh={() => fetchData()}
-                        isSyncing={isSyncing}
+                        onRefresh={() => refetch()}
+                        isSyncing={isLoading || isFetchingNextPage}
                       />
 
                       <AdminOrdersList 
@@ -378,6 +292,9 @@ export const AdminInterface: React.FC = () => {
                         handleSort={handleSort}
                         expandedId={expandedId}
                         setExpandedId={setExpandedId}
+                        onLoadMore={() => fetchNextPage()}
+                        hasMore={!!hasNextPage}
+                        isLoading={isFetchingNextPage}
                         editingOrderId={editingOrderId}
                         setEditingOrderId={setEditingOrderId}
                         handleStatusChange={handleStatusChange}
@@ -393,11 +310,6 @@ export const AdminInterface: React.FC = () => {
                         handleLocalUpdateRank={handleLocalUpdateRank}
                         openRegistry={openRegistry}
                         toggleRegistry={toggleRegistry}
-                        totalOrders={totalOrders}
-                        itemsPerPage={itemsPerPage}
-                        currentPage={currentPage}
-                        setCurrentPage={setCurrentPage}
-                        setItemsPerPage={setItemsPerPage}
                       />
                   </div>
               )}
