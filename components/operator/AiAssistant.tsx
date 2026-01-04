@@ -7,13 +7,14 @@ interface AiAssistantProps {
   onUpdateOrderInfo: (info: Partial<OrderInfo>) => void;
   onLog: (message: string) => void;
   onStats: (tokens: number) => void;
-  onCreateOrder: () => void; // Новая функция для кнопки создания
-  isSaving: boolean; // Состояние сохранения
+  onCreateOrder: () => void;
+  isSaving: boolean;
+  brandsList: string[]; // Добавлено
 }
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
-export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving }) => {
+export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, brandsList }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -98,14 +99,19 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
         }
 
         if (parsedData.parts && Array.isArray(parsedData.parts)) {
-          const newParts = parsedData.parts.map((p: any, index: number) => ({
-            id: Date.now() + index,
-            name: p.name || '',
-            article: p.article || '',
-            brand: p.brand || '',
-            uom: p.uom || 'шт',
-            quantity: p.quantity || 1
-          }));
+          const newParts = parsedData.parts.map((p: any, index: number) => {
+            // Нормализация бренда по списку
+            const existingBrand = brandsList.find(b => b.toLowerCase() === (p.brand || '').toLowerCase());
+            
+            return {
+              id: Date.now() + index,
+              name: p.name || '',
+              article: p.article || '',
+              brand: existingBrand || p.brand || '', // Используем оригинал из базы или то что нашли
+              uom: p.uom || 'шт',
+              quantity: p.quantity || 1
+            };
+          });
           
           onImport(newParts);
           setInputText(''); 

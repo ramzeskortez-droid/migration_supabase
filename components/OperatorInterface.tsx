@@ -29,6 +29,7 @@ export const OperatorInterface: React.FC = () => {
     clientPhone: ''
   });
 
+  const [brandsList, setBrandsList] = useState<string[]>([]);
   const [requestHistory, setRequestHistory] = useState<LogHistory[]>([]);
   const [displayStats, setDisplayStats] = useState<DisplayStats>({
     rpm: 0,
@@ -41,6 +42,19 @@ export const OperatorInterface: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{message: string, type?: 'success' | 'error'} | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Load Brands
+  useEffect(() => {
+      const loadBrands = async () => {
+          try {
+              const list = await SupabaseService.getBrandsList();
+              setBrandsList(list);
+          } catch (e) {
+              console.error('Ошибка загрузки брендов:', e);
+          }
+      };
+      loadBrands();
+  }, []);
 
   const handleLogin = (name: string) => {
       setCurrentOperator(name);
@@ -59,6 +73,18 @@ export const OperatorInterface: React.FC = () => {
       ...prev,
       logs: [`[${time}] ${message}`, ...prev.logs].slice(0, 50)
     }));
+  };
+
+  const handleAddBrand = async (name: string) => {
+      if (!name) return;
+      try {
+          await SupabaseService.addBrand(name);
+          setBrandsList(prev => [...prev, name].sort());
+          addLog(`Бренд "${name}" добавлен в базу.`);
+      } catch (e: any) {
+          console.error(e);
+          setToast({ message: 'Ошибка добавления бренда: ' + e.message, type: 'error' });
+      }
   };
 
   // Stats Logic (Sliding Window)
@@ -110,20 +136,18 @@ export const OperatorInterface: React.FC = () => {
             category: 'Оригинал'
         }));
 
-                // Сохраняем адрес доставки
-                const locationString = orderInfo.city || 'РФ';
-        
-                await SupabaseService.createOrder(
-                    'VIN-UNKNOWN',
-                    itemsForDb,
-                    orderInfo.clientName || 'Не указано',
-                    {
-                        brand: 'Не указано',
-                        model: 'Не указано',
-                        year: ''
-                    },
-                    orderInfo.clientPhone
-                );
+        await SupabaseService.createOrder(
+            'VIN-UNKNOWN',
+            itemsForDb,
+            orderInfo.clientName || 'Не указано',
+            { 
+                brand: 'Не указано', 
+                model: 'Не указано', 
+                year: '' 
+            },
+            orderInfo.clientPhone
+        );
+
         setToast({ message: `Заявка успешно создана!`, type: 'success' });
         addLog(`Заявка создана успешно.`);
         setRefreshTrigger(prev => prev + 1);
@@ -165,7 +189,12 @@ export const OperatorInterface: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
                 <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} />
                 
-                <PartsList parts={parts} setParts={setParts} />
+                <PartsList 
+                    parts={parts} 
+                    setParts={setParts} 
+                    brandsList={brandsList}
+                    onAddBrand={handleAddBrand}
+                />
                 
                 <AiAssistant 
                     onImport={(newParts) => {
@@ -183,6 +212,7 @@ export const OperatorInterface: React.FC = () => {
                     }}
                     onCreateOrder={handleCreateOrder}
                     isSaving={isSaving}
+                    brandsList={brandsList}
                 />
             </div>
 

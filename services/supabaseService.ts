@@ -220,6 +220,17 @@ export class SupabaseService {
       return data?.map((d: any) => d.brand) || [];
   }
 
+  static async getBrandsList(): Promise<string[]> {
+      const { data, error } = await supabase.from('brands').select('name').order('name');
+      if (error) throw error;
+      return data?.map((b: any) => b.name) || [];
+  }
+
+  static async addBrand(name: string): Promise<void> {
+      const { error } = await supabase.from('brands').insert({ name });
+      if (error) throw error;
+  }
+
   static async createOrder(vin: string, items: any[], clientName: string, car: any, clientPhone?: string): Promise<string> {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')

@@ -1,13 +1,15 @@
 import React from 'react';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, CheckCircle } from 'lucide-react';
 import { Part } from './types';
 
 interface PartsListProps {
   parts: Part[];
   setParts: (parts: Part[]) => void;
+  brandsList: string[];
+  onAddBrand: (name: string) => void;
 }
 
-export const PartsList: React.FC<PartsListProps> = ({ parts, setParts }) => {
+export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsList, onAddBrand }) => {
   const addPart = () => {
     setParts([...parts, { id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
   };
@@ -41,59 +43,77 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts }) => {
           <div className={`${headerClass} col-span-1 text-center`}>Кол-во</div>
         </div>
 
-        {parts.map((part, idx) => (
-          <div key={part.id} className="group relative grid grid-cols-12 gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
-             <div className="col-span-1 text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
-             <div className="col-span-4">
-               <input 
-                  value={part.name}
-                  onChange={(e) => updatePart(part.id, 'name', e.target.value)}
-                  placeholder="Наименование"
-                  className={inputClass}
-               />
-             </div>
-             <div className="col-span-2">
-               <input 
-                  value={part.brand}
-                  onChange={(e) => updatePart(part.id, 'brand', e.target.value)}
-                  placeholder="Бренд"
-                  className={inputClass}
-               />
-             </div>
-             <div className="col-span-3">
-               <input 
-                  value={part.article}
-                  onChange={(e) => updatePart(part.id, 'article', e.target.value)}
-                  placeholder="Артикул"
-                  className={inputClass}
-               />
-             </div>
-             <div className="col-span-1">
-                <input 
-                  value={part.uom}
-                  onChange={(e) => updatePart(part.id, 'uom', e.target.value)}
-                  className={`${inputClass} text-center`}
-                />
-             </div>
-             <div className="col-span-1 flex justify-center">
-                <input 
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={part.quantity}
-                  onChange={(e) => updatePart(part.id, 'quantity', parseFloat(e.target.value) || 0)}
-                  className={`${inputClass} text-center font-bold`}
-                />
-             </div>
-             
-             <button 
-                onClick={() => removePart(part.id)}
-                className="absolute -right-8 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-all"
-             >
-               <Trash2 size={16} />
-             </button>
-          </div>
-        ))}
+        {parts.map((part, idx) => {
+          const isUnknownBrand = part.brand && !brandsList.some(b => b.toLowerCase() === part.brand.toLowerCase());
+
+          return (
+            <div key={part.id} className="group relative grid grid-cols-12 gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
+               <div className="col-span-1 text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
+               
+               <div className="col-span-4">
+                 <input 
+                    value={part.name}
+                    onChange={(e) => updatePart(part.id, 'name', e.target.value)}
+                    placeholder="Наименование"
+                    className={inputClass}
+                 />
+               </div>
+
+               <div className="col-span-2 relative">
+                 <input 
+                    value={part.brand}
+                    onChange={(e) => updatePart(part.id, 'brand', e.target.value)}
+                    placeholder="Бренд"
+                    className={`${inputClass} ${isUnknownBrand ? 'border-red-500 bg-red-50 text-red-700' : ''}`}
+                 />
+                 {isUnknownBrand && (
+                     <button 
+                        onClick={() => onAddBrand(part.brand)}
+                        className="absolute -right-6 top-1/2 -translate-y-1/2 text-green-500 hover:text-green-600 transition-colors"
+                        title="Добавить бренд в базу"
+                     >
+                        <CheckCircle size={16} />
+                     </button>
+                 )}
+               </div>
+
+               <div className="col-span-3">
+                 <input 
+                    value={part.article}
+                    onChange={(e) => updatePart(part.id, 'article', e.target.value)}
+                    placeholder="Артикул"
+                    className={inputClass}
+                 />
+               </div>
+
+               <div className="col-span-1">
+                  <input 
+                    value={part.uom}
+                    onChange={(e) => updatePart(part.id, 'uom', e.target.value)}
+                    className={`${inputClass} text-center`}
+                  />
+               </div>
+
+               <div className="col-span-1 flex justify-center">
+                  <input 
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={part.quantity}
+                    onChange={(e) => updatePart(part.id, 'quantity', parseFloat(e.target.value) || 0)}
+                    className={`${inputClass} text-center font-bold`}
+                  />
+               </div>
+               
+               <button 
+                  onClick={() => removePart(part.id)}
+                  className="absolute -right-12 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-all"
+               >
+                 <Trash2 size={16} />
+               </button>
+            </div>
+          );
+        })}
 
         <button 
           onClick={addPart}

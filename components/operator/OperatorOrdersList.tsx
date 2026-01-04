@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Order } from '../../types';
 import { SupabaseService } from '../../services/supabaseService';
 import { OperatorOrderRow } from './OperatorOrderRow';
@@ -15,12 +15,14 @@ type SortField = 'id' | 'client_name' | 'created_at' | 'status_admin';
 export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('processing');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  const loadOrders = async () => {
+  const loadOrders = async (isLoadMore = false) => {
+    if (loading) return;
     setLoading(true);
     try {
       let statusFilter = '';
@@ -31,15 +33,23 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
           case 'rejected': statusFilter = 'Аннулирован,Отказ'; break;
       }
 
+      const cursor = isLoadMore && orders.length > 0 ? Number(orders[orders.length - 1].id) : undefined;
+
       const { data } = await SupabaseService.getOrders(
-          undefined, 
-          100, 
+          cursor, 
+          50, // Batch size
           sortField, 
           sortDir, 
           '', 
           statusFilter
       );
-      setOrders(data);
+
+      if (isLoadMore) {
+          setOrders(prev => [...prev, ...data]);
+      } else {
+          setOrders(data);
+      }
+      setHasMore(data.length === 50);
     } catch (e) {
       console.error(e);
     } finally {
@@ -50,6 +60,12 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
   useEffect(() => {
     loadOrders();
   }, [refreshTrigger, activeTab, sortField, sortDir]);
+
+  const loadMore = useCallback(() => {
+      if (!loading && hasMore) {
+          loadOrders(true);
+      }
+  }, [loading, hasMore, orders, activeTab, sortField, sortDir]);
 
   const handleSort = (field: SortField) => {
       if (sortField === field) {
@@ -72,7 +88,6 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
           setExpandedId(null);
       } else {
           setExpandedId(id);
-          // Load items if missing
           const order = orders.find(o => o.id === id);
           if (order && (!order.items || order.items.length === 0)) {
               try {
@@ -91,7 +106,6 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
               Архив заявок
           </h2>
 
-          {/* Tabs */}
           <div className="bg-white p-1 rounded-xl border border-slate-200 inline-flex shadow-sm">
               {[
                   { id: 'processing', label: 'В обработке' },
@@ -123,34 +137,33 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
               </div>
           </div>
 
-          {/* Table Body (Virtuoso) */}
+          {/* Table Body (Virtuoso with Infinite Scroll) */}
           <div className="flex-grow">
-              {loading && orders.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
-                      <Loader2 className="animate-spin text-indigo-500" size={24} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Загрузка данных...</span>
-                  </div>
-              ) : (
-                  <Virtuoso
-                      style={{ height: '100%' }}
-                      data={orders}
-                      itemContent={(index, order) => (
-                          <OperatorOrderRow 
-                              key={order.id}
-                              order={order}
-                              isExpanded={expandedId === order.id}
-                              onToggle={() => handleToggle(order.id)}
-                          />
-                      )}
-                      components={{
-                          EmptyPlaceholder: () => (
-                              <div className="p-12 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">
-                                  Ничего не найдено
-                              </div>
-                          )
-                      }}
-                  />
-              )}
+              <Virtuoso
+                  style={{ height: '100%' }}
+                  data={orders}
+                  endReached={loadMore}
+                  itemContent={(index, order) => (
+                      <OperatorOrderRow 
+                          key={order.id}
+                          order={order}
+                          isExpanded={expandedId === order.id}
+                          onToggle={() => handleToggle(order.id)}
+                      />
+                  )}
+                  components={{
+                      Footer: () => loading ? (
+                          <div className="p-4 text-center">
+                              <Loader2 className="animate-spin inline-block text-indigo-500" size={20} />
+                          </div>
+                      ) : null,
+                      EmptyPlaceholder: () => !loading ? (
+                          <div className="p-12 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">
+                              Ничего не найдено
+                          </div>
+                      ) : null
+                  }}
+              />
           </div>
       </div>
     </div>
