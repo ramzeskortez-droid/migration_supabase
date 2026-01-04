@@ -49,6 +49,19 @@ export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({
       }
   }, [onNavigateToOrder, onClose]);
 
+  const handleRead = (orderId: string, supplierName: string) => {
+      setThreads(prev => {
+          const newThreads = { ...prev };
+          if (newThreads[orderId] && newThreads[orderId][supplierName]) {
+              newThreads[orderId][supplierName] = {
+                  ...newThreads[orderId][supplierName],
+                  unread: 0
+              };
+          }
+          return newThreads;
+      });
+  };
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -113,7 +126,10 @@ export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({
                                         {Object.entries(suppliers).map(([supplier, info]: [string, any]) => (
                                             <div 
                                                 key={supplier}
-                                                onClick={() => setSelectedSupplier(supplier)}
+                                                onClick={() => {
+                                                    setSelectedSupplier(supplier);
+                                                    handleRead(orderId, supplier);
+                                                }}
                                                 className={`p-2 rounded-lg cursor-pointer flex justify-between items-center ${selectedSupplier === supplier ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
                                             >
                                                 <div className="flex flex-col overflow-hidden w-full">
@@ -157,6 +173,7 @@ export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({
                                 supplierName={selectedSupplier}
                                 currentUserRole={currentUserRole}
                                 onNavigateToOrder={handleNavigate}
+                                onRead={handleRead}
                             />
                         </div>
                     </div>

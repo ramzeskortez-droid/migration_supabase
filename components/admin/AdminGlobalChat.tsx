@@ -152,7 +152,10 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                                         {Object.entries(suppliers).map(([supplier, info]: [string, any]) => (
                                             <div 
                                                 key={supplier}
-                                                onClick={() => setSelectedSupplier(supplier)}
+                                                onClick={() => {
+                                                    setSelectedSupplier(supplier);
+                                                    handleRead(orderId, supplier);
+                                                }}
                                                 className={`p-2 rounded-lg cursor-pointer flex justify-between items-center group/supplier ${selectedSupplier === supplier ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
                                             >
                                                 <div className="flex flex-col overflow-hidden">

@@ -185,6 +185,24 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   const handleSend = useCallback(async (msgText: string, selectedItemName?: string) => {
+      // Optimistic Update: Show message immediately
+      const tempId = Date.now();
+      const optimisticMsg = {
+          id: tempId,
+          order_id: Number(orderId),
+          sender_role: currentUserRole,
+          sender_name: currentUserRole === 'ADMIN' ? 'ADMIN' : supplierName,
+          recipient_name: currentUserRole === 'ADMIN' ? supplierName : 'ADMIN',
+          message: msgText,
+          item_name: selectedItemName,
+          created_at: new Date().toISOString(),
+          is_read: false
+      };
+
+      setMessages(prev => [...prev, optimisticMsg]);
+      // Scroll to bottom immediately
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+
       setLoading(true);
       try {
           await SupabaseService.sendChatMessage({
@@ -196,10 +214,13 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               message: msgText,
               item_name: selectedItemName
           });
-          fetchMessages();
+          // Refresh to get real ID and server timestamp
+          await fetchMessages();
       } catch (e: any) {
           console.error('Send error:', e);
           alert('Ошибка отправки: ' + (e.message || JSON.stringify(e)));
+          // Remove optimistic message on error
+          setMessages(prev => prev.filter(m => m.id !== tempId));
       } finally {
           setLoading(false);
       }
