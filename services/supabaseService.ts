@@ -357,14 +357,15 @@ export class SupabaseService {
   static async sendChatMessage(payload: {
       order_id: string, offer_id?: string | null, sender_role: 'ADMIN' | 'SUPPLIER',
       sender_name: string, recipient_name?: string, message: string, item_name?: string
-  }): Promise<void> {
-      const { error } = await supabase.from('chat_messages').insert(payload);
+  }): Promise<any> {
+      const { data, error } = await supabase.from('chat_messages').insert(payload).select().single();
       if (error) throw error;
       const supplierName = payload.sender_role === 'SUPPLIER' ? payload.sender_name : payload.recipient_name;
       if (supplierName) {
           const escapedName = supplierName.split('"').join('\\"');
           await supabase.from('chat_messages').update({ is_archived: false }).eq('order_id', payload.order_id).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`).eq('is_archived', true);
       }
+      return data;
   }
 
   static async getUnreadChatCount(): Promise<number> {
@@ -380,27 +381,17 @@ export class SupabaseService {
   }
 
   static async markChatAsRead(orderId: string, supplierName: string, readerRole: 'ADMIN' | 'SUPPLIER'): Promise<void> {
-      console.log('markChatAsRead CALL:', { orderId, supplierName, readerRole });
-      
       let query = supabase.from('chat_messages').update({ is_read: true }).eq('order_id', orderId);
-      const escapedName = supplierName.split('"').join('\"'); // Используем одинарную экранизацию для JS строки, которая станет \" в JSON
+      const escapedName = supplierName.split('"').join('\"'); 
       
       if (readerRole === 'ADMIN') {
-          // Админ читает сообщения от Поставщика
-          // sender_name должен быть равен supplierName
-          console.log('markChatAsRead QUERY (ADMIN): sender_name =', escapedName);
           query = query.eq('sender_name', escapedName).eq('sender_role', 'SUPPLIER');
       } else {
-          // Поставщик читает сообщения от Админа
-          // recipient_name должен быть равен supplierName (так как Админ писал ЕМУ)
-          console.log('markChatAsRead QUERY (SUPPLIER): recipient_name =', escapedName);
           query = query.eq('sender_role', 'ADMIN').eq('recipient_name', escapedName);
       }
 
-      const { data, error } = await query.select(); // Добавляем select, чтобы увидеть результат
-      
+      const { error } = await query;
       if (error) console.error('markChatAsRead ERROR:', error);
-      else console.log('markChatAsRead SUCCESS. Updated rows:', data?.length);
   }
 
   static async deleteChatHistory(orderId: string, supplierName?: string): Promise<void> {

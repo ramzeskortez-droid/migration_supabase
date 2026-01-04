@@ -161,17 +161,23 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   useEffect(() => {
       if (!messages.length) return;
 
-      const markRead = async () => {
-          if (onRead) onRead(orderId, supplierName);
+      const hasUnread = messages.some(m => !m.is_read && m.sender_role !== currentUserRole);
 
-          if (currentUserRole === 'ADMIN') {
-             await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
-          } else {
-             await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
-          }
-      };
-      
-      markRead();
+      if (hasUnread) {
+          const markRead = async () => {
+              if (onRead) onRead(orderId, supplierName);
+
+              if (currentUserRole === 'ADMIN') {
+                 await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
+              } else {
+                 await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
+              }
+              
+              // Optimistically mark locally to stop loop immediately
+              setMessages(prev => prev.map(m => (!m.is_read && m.sender_role !== currentUserRole) ? { ...m, is_read: true } : m));
+          };
+          markRead();
+      }
   }, [messages, currentUserRole, orderId, supplierName, onRead]);
 
   useEffect(() => {
@@ -200,12 +206,12 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       };
 
       setMessages(prev => [...prev, optimisticMsg]);
-      // Scroll to bottom immediately
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
       setLoading(true);
       try {
-          await SupabaseService.sendChatMessage({
+          // Server returns the created message
+          const realMsg = await SupabaseService.sendChatMessage({
               order_id: orderId,
               offer_id: offerId || null,
               sender_role: currentUserRole,
@@ -214,12 +220,13 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               message: msgText,
               item_name: selectedItemName
           });
-          // Refresh to get real ID and server timestamp
-          await fetchMessages();
+          
+          // Replace optimistic message with real one to avoid blinking
+          setMessages(prev => prev.map(m => m.id === tempId ? realMsg : m));
+          
       } catch (e: any) {
           console.error('Send error:', e);
           alert('Ошибка отправки: ' + (e.message || JSON.stringify(e)));
-          // Remove optimistic message on error
           setMessages(prev => prev.filter(m => m.id !== tempId));
       } finally {
           setLoading(false);
