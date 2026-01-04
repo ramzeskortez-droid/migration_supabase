@@ -144,13 +144,22 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, supplierName);
           
           setMessages(prev => {
-              if (prev.length !== data.length) return data;
-              if (data.length > 0 && prev.length > 0) {
-                  if (data[data.length - 1].id !== prev[prev.length - 1].id) return data;
+              // Identify optimistic messages (ID > 1 trillion implies timestamp)
+              const optimistic = prev.filter(m => typeof m.id === 'number' && m.id > 1000000000000);
+              
+              // If no optimistic messages, use strict comparison to minimize re-renders
+              if (optimistic.length === 0) {
+                  if (prev.length !== data.length) return data;
+                  if (data.length > 0 && prev.length > 0) {
+                      if (data[data.length - 1].id !== prev[prev.length - 1].id) return data;
+                  }
+                  if (JSON.stringify(prev) !== JSON.stringify(data)) return data;
+                  return prev;
               }
-              if (JSON.stringify(prev) !== JSON.stringify(data)) return data;
-              if (data.length === 0 && prev.length === 0) return prev;
-              return prev;
+
+              // If we have optimistic messages, keep them appended to server data
+              // This prevents them from disappearing if polling happens before send confirmation
+              return [...data, ...optimistic];
           });
       } catch (e) {
           console.error(e);
