@@ -9,10 +9,12 @@ import { OperatorOrdersList } from './operator/OperatorOrdersList';
 import { OrderInfo, Part, LogHistory, DisplayStats } from './operator/types';
 import { SupabaseService } from '../services/supabaseService';
 import { Toast } from './shared/Toast';
+import { AppUser } from '../types';
 
 export const OperatorInterface: React.FC = () => {
   // Auth State
-  const [currentOperator, setCurrentOperator] = useState<string | null>(localStorage.getItem('operatorName'));
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   // State
   const [parts, setParts] = useState<Part[]>([
@@ -43,8 +45,32 @@ export const OperatorInterface: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type?: 'success' | 'error'} | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Load User from LocalStorage
+  useEffect(() => {
+      const checkAuth = async () => {
+          const token = localStorage.getItem('operatorToken');
+          if (token) {
+              try {
+                  const user = await SupabaseService.loginWithToken(token);
+                  if (user && (user.role === 'operator' || user.role === 'admin')) {
+                      setCurrentUser(user);
+                      addLog(`Восстановлена сессия оператора: ${user.name}`);
+                  } else {
+                      localStorage.removeItem('operatorToken'); // Invalid token
+                  }
+              } catch (e) {
+                  console.error('Auth Check Error:', e);
+              }
+          }
+          setIsAuthChecking(false);
+      };
+      checkAuth();
+  }, []);
+
   // Load Brands
   useEffect(() => {
+      if (!currentUser) return; // Don't load if not auth
+
       const loadBrands = async () => {
           try {
               const list = await SupabaseService.getBrandsList();
@@ -54,17 +80,17 @@ export const OperatorInterface: React.FC = () => {
           }
       };
       loadBrands();
-  }, []);
+  }, [currentUser]);
 
-  const handleLogin = (name: string) => {
-      setCurrentOperator(name);
-      localStorage.setItem('operatorName', name);
-      addLog(`Оператор ${name} вошел в систему.`);
+  const handleLogin = (user: AppUser) => {
+      setCurrentUser(user);
+      localStorage.setItem('operatorToken', user.token);
+      addLog(`Оператор ${user.name} вошел в систему.`);
   };
 
   const handleLogout = () => {
-      setCurrentOperator(null);
-      localStorage.removeItem('operatorName');
+      setCurrentUser(null);
+      localStorage.removeItem('operatorToken');
   };
 
   const addLog = (message: string) => {
@@ -118,6 +144,8 @@ export const OperatorInterface: React.FC = () => {
   }, []);
 
   const handleCreateOrder = async () => {
+    if (!currentUser) return;
+
     if (parts.length === 0 || !parts[0].name) {
         setToast({ message: 'Добавьте хотя бы одну позицию', type: 'error' });
         return;
@@ -137,7 +165,7 @@ export const OperatorInterface: React.FC = () => {
             category: 'Оригинал'
         }));
 
-        await SupabaseService.createOrder(
+        const orderId = await SupabaseService.createOrder(
             'VIN-UNKNOWN',
             itemsForDb,
             orderInfo.clientName || 'Не указано',
@@ -146,11 +174,12 @@ export const OperatorInterface: React.FC = () => {
                 model: 'Не указано', 
                 year: '' 
             },
-            orderInfo.clientPhone
+            orderInfo.clientPhone,
+            currentUser.token // Передаем токен владельца
         );
 
-        setToast({ message: `Заявка успешно создана!`, type: 'success' });
-        addLog(`Заявка создана успешно.`);
+        setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });
+        addLog(`Заказ №${orderId} создан.`);
         setRefreshTrigger(prev => prev + 1);
         
         // Reset form
@@ -168,20 +197,24 @@ export const OperatorInterface: React.FC = () => {
     }
   };
 
+  if (isAuthChecking) {
+      return <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-black uppercase text-xs tracking-widest">Загрузка профиля...</div>;
+  }
+
   return (
     <div className="h-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden relative">
-      {!currentOperator && <OperatorAuthModal onLogin={handleLogin} />}
+      {!currentUser && <OperatorAuthModal onLogin={handleLogin} />}
       
       {/* Toast Notification: Top Right */}
       {toast && (
           <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
-              <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type} />
+              <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type} duration={2000} />
           </div>
       )}
       
-      <OperatorHeader operatorName={currentOperator} onLogout={handleLogout} />
+      <OperatorHeader operatorName={currentUser?.name || null} onLogout={handleLogout} />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className={`flex flex-1 overflow-hidden transition-opacity duration-300 ${!currentUser ? 'opacity-30 pointer-events-none blur-sm' : 'opacity-100'}`}>
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto space-y-8">
@@ -218,7 +251,7 @@ export const OperatorInterface: React.FC = () => {
             </div>
 
             {/* Orders List Section */}
-            <OperatorOrdersList refreshTrigger={refreshTrigger} />
+            <OperatorOrdersList refreshTrigger={refreshTrigger} ownerToken={currentUser?.token} />
 
           </div>
         </main>

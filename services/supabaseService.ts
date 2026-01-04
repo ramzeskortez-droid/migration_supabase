@@ -1,8 +1,112 @@
 import { supabase } from '../src/lib/supabaseClient';
-import { Order, OrderStatus, RowType, OrderItem, WorkflowStatus, Currency, RankType } from '../types';
+import { Order, OrderStatus, RowType, OrderItem, WorkflowStatus, Currency, RankType, AppUser, ExchangeRates, BuyerLabel } from '../types';
 
 export class SupabaseService {
   
+  // --- AUTH & ROLES ---
+
+  static async loginWithToken(token: string): Promise<AppUser | null> {
+    const { data, error } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('token', token)
+      .single();
+    
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      token: data.token,
+      role: data.role
+    };
+  }
+
+  static async registerUser(name: string, token: string, role: 'operator' | 'buyer' = 'operator'): Promise<AppUser> {
+      const { data, error } = await supabase
+          .from('app_users')
+          .insert({ name, token, role })
+          .select()
+          .single();
+      
+      if (error) throw error;
+      return {
+          id: data.id,
+          name: data.name,
+          token: data.token,
+          role: data.role
+      };
+  }
+
+  // --- FINANCE (Exchange Rates) ---
+
+  static async getExchangeRates(date?: string): Promise<ExchangeRates | null> {
+    let query = supabase.from('exchange_rates').select('*');
+    if (date) {
+      query = query.eq('date', date);
+    } else {
+      // Если дата не указана, берем последнюю
+      query = query.order('date', { ascending: false }).limit(1);
+    }
+    
+    const { data, error } = await query.maybeSingle(); // maybeSingle чтобы не кидать ошибку если пусто
+    if (error) throw error;
+    if (!data) return null;
+
+    return data as ExchangeRates;
+  }
+
+  static async upsertExchangeRates(rates: ExchangeRates): Promise<void> {
+    const { error } = await supabase.from('exchange_rates').upsert(rates);
+    if (error) throw error;
+  }
+
+  static async updateOrderItemPrice(itemId: string, updates: { adminPriceRub?: number, isManualPrice?: boolean }): Promise<void> {
+    const { error } = await supabase.from('order_items').update({
+        admin_price_rub: updates.adminPriceRub,
+        is_manual_price: updates.isManualPrice
+    }).eq('id', itemId);
+    if (error) throw error;
+  }
+
+  // --- BUYER TOOLS (Labels & Filters) ---
+
+  static async toggleOrderLabel(userToken: string, orderId: string, color: string): Promise<void> {
+    // Проверяем, есть ли уже такой стикер
+    const { data } = await supabase
+      .from('buyer_order_labels')
+      .select('id')
+      .eq('user_token', userToken)
+      .eq('order_id', orderId)
+      .single();
+
+    if (data) {
+      // Если есть - удаляем (toggle off)
+      await supabase.from('buyer_order_labels').delete().eq('id', data.id);
+    } else {
+      // Если нет - создаем
+      await supabase.from('buyer_order_labels').insert({
+        user_token: userToken,
+        order_id: orderId,
+        color
+      });
+    }
+  }
+
+  static async getBuyerLabels(userToken: string): Promise<BuyerLabel[]> {
+    const { data, error } = await supabase
+      .from('buyer_order_labels')
+      .select('id, order_id, color, label_text')
+      .eq('user_token', userToken);
+
+    if (error) throw error;
+    return data.map((l: any) => ({
+      id: l.id,
+      orderId: l.order_id,
+      color: l.color,
+      text: l.label_text
+    }));
+  }
+
   /**
    * Получение облегченного списка заказов для бесконечного скролла
    */
@@ -15,17 +119,32 @@ export class SupabaseService {
     statusFilter?: string,
     clientPhoneFilter?: string,
     brandFilter?: string | null,
-    onlyWithMyOffersName?: string
+    onlyWithMyOffersName?: string,
+    ownerToken?: string, // НОВЫЙ ФИЛЬТР: Изоляция для Оператора
+    buyerToken?: string // НОВЫЙ ФИЛЬТР: Стикеры для Закупщика
   ): Promise<{ data: Order[], nextCursor?: number }> {
     
-    let query = supabase
-      .from('orders')
-      .select(`
+    // Выбираем поля заказа + джойним стикеры если передан buyerToken
+    let selectQuery = `
         id, created_at, vin, client_name, client_phone, 
         car_brand, car_model, car_year,
         status_admin, status_client, status_supplier,
-        visible_to_client, location, status_updated_at
-      `);
+        visible_to_client, location, status_updated_at,
+        owner_token
+    `;
+    
+    if (buyerToken) {
+        // Хитрая выборка: левый джойн стикеров по текущему юзеру
+        // В Supabase это делается через embedding с фильтром, но фильтр на вложенную таблицу работает как INNER JOIN.
+        // Чтобы получить LEFT JOIN, нужно делать хитрее или 2 запроса.
+        // Пока сделаем отдельный запрос на стикеры после получения заказов, это проще и надежнее.
+    }
+
+    let query = supabase.from('orders').select(selectQuery);
+
+    if (ownerToken) {
+        query = query.eq('owner_token', ownerToken);
+    }
 
     if (clientPhoneFilter) query = query.eq('client_phone', clientPhoneFilter);
     if (brandFilter) query = query.eq('car_brand', brandFilter);
@@ -68,6 +187,21 @@ export class SupabaseService {
     const { data, error } = await query;
     if (error) throw error;
 
+    // Подгрузка стикеров если это Закупщик
+    let labelsMap: Record<string, BuyerLabel> = {};
+    if (buyerToken && data.length > 0) {
+        const ids = data.map(o => o.id);
+        const { data: labels } = await supabase
+            .from('buyer_order_labels')
+            .select('*')
+            .eq('user_token', buyerToken)
+            .in('order_id', ids);
+            
+        labels?.forEach((l: any) => {
+            labelsMap[l.order_id] = { id: l.id, orderId: l.order_id, color: l.color, text: l.label_text };
+        });
+    }
+
     const mappedData = data.map(order => ({
         id: String(order.id),
         type: RowType.ORDER,
@@ -83,6 +217,8 @@ export class SupabaseService {
         statusUpdatedAt: order.status_updated_at ? new Date(order.status_updated_at).toLocaleString('ru-RU') : undefined,
         location: order.location,
         visibleToClient: order.visible_to_client ? 'Y' : 'N',
+        ownerToken: order.owner_token, // Прокидываем токен владельца
+        buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [], // Прикрепляем стикер
         items: [], 
         offers: [], 
         car: {
@@ -231,13 +367,14 @@ export class SupabaseService {
       if (error) throw error;
   }
 
-  static async createOrder(vin: string, items: any[], clientName: string, car: any, clientPhone?: string): Promise<string> {
+  static async createOrder(vin: string, items: any[], clientName: string, car: any, clientPhone?: string, ownerToken?: string): Promise<string> {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         vin, client_name: clientName, client_phone: clientPhone,
         car_brand: car.brand, car_model: car.AdminModel || car.model,
-        car_year: car.AdminYear || car.year, location: 'РФ'
+        car_year: car.AdminYear || car.year, location: 'РФ',
+        owner_token: ownerToken // Сохраняем владельца
       })
       .select().single();
 

@@ -7,12 +7,13 @@ import { ArrowUpDown, ArrowUp, ArrowDown, Package, Loader2 } from 'lucide-react'
 
 interface OperatorOrdersListProps {
   refreshTrigger: number;
+  ownerToken?: string;
 }
 
 type TabType = 'processing' | 'processed' | 'completed' | 'rejected';
 type SortField = 'id' | 'client_name' | 'created_at' | 'status_admin';
 
-export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger }) => {
+export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger, ownerToken }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -22,6 +23,12 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const loadOrders = async (isLoadMore = false) => {
+    // Если токен не передан, не загружаем ничего (безопасность UI)
+    if (!ownerToken) {
+        setOrders([]);
+        return;
+    }
+
     if (loading) return;
     setLoading(true);
     try {
@@ -41,7 +48,11 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
           sortField, 
           sortDir, 
           '', 
-          statusFilter
+          statusFilter,
+          undefined, // phone
+          undefined, // brand
+          undefined, // offers
+          ownerToken // <-- ИЗОЛЯЦИЯ: передаем токен
       );
 
       if (isLoadMore) {
@@ -59,7 +70,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
 
   useEffect(() => {
     loadOrders();
-  }, [refreshTrigger, activeTab, sortField, sortDir]);
+  }, [refreshTrigger, activeTab, sortField, sortDir, ownerToken]); // Добавил ownerToken в зависимости
 
   const loadMore = useCallback(() => {
       if (!loading && hasMore) {

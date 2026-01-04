@@ -12,6 +12,30 @@ export enum RowType {
 export type RankType = 'LEADER' | 'RESERVE' | 'ЛИДЕР' | 'РЕЗЕРВ' | '';
 export type PartCategory = 'Оригинал' | 'Б/У' | 'Аналог';
 export type Currency = 'RUB' | 'USD' | 'CNY';
+export type UserRole = 'admin' | 'operator' | 'buyer';
+
+export interface AppUser {
+  id: string;
+  name: string;
+  token: string;
+  role: UserRole;
+}
+
+export interface ExchangeRates {
+  date: string;
+  cny_rub: number;
+  usd_rub: number;
+  cny_usd: number;
+  delivery_kg_usd: number;
+  markup_percent: number;
+}
+
+export interface BuyerLabel {
+  id: string;
+  orderId: string;
+  color: string;
+  text?: string;
+}
 
 export type WorkflowStatus = 
   | 'В обработке' 
@@ -26,6 +50,7 @@ export type WorkflowStatus =
   | 'Отказ';
 
 export interface CarDetails {
+  brand?: string; // Добавил brand опциональным, т.к. используется в коде
   model: string;
   bodyType: string;
   year: string;
@@ -63,6 +88,9 @@ export interface OrderItem {
   // Admin side (Client view)
   adminPrice?: number; // Цена утвержденная админом для клиента
   adminCurrency?: Currency; // Валюта для клиента
+  adminPriceRub?: number; // НОВОЕ: Фиксированная цена в рублях
+  isManualPrice?: boolean; // НОВОЕ: Ручной ввод цены
+  calculatedPriceRub?: number; // НОВОЕ: Расчетная цена
   
   offeredQuantity?: number;
   available?: boolean;
@@ -79,6 +107,7 @@ export interface OrderItem {
   // Computed Columns (Calculated on Server)
   totalCost?: number; // (Price * Qty) + Delivery
   goodsCost?: number; // (Price * Qty)
+  bestCompetitorPrice?: number; // НОВОЕ: Лучшая цена конкурента
 }
 
 export interface Order {
@@ -96,6 +125,8 @@ export interface Order {
   clientPhone?: string; // Добавлено поле телефона
   visibleToClient?: 'Y' | 'N';
   offers?: Order[];
+  ownerToken?: string; // НОВОЕ: Токен владельца (Оператора)
+  buyerLabels?: BuyerLabel[]; // НОВОЕ: Стикеры для текущего юзера
   
   // Система трех статусов
   statusAdmin?: string;
