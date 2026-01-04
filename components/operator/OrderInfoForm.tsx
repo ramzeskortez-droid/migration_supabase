@@ -8,6 +8,17 @@ interface OrderInfoFormProps {
 
 export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrderInfo }) => {
   const handleChange = (field: keyof OrderInfo, value: string) => {
+    // Валидация
+    if (field === 'clientName' && value.length > 20) return;
+    if (field === 'city' && value.length > 40) return;
+    if (field === 'clientPhone') {
+        // Простая маска (разрешаем только цифры и символы формата)
+        const raw = value.replace(/[^\d+()-\s]/g, '');
+        if (raw.length > 18) return; 
+        // Тут можно добавить сложную логику маски, но пока ограничимся длиной и символами
+        value = raw;
+    }
+
     setOrderInfo({ ...orderInfo, [field]: value });
   };
 
@@ -18,19 +29,31 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         <h2 className="font-bold text-slate-800">Основная информация по заявке</h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        
+        {/* Тема письма (во всю ширину) */}
+        <div className="md:col-span-12">
+           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Тема письма</label>
+           <input 
+             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
+             placeholder="Re: Запрос на запчасти..."
+             value={orderInfo.emailSubject}
+             onChange={(e) => handleChange('emailSubject', e.target.value)}
+           />
+        </div>
+
         {/* Row 1: Client & Contact */}
         <div className="md:col-span-4 grid grid-cols-2 gap-2">
            <div>
                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Телефон</label>
               <input 
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                placeholder="+7..."
+                placeholder="+7 (999)..."
                 value={orderInfo.clientPhone}
                 onChange={(e) => handleChange('clientPhone', e.target.value)}
               />
            </div>
            <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Имя</label>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Имя (макс 20)</label>
               <input 
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
                 value={orderInfo.clientName}
@@ -40,7 +63,7 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         </div>
 
         <div className="md:col-span-4">
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Город / Регион</label>
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Адрес доставки (макс 40)</label>
           <input 
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
             placeholder="Москва, МО"
@@ -57,37 +80,6 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
             value={orderInfo.deadline}
             onChange={(e) => handleChange('deadline', e.target.value)}
           />
-        </div>
-
-        {/* Row 2: Car Info */}
-        <div className="md:col-span-12 border-t border-slate-100 pt-4 mt-2">
-           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Автомобиль</label>
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-               <input 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                  placeholder="VIN код"
-                  value={orderInfo.vin}
-                  onChange={(e) => handleChange('vin', e.target.value)}
-               />
-               <input 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                  placeholder="Марка (Toyota)"
-                  value={orderInfo.carBrand}
-                  onChange={(e) => handleChange('carBrand', e.target.value)}
-               />
-               <input 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                  placeholder="Модель (Camry)"
-                  value={orderInfo.carModel}
-                  onChange={(e) => handleChange('carModel', e.target.value)}
-               />
-               <input 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                  placeholder="Год (2020)"
-                  value={orderInfo.carYear}
-                  onChange={(e) => handleChange('carYear', e.target.value)}
-               />
-           </div>
         </div>
       </div>
     </section>

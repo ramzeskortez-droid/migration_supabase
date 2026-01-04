@@ -9,7 +9,7 @@ interface PartsListProps {
 
 export const PartsList: React.FC<PartsListProps> = ({ parts, setParts }) => {
   const addPart = () => {
-    setParts([...parts, { id: Date.now(), name: '', article: '', brand: '', uom: 'шт', type: 'Оригинал', quantity: 1 }]);
+    setParts([...parts, { id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
   };
 
   const removePart = (id: number) => {
@@ -33,11 +33,10 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts }) => {
       <div className="space-y-3">
         {/* Header Row */}
         <div className="grid grid-cols-12 gap-2 px-2">
-          <div className={`${headerClass} text-center`}>#</div>
-          <div className={`${headerClass} col-span-3`}>Наименование</div>
+          <div className={`${headerClass} text-center col-span-1`}>#</div>
+          <div className={`${headerClass} col-span-4`}>Наименование</div>
           <div className={`${headerClass} col-span-2`}>Бренд</div>
-          <div className={`${headerClass} col-span-2`}>Артикул</div>
-          <div className={`${headerClass} col-span-2`}>Тип</div>
+          <div className={`${headerClass} col-span-3`}>Артикул / Партномер</div>
           <div className={`${headerClass} col-span-1 text-center`}>Ед.</div>
           <div className={`${headerClass} col-span-1 text-center`}>Кол-во</div>
         </div>
@@ -45,7 +44,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts }) => {
         {parts.map((part, idx) => (
           <div key={part.id} className="group relative grid grid-cols-12 gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
              <div className="col-span-1 text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
-             <div className="col-span-3">
+             <div className="col-span-4">
                <input 
                   value={part.name}
                   onChange={(e) => updatePart(part.id, 'name', e.target.value)}
@@ -61,23 +60,13 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts }) => {
                   className={inputClass}
                />
              </div>
-             <div className="col-span-2">
+             <div className="col-span-3">
                <input 
                   value={part.article}
                   onChange={(e) => updatePart(part.id, 'article', e.target.value)}
                   placeholder="Артикул"
                   className={inputClass}
                />
-             </div>
-             <div className="col-span-2">
-               <select 
-                  value={part.type}
-                  onChange={(e) => updatePart(part.id, 'type', e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs font-bold text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer shadow-sm"
-                >
-                 <option>Оригинал</option>
-                 <option>Аналог</option>
-               </select>
              </div>
              <div className="col-span-1">
                 <input 

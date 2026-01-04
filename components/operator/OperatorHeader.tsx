@@ -1,7 +1,12 @@
 import React from 'react';
-import { Database, User, Bell } from 'lucide-react';
+import { Database, User, Bell, LogOut } from 'lucide-react';
 
-export const OperatorHeader: React.FC = () => {
+interface OperatorHeaderProps {
+  operatorName: string | null;
+  onLogout: () => void;
+}
+
+export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ operatorName, onLogout }) => {
   return (
     <header className="bg-white border-b border-slate-200 h-16 shrink-0 z-20 px-6 flex items-center justify-between">
       <div className="flex items-center gap-8">
@@ -11,25 +16,30 @@ export const OperatorHeader: React.FC = () => {
            </div>
            <div className="leading-none">
              <h1 className="font-bold text-lg text-slate-900 tracking-tight">AutoParts</h1>
-             <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Order Management</span>
+             <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Operator Panel</span>
            </div>
          </div>
-         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-500">
-           <span className="text-slate-900">Оформление заявки</span>
-         </nav>
       </div>
 
       <div className="flex items-center gap-6">
-        <div className="flex flex-col items-end mr-2">
-          <span className="text-sm font-bold text-slate-900">Оператор</span>
-          <span className="text-xs text-slate-500">Отдел обработки</span>
-        </div>
-        <div className="h-10 w-10 bg-gradient-to-br from-indigo-100 to-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-indigo-700">
-           <User size={20} />
-        </div>
-        <button className="text-slate-400 hover:text-slate-600">
-          <Bell size={20} />
-        </button>
+        {operatorName && (
+            <div className="flex items-center gap-3 pl-6 border-l border-slate-100">
+                <div className="text-right hidden sm:block">
+                    <div className="text-xs font-bold text-slate-900">{operatorName}</div>
+                    <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Оператор</div>
+                </div>
+                <div className="h-9 w-9 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-sm">
+                    <User size={16} strokeWidth={2.5} />
+                </div>
+                <button 
+                    onClick={onLogout}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all ml-2"
+                    title="Выйти"
+                >
+                    <LogOut size={18} />
+                </button>
+            </div>
+        )}
       </div>
     </header>
   );

@@ -30,8 +30,14 @@ export class SupabaseService {
     if (clientPhoneFilter) query = query.eq('client_phone', clientPhoneFilter);
     if (brandFilter) query = query.eq('car_brand', brandFilter);
     if (statusFilter) {
-        if (statusFilter === 'КП отправлено') query = query.eq('status_admin', 'КП готово');
-        else query = query.eq('status_admin', statusFilter);
+        if (statusFilter.includes(',')) {
+            const statuses = statusFilter.split(',').map(s => s.trim());
+            query = query.in('status_admin', statuses);
+        } else if (statusFilter === 'КП отправлено') {
+            query = query.eq('status_admin', 'КП готово');
+        } else {
+            query = query.eq('status_admin', statusFilter);
+        }
     }
 
     if (onlyWithMyOffersName) {

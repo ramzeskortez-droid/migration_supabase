@@ -4,7 +4,6 @@ export interface Part {
   article: string;
   brand: string;
   uom: string;
-  type: string;
   quantity: number;
 }
 
@@ -13,14 +12,9 @@ export interface OrderInfo {
   region: string;
   city: string;
   email: string;
+  emailSubject: string; // Новое поле
   clientName: string;
   clientPhone: string;
-  
-  // Добавлены поля автомобиля
-  carBrand: string;
-  carModel: string;
-  carYear: string;
-  vin: string;
 }
 
 export interface LogHistory {
