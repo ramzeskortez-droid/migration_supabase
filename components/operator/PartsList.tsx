@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, Plus, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Part } from './types';
+import { ImageUploader } from '../shared/ImageUploader'; // Import
 
 interface PartsListProps {
   parts: Part[];
@@ -9,27 +10,7 @@ interface PartsListProps {
   onAddBrand: (name: string) => void;
 }
 
-// Simple Levenshtein distance
-function getLevenshteinDistance(a: string, b: string): number {
-  const matrix = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
+// ... (getLevenshteinDistance function)
 
 export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsList, onAddBrand }) => {
   const [activeBrandInput, setActiveBrandInput] = useState<number | null>(null);
@@ -58,13 +39,14 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
       
       <div className="space-y-3">
         {/* Header Row */}
-        <div className="grid grid-cols-12 gap-2 px-2">
-          <div className={`${headerClass} text-center col-span-1`}>#</div>
-          <div className={`${headerClass} col-span-4`}>Наименование</div>
-          <div className={`${headerClass} col-span-2`}>Бренд</div>
-          <div className={`${headerClass} col-span-3`}>Артикул / Партномер</div>
-          <div className={`${headerClass} col-span-1 text-center`}>Ед.</div>
-          <div className={`${headerClass} col-span-1 text-center`}>Кол-во</div>
+        <div className="grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
+          <div className={`${headerClass} text-center`}>#</div>
+          <div className={headerClass}>Наименование</div>
+          <div className={headerClass}>Бренд</div>
+          <div className={headerClass}>Артикул</div>
+          <div className={`${headerClass} text-center`}>Ед.</div>
+          <div className={`${headerClass} text-center`}>Кол-во</div>
+          <div className={`${headerClass} text-center`}>Фото</div>
         </div>
 
         {parts.map((part, idx) => {
@@ -86,10 +68,10 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
           const isError = !exactMatch && similarBrands.length === 0 && normalizedInput.length > 0;
 
           return (
-            <div key={part.id} className="group relative grid grid-cols-12 gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
-               <div className="col-span-1 text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
+            <div key={part.id} className="group relative grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
+               <div className="text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
                
-               <div className="col-span-4">
+               <div>
                  <input 
                     value={part.name}
                     onChange={(e) => updatePart(part.id, 'name', e.target.value)}
@@ -98,12 +80,13 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
                  />
                </div>
 
-               <div className="col-span-2 relative group/brand">
+               {/* Brand Input */}
+               <div className="relative group/brand">
                  <input 
                     value={part.brand}
                     onChange={(e) => updatePart(part.id, 'brand', e.target.value)}
                     onFocus={() => setActiveBrandInput(part.id)}
-                    onBlur={() => setTimeout(() => setActiveBrandInput(null), 200)} // Delay to allow click
+                    onBlur={() => setTimeout(() => setActiveBrandInput(null), 200)}
                     placeholder="Бренд"
                     className={`${inputClass} pr-8 transition-colors
                         ${isError ? 'border-red-500 bg-red-50 text-red-700' : ''}
@@ -152,7 +135,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
                  )}
                </div>
 
-               <div className="col-span-3">
+               <div>
                  <input 
                     value={part.article}
                     onChange={(e) => updatePart(part.id, 'article', e.target.value)}
@@ -161,7 +144,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
                  />
                </div>
 
-               <div className="col-span-1">
+               <div>
                   <input 
                     value={part.uom}
                     onChange={(e) => updatePart(part.id, 'uom', e.target.value)}
@@ -169,7 +152,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
                   />
                </div>
 
-               <div className="col-span-1 flex justify-center">
+               <div className="flex justify-center">
                   <input 
                     type="number"
                     min="0"
@@ -178,6 +161,15 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
                     onChange={(e) => updatePart(part.id, 'quantity', parseFloat(e.target.value) || 0)}
                     className={`${inputClass} text-center font-bold`}
                   />
+               </div>
+
+               {/* Image Uploader */}
+               <div className="flex justify-center">
+                   <ImageUploader 
+                       currentUrl={part.photoUrl} 
+                       onUpload={(url) => updatePart(part.id, 'photoUrl', url)} 
+                       compact
+                   />
                </div>
                
                <button 

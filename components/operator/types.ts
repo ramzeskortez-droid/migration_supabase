@@ -5,6 +5,7 @@ export interface Part {
   brand: string;
   uom: string;
   quantity: number;
+  photoUrl?: string; // Для фото
 }
 
 export interface OrderInfo {

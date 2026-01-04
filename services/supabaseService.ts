@@ -309,6 +309,7 @@ export class SupabaseService {
         quantity: item.quantity,
         comment: item.comment,
         category: item.category,
+        photoUrl: item.photo_url, // Map photo_url
         adminPriceRub: item.admin_price_rub // Map this field
       }));
 
@@ -418,6 +419,23 @@ export class SupabaseService {
       if (error) throw error;
   }
 
+  static async uploadFile(file: File, folder: 'orders' | 'offers'): Promise<string> {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+      const { error } = await supabase.storage
+          .from('attachments')
+          .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data } = supabase.storage
+          .from('attachments')
+          .getPublicUrl(fileName);
+      
+      return data.publicUrl;
+  }
+
   static async createOrder(vin: string, items: any[], clientName: string, car: any, clientPhone?: string, ownerToken?: string): Promise<string> {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
@@ -432,8 +450,12 @@ export class SupabaseService {
     if (orderError) throw orderError;
 
     const itemsToInsert = items.map(item => ({
-      order_id: orderData.id, name: item.name, quantity: item.quantity || 1,
-      comment: item.comment, category: item.category
+      order_id: orderData.id, 
+      name: item.name, 
+      quantity: item.quantity || 1,
+      comment: item.comment, 
+      category: item.category,
+      photo_url: item.photoUrl || null // Сохраняем фото
     }));
 
     const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);

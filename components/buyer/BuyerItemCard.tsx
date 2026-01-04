@@ -1,5 +1,6 @@
 import React from 'react';
-import { Ban, AlertCircle, Copy } from 'lucide-react';
+import { Ban, AlertCircle } from 'lucide-react';
+import { ImageUploader } from '../shared/ImageUploader';
 
 interface BuyerItemCardProps {
   item: any;
@@ -86,7 +87,18 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label><input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice')} placeholder="0" /></div>
             <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Вес (кг)</label><input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight')} placeholder="0.0" /></div>
             <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label><input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks')} placeholder="1" /></div>
-            <div className="col-span-2 md:col-span-1 space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Ссылка на фото (URL)</label><div className="relative"><input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? '' : item.photoUrl || ''} onChange={e => onUpdate(index, 'photoUrl', e.target.value)} className="w-full pl-7 pr-2 font-bold text-[10px] border border-slate-200 rounded-lg py-1.5 bg-white disabled:bg-slate-50 outline-none focus:border-indigo-500 transition-all" placeholder="http..." /><Copy size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300" /></div></div>
+            
+            <div className="col-span-2 md:col-span-1 space-y-1">
+                <label className="text-[7px] font-bold text-slate-400 uppercase block">Фото</label>
+                <div className={isDisabled || isUnavailable ? 'opacity-50 pointer-events-none' : ''}>
+                    <ImageUploader 
+                        currentUrl={item.photoUrl} 
+                        onUpload={(url) => onUpdate(index, 'photoUrl', url)} 
+                        folder="offers"
+                        compact
+                    />
+                </div>
+            </div>
         </div>
 
         {/* НОВОЕ ПОЛЕ: Комментарий поставщика */}
