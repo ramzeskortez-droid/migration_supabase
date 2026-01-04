@@ -4,7 +4,7 @@ import { X, MessageCircle, ChevronRight, User, Hash, Package } from 'lucide-reac
 import { ChatWindow } from '../shared/ChatWindow';
 import { SupabaseService } from '../../services/supabaseService';
 
-interface SellerGlobalChatProps {
+interface BuyerGlobalChatProps {
   isOpen: boolean;
   onClose: () => void;
   currentUserRole: 'ADMIN' | 'SUPPLIER';
@@ -12,7 +12,7 @@ interface SellerGlobalChatProps {
   onNavigateToOrder?: (orderId: string) => void;
 }
 
-export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({ 
+export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({ 
   isOpen, onClose, currentUserRole, currentSupplierName, onNavigateToOrder 
 }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
@@ -134,7 +134,12 @@ export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({
                                             >
                                                 <div className="flex flex-col overflow-hidden w-full">
                                                     <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1 justify-between">
-                                                        <span className="flex items-center gap-1"><User size={10}/> {currentUserRole === 'SUPPLIER' ? 'Чат с менеджером' : supplier}</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <User size={10}/> 
+                                                            {currentUserRole === 'SUPPLIER' 
+                                                                ? (info.lastAuthorName === 'ADMIN' ? 'Чат с менеджером' : `Чат с ${info.lastAuthorName}`) 
+                                                                : supplier}
+                                                        </span>
                                                         {info.unread > 0 && (
                                                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplier ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
                                                                 +{info.unread}
@@ -164,7 +169,10 @@ export const SellerGlobalChat: React.FC<SellerGlobalChatProps> = ({
                         <div className="p-4 border-b border-slate-100 bg-white">
                             <h3 className="font-black text-lg text-slate-800 uppercase">Заказ #{selectedOrder}</h3>
                             <p className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
-                                <User size={12}/> {currentUserRole === 'SUPPLIER' ? 'Менеджер' : selectedSupplier}
+                                <User size={12}/> 
+                                {currentUserRole === 'SUPPLIER' 
+                                    ? (threads[selectedOrder]?.[selectedSupplier]?.lastAuthorName === 'ADMIN' ? 'Менеджер' : threads[selectedOrder]?.[selectedSupplier]?.lastAuthorName || 'Оператор') 
+                                    : selectedSupplier}
                             </p>
                         </div>
                         <div className="flex-grow overflow-hidden">

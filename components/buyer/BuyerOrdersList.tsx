@@ -1,10 +1,10 @@
 import React, { memo } from 'react';
 import { Order } from '../../types';
-import { SellerOrderRow } from './SellerOrderRow';
+import { BuyerOrderRow } from './BuyerOrderRow';
 import { Virtuoso } from 'react-virtuoso';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
-interface SellerOrdersListProps {
+interface BuyerOrdersListProps {
   orders: Order[];
   expandedId: string | null;
   onToggle: (id: string | null) => void;
@@ -19,31 +19,33 @@ interface SellerOrdersListProps {
   // Helpers
   getOfferStatus: (order: Order) => { label: string, color: string, icon: React.ReactNode };
   getMyOffer: (order: Order) => any;
+  buyerToken?: string;
 }
 
 // -- Подкомпонент строки (Мемоизированный) --
-const MemoizedSellerOrderRow = memo(({ 
+const MemoizedBuyerOrderRow = memo(({ 
     order, isExpanded, onToggle, 
     editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
-    statusInfo, myOffer
+    statusInfo, myOffer, buyerToken
 }: any) => (
-    <SellerOrderRow 
+    <BuyerOrderRow 
         order={order}
         isExpanded={isExpanded}
         onToggle={onToggle}
         editingItems={isExpanded ? (editingItemsMap[order.id] || order.items) : undefined}
-        setEditingItems={(items) => setEditingItemsMap((prev: any) => ({ ...prev, [order.id]: items }))}
+        setEditingItems={(items: any[]) => setEditingItemsMap((prev: any) => ({ ...prev, [order.id]: items }))}
         onSubmit={onSubmit}
         isSubmitting={isSubmitting}
         statusInfo={statusInfo}
         myOffer={myOffer}
+        buyerToken={buyerToken}
     />
 ));
 
-export const SellerOrdersList: React.FC<SellerOrdersListProps> = ({
+export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 
   editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
-  sortConfig, onSort, getOfferStatus, getMyOffer
+  sortConfig, onSort, getOfferStatus, getMyOffer, buyerToken
 }) => {
   
   const SortIcon = ({ column }: { column: string }) => {
@@ -73,7 +75,7 @@ export const SellerOrdersList: React.FC<SellerOrdersListProps> = ({
                 style={{ height: '100%' }}
                 data={orders}
                 itemContent={(index, order) => (
-                    <MemoizedSellerOrderRow 
+                    <MemoizedBuyerOrderRow 
                         key={order.id}
                         order={order}
                         isExpanded={expandedId === order.id}
@@ -84,6 +86,7 @@ export const SellerOrdersList: React.FC<SellerOrdersListProps> = ({
                         isSubmitting={isSubmitting}
                         statusInfo={getOfferStatus(order)}
                         myOffer={getMyOffer(order)}
+                        buyerToken={buyerToken}
                     />
                 )}
                 components={{

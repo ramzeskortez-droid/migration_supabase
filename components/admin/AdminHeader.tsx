@@ -20,24 +20,11 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   return (
     <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
       <div className="flex items-center gap-4">
-        <h1 className="text-lg font-black uppercase text-slate-800">Панель Администратора</h1>
+        <h1 className="text-lg font-black uppercase text-slate-800">Панель Менеджера</h1>
         
         <div className="flex items-center gap-2">
             <button onClick={() => setShowLogs(!showLogs)} className={`p-2 rounded-lg ${showLogs ? 'bg-slate-200' : 'bg-slate-50'} hover:bg-slate-200 transition-colors`}>
                 <History size={18} className="text-slate-600"/>
-            </button>
-
-            <button 
-                onClick={onOpenGlobalChat}
-                className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all relative"
-                title="Все сообщения от поставщиков"
-            >
-                <MessageCircle size={18} />
-                {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-white animate-bounce">
-                        {unreadCount}
-                    </span>
-                )}
             </button>
         </div>
       </div>

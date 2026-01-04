@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { OperatorHeader } from './operator/OperatorHeader';
 import { SystemStatusSidebar } from './operator/SystemStatusSidebar';
 import { OrderInfoForm } from './operator/OrderInfoForm';
@@ -6,6 +6,7 @@ import { PartsList } from './operator/PartsList';
 import { AiAssistant } from './operator/AiAssistant';
 import { OperatorAuthModal } from './operator/OperatorAuthModal';
 import { OperatorOrdersList } from './operator/OperatorOrdersList';
+import { GlobalChatWindow } from './shared/GlobalChatWindow';
 import { OrderInfo, Part, LogHistory, DisplayStats } from './operator/types';
 import { SupabaseService } from '../services/supabaseService';
 import { Toast } from './shared/Toast';
@@ -44,6 +45,9 @@ export const OperatorInterface: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{message: string, type?: 'success' | 'error'} | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   // Load User from LocalStorage
   useEffect(() => {
@@ -66,6 +70,22 @@ export const OperatorInterface: React.FC = () => {
       };
       checkAuth();
   }, []);
+
+  // Чат: получение количества непрочитанных
+  const fetchUnreadCount = useCallback(async () => {
+      try {
+          const count = await SupabaseService.getUnreadChatCount();
+          setUnreadChatCount(count);
+      } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+      if (currentUser) {
+          fetchUnreadCount();
+          const interval = setInterval(fetchUnreadCount, 30000);
+          return () => clearInterval(interval);
+      }
+  }, [currentUser, fetchUnreadCount]);
 
   // Load Brands
   useEffect(() => {
@@ -143,11 +163,20 @@ export const OperatorInterface: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Валидация: бренд должен быть в списке (если список загружен)
+  // Если бренда нет в списке, оператор должен его добавить через PartsList
+  const isFormValid = parts.length > 0 && parts.every(p => 
+      p.name && 
+      p.brand && 
+      p.brand.trim() !== '' && 
+      (brandsList.length === 0 || brandsList.some(b => b.toLowerCase() === p.brand?.trim().toLowerCase()))
+  );
+
   const handleCreateOrder = async () => {
     if (!currentUser) return;
 
-    if (parts.length === 0 || !parts[0].name) {
-        setToast({ message: 'Добавьте хотя бы одну позицию', type: 'error' });
+    if (!isFormValid) {
+        setToast({ message: 'Заполните все обязательные поля (Бренд, Наименование)', type: 'error' });
         return;
     }
     
@@ -175,7 +204,7 @@ export const OperatorInterface: React.FC = () => {
                 year: '' 
             },
             orderInfo.clientPhone,
-            currentUser.token // Передаем токен владельца
+            currentUser.token 
         );
 
         setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });
@@ -197,6 +226,12 @@ export const OperatorInterface: React.FC = () => {
     }
   };
 
+  const handleNavigateToOrder = (orderId: string) => {
+      // Logic to find and scroll to order in archive if needed
+      // For now just logging
+      addLog(`Переход к чату заказа #${orderId}`);
+  };
+
   if (isAuthChecking) {
       return <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-black uppercase text-xs tracking-widest">Загрузка профиля...</div>;
   }
@@ -212,7 +247,12 @@ export const OperatorInterface: React.FC = () => {
           </div>
       )}
       
-      <OperatorHeader operatorName={currentUser?.name || null} onLogout={handleLogout} />
+      <OperatorHeader 
+        operatorName={currentUser?.name || null} 
+        onLogout={handleLogout} 
+        onOpenChat={() => setIsGlobalChatOpen(true)}
+        unreadCount={unreadChatCount}
+      />
 
       <div className={`flex flex-1 overflow-hidden transition-opacity duration-300 ${!currentUser ? 'opacity-30 pointer-events-none blur-sm' : 'opacity-100'}`}>
         {/* Main Content */}
@@ -247,6 +287,7 @@ export const OperatorInterface: React.FC = () => {
                     onCreateOrder={handleCreateOrder}
                     isSaving={isSaving}
                     brandsList={brandsList}
+                    isFormValid={isFormValid} // Pass validity
                 />
             </div>
 
@@ -262,6 +303,14 @@ export const OperatorInterface: React.FC = () => {
             displayStats={displayStats} 
         />
       </div>
+
+      <GlobalChatWindow 
+        isOpen={isGlobalChatOpen}
+        onClose={() => setIsGlobalChatOpen(false)}
+        currentUserRole="OPERATOR"
+        currentUserName={currentUser?.name}
+        onNavigateToOrder={handleNavigateToOrder}
+      />
     </div>
   );
 };

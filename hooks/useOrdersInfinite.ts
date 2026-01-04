@@ -9,6 +9,9 @@ interface UseOrdersInfiniteProps {
     onlyWithMyOffersName?: string;
     sortDirection: 'asc' | 'desc';
     limit?: number;
+    ownerToken?: string;
+    buyerToken?: string;
+    excludeOffersFrom?: string;
 }
 
 export const useOrdersInfinite = ({
@@ -18,10 +21,13 @@ export const useOrdersInfinite = ({
     brandFilter,
     onlyWithMyOffersName,
     sortDirection,
-    limit = 50
+    limit = 50,
+    ownerToken,
+    buyerToken,
+    excludeOffersFrom
 }: UseOrdersInfiniteProps) => {
     return useInfiniteQuery({
-        queryKey: ['orders', { searchQuery, statusFilter, clientPhone, brandFilter, onlyWithMyOffersName, sortDirection }],
+        queryKey: ['orders', { searchQuery, statusFilter, clientPhone, brandFilter, onlyWithMyOffersName, sortDirection, ownerToken, buyerToken, excludeOffersFrom }],
         queryFn: async ({ pageParam }: { pageParam?: number }) => {
             const result = await SupabaseService.getOrders(
                 pageParam,
@@ -32,12 +38,15 @@ export const useOrdersInfinite = ({
                 statusFilter,
                 clientPhone,
                 brandFilter,
-                onlyWithMyOffersName
+                onlyWithMyOffersName,
+                ownerToken,
+                buyerToken,
+                excludeOffersFrom
             );
             return result;
         },
         initialPageParam: undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
-        staleTime: 30000,
+        staleTime: 5000, // Уменьшаем время жизни кеша до 5 секунд для быстрой реакции
     });
 };

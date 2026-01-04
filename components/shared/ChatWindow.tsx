@@ -8,7 +8,8 @@ interface ChatWindowProps {
   orderId: string;
   offerId?: string | null;
   supplierName: string;
-  currentUserRole: 'ADMIN' | 'SUPPLIER';
+  currentUserRole: 'ADMIN' | 'SUPPLIER' | 'OPERATOR';
+  currentUserName?: string;
   itemName?: string;
   onNavigateToOrder?: (orderId: string) => void;
   onRead?: (orderId: string, supplierName: string) => void;
@@ -24,12 +25,28 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
             )}
 
             {messages.map((msg) => {
-                const isMe = msg.sender_role === currentUserRole;
+                // Определяем "свое" сообщение
+                let isMe = false;
+                if (currentUserRole === 'SUPPLIER') {
+                    isMe = msg.sender_role === 'SUPPLIER';
+                } else {
+                    // ADMIN и OPERATOR видят сообщения с ролью ADMIN как свои
+                    isMe = msg.sender_role === 'ADMIN';
+                }
+
+                // Логика отображения имени
+                let displayName = msg.sender_name;
+                if (msg.sender_role === 'ADMIN') {
+                    // Если имя просто "ADMIN", показываем "Менеджер" (старая логика или админ)
+                    if (msg.sender_name === 'ADMIN') displayName = 'Менеджер';
+                    // Если имя начинается с "Оператор -", оставляем как есть
+                }
+
                 return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] p-3 rounded-2xl text-xs font-medium shadow-sm ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-200 rounded-tl-none'}`}>
                             <div className="mb-1 text-[8px] font-black uppercase opacity-70 flex justify-between gap-4">
-                                <span>{msg.sender_role === 'ADMIN' ? 'Менеджер' : msg.sender_name}</span>
+                                <span>{displayName}</span>
                                 <span>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             </div>
                             {msg.item_name && (
@@ -113,19 +130,17 @@ const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (ms
 // -- Main Component --
 
 const ChatWindowComponent: React.FC<ChatWindowProps> = ({
-  orderId, offerId, supplierName, currentUserRole, itemName, onNavigateToOrder, onRead
+  orderId, offerId, supplierName, currentUserRole, currentUserName, itemName, onNavigateToOrder, onRead
 }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [orderItems, setOrderItems] = useState<string[]>([]);
   
-  // UI State for Actions
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [toast, setToast] = useState<{message: string} | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Загрузка товаров для выбора
   useEffect(() => {
       const loadItems = async () => {
           if (!orderId) return;
@@ -137,17 +152,14 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       loadItems();
   }, [orderId]);
 
-  // Загрузка сообщений
   const fetchMessages = async () => {
       if (!orderId || !supplierName) return;
       try {
           const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, supplierName);
           
           setMessages(prev => {
-              // Identify optimistic messages (ID > 1 trillion implies timestamp)
               const optimistic = prev.filter(m => typeof m.id === 'number' && m.id > 1000000000000);
               
-              // If no optimistic messages, use strict comparison to minimize re-renders
               if (optimistic.length === 0) {
                   if (prev.length !== data.length) return data;
                   if (data.length > 0 && prev.length > 0) {
@@ -156,9 +168,6 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
                   if (JSON.stringify(prev) !== JSON.stringify(data)) return data;
                   return prev;
               }
-
-              // If we have optimistic messages, keep them appended to server data
-              // This prevents them from disappearing if polling happens before send confirmation
               return [...data, ...optimistic];
           });
       } catch (e) {
@@ -166,23 +175,23 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       }
   };
 
-  // Автоматически помечать сообщения как прочитанные
   useEffect(() => {
       if (!messages.length) return;
 
       const hasUnread = messages.some(m => !m.is_read && m.sender_role !== currentUserRole);
+      // Для оператора unread - это если роль отправителя SUPPLIER
+      const hasUnreadForOperator = currentUserRole === 'OPERATOR' && messages.some(m => !m.is_read && m.sender_role === 'SUPPLIER');
 
-      if (hasUnread) {
+      if (hasUnread || hasUnreadForOperator) {
           const markRead = async () => {
               if (onRead) onRead(orderId, supplierName);
 
-              if (currentUserRole === 'ADMIN') {
+              if (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') {
                  await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
               } else {
                  await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
               }
               
-              // Optimistically mark locally to stop loop immediately
               setMessages(prev => prev.map(m => (!m.is_read && m.sender_role !== currentUserRole) ? { ...m, is_read: true } : m));
           };
           markRead();
@@ -200,14 +209,28 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   const handleSend = useCallback(async (msgText: string, selectedItemName?: string) => {
-      // Optimistic Update: Show message immediately
       const tempId = Date.now();
+      
+      let senderName = 'ADMIN';
+      let dbRole: 'ADMIN' | 'SUPPLIER' = 'ADMIN';
+
+      if (currentUserRole === 'OPERATOR') {
+          senderName = currentUserName ? `Оператор - ${currentUserName}` : 'Оператор';
+          dbRole = 'ADMIN';
+      } else if (currentUserRole === 'ADMIN') {
+          senderName = 'ADMIN'; // Преобразуется в Менеджер при рендере
+          dbRole = 'ADMIN';
+      } else {
+          senderName = supplierName;
+          dbRole = 'SUPPLIER';
+      }
+
       const optimisticMsg = {
           id: tempId,
           order_id: Number(orderId),
-          sender_role: currentUserRole,
-          sender_name: currentUserRole === 'ADMIN' ? 'ADMIN' : supplierName,
-          recipient_name: currentUserRole === 'ADMIN' ? supplierName : 'ADMIN',
+          sender_role: dbRole,
+          sender_name: senderName,
+          recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
           message: msgText,
           item_name: selectedItemName,
           created_at: new Date().toISOString(),
@@ -219,18 +242,16 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
 
       setLoading(true);
       try {
-          // Server returns the created message
           const realMsg = await SupabaseService.sendChatMessage({
               order_id: orderId,
               offer_id: offerId || null,
-              sender_role: currentUserRole,
-              sender_name: currentUserRole === 'ADMIN' ? 'ADMIN' : supplierName,
-              recipient_name: currentUserRole === 'ADMIN' ? supplierName : 'ADMIN',
+              sender_role: dbRole,
+              sender_name: senderName,
+              recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
               message: msgText,
               item_name: selectedItemName
           });
           
-          // Replace optimistic message with real one to avoid blinking
           setMessages(prev => prev.map(m => m.id === tempId ? realMsg : m));
           
       } catch (e: any) {
@@ -240,12 +261,12 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       } finally {
           setLoading(false);
       }
-  }, [orderId, offerId, supplierName, currentUserRole]);
+  }, [orderId, offerId, supplierName, currentUserRole, currentUserName]);
 
   const confirmArchive = async () => {
       try {
           await SupabaseService.archiveChat(orderId, supplierName);
-          setToast({ message: currentUserRole === 'ADMIN' ? 'Чат отправлен в архив' : 'Спасибо! Чат закрыт.' });
+          setToast({ message: (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? 'Чат отправлен в архив' : 'Спасибо! Чат закрыт.' });
           setShowArchiveConfirm(false);
       } catch (e) {
           console.error(e);
@@ -259,8 +280,8 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
         
         <ConfirmationModal 
             isOpen={showArchiveConfirm}
-            title={currentUserRole === 'ADMIN' ? "В архив" : "Закрыть вопрос"}
-            message={currentUserRole === 'ADMIN' ? "Перенести этот чат в архив?" : "Отметить вопрос как решенный и перенести в архив?"}
+            title={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Закрыть вопрос"}
+            message={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "Перенести этот чат в архив?" : "Отметить вопрос как решенный и перенести в архив?"}
             confirmLabel="Да"
             variant="primary"
             onConfirm={confirmArchive}
@@ -274,7 +295,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
             >
                 <Link size={12} className="text-indigo-400 shrink-0"/>
                 <span className="text-[10px] font-bold text-indigo-700 truncate">
-                    {currentUserRole === 'ADMIN' 
+                    {(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') 
                         ? `Поставщик инициировал диалог из заказа #${orderId}` 
                         : `Чат по заказу #${orderId}`
                     }
@@ -284,9 +305,9 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
                 <button 
                     onClick={() => setShowArchiveConfirm(true)}
                     className="text-[9px] font-black uppercase text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors mr-2"
-                    title={currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
+                    title={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
                 >
-                    <Archive size={12}/> {currentUserRole === 'ADMIN' ? "В архив" : "Вопрос решен"}
+                    <Archive size={12}/> {(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
                 </button>
                 {onNavigateToOrder && (
                     <button 

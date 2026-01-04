@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ClientInterface } from './components/ClientInterface';
-import { SellerInterface } from './components/SellerInterface';
+import { BuyerInterface } from './components/BuyerInterface';
 import { AdminInterface } from './components/AdminInterface';
 import { OperatorInterface } from './components/OperatorInterface';
 import { Users, ShoppingBag, ShieldCheck, Phone, Send } from 'lucide-react';
@@ -43,16 +43,16 @@ const App: React.FC = () => {
                   <Users size={14}/> <span>Оператор</span>
                 </button>
                 <button 
-                  onClick={() => navigate('/supplier')} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/supplier') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                  onClick={() => navigate('/buyer')} 
+                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/buyer') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                  <ShoppingBag size={14}/> <span>Поставщик</span>
+                  <ShoppingBag size={14}/> <span>Закупщик</span>
                 </button>
                 <button 
                   onClick={() => navigate('/admin')} 
                   className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/admin') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                  <ShieldCheck size={14}/> <span>Админ</span>
+                  <ShieldCheck size={14}/> <span>Менеджер</span>
                 </button>
              </div>
           </div>
@@ -74,7 +74,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/operator" element={<OperatorInterface />} />
           <Route path="/client" element={<ClientInterface />} />
-          <Route path="/supplier" element={<SellerInterface />} />
+          <Route path="/buyer" element={<BuyerInterface />} />
           <Route path="/admin" element={<AdminInterface />} />
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/operator" replace />} />

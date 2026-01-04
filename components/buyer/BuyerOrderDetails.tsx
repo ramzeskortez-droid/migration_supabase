@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle } from 'lucide-react';
-import { SellerItemCard } from './SellerItemCard';
+import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
 import { ChatModal } from '../shared/ChatModal';
 
-interface SellerOrderDetailsProps {
+interface BuyerOrderDetailsProps {
   order: Order;
   editingItems: any[];
   setEditingItems: (items: any[]) => void;
@@ -15,14 +15,14 @@ interface SellerOrderDetailsProps {
   statusInfo: any;
 }
 
-export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({ 
+export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({ 
   order, editingItems, setEditingItems, onSubmit, isSubmitting, myOffer, statusInfo 
 }) => {
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const sellerAuth = useMemo(() => {
-      try { return JSON.parse(localStorage.getItem('seller_auth') || 'null'); } catch { return null; }
+  const BuyerAuth = useMemo(() => {
+      try { return JSON.parse(localStorage.getItem('Buyer_auth') || 'null'); } catch { return null; }
   }, []);
 
   const fullModel = order.car?.AdminModel || order.car?.model || 'N/A';
@@ -33,7 +33,7 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
   // Валидация
   const isValid = editingItems.every(item => {
       if (item.offeredQuantity === 0) return true;
-      return (item.sellerPrice > 0) && (item.weight > 0) && (item.deliveryWeeks > 0);
+      return (item.BuyerPrice > 0) && (item.weight > 0) && (item.deliveryWeeks > 0);
   });
 
   const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
@@ -89,7 +89,7 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
 
         <div className="space-y-3">
             {editingItems.map((item, idx) => (
-                <SellerItemCard 
+                <BuyerItemCard 
                     key={idx} 
                     item={item} 
                     index={idx} 
@@ -126,7 +126,7 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
                             {statusInfo.label === 'ЧАСТИЧНО' ? 'ЗАКАЗ ОБРАБОТАН. ЕСТЬ ПОЗИЦИИ, КОТОРЫЕ УТВЕРЖДЕНЫ К ПОКУПКЕ.' :
                             statusInfo.label === 'ВЫИГРАЛ' ? 'ЗАКАЗ ОБРАБОТАН. ВЫ ВЫИГРАЛИ ПО ВСЕМ ПОЗИЦИЯМ.' :
                             statusInfo.label === 'ПРОИГРАЛ' ? 'ЗАКАЗ ОБРАБОТАН. ВАШЕ ПРЕДЛОЖЕНИЕ НЕ ПОДХОДИТ.' :
-                            'ЗАКАЗ ОБРАБОТАН АДМИНОМ. РЕДАКТИРОВАНИЕ ЗАКРЫТО.'}
+                            'ЗАКАЗ ОБРАБОТАН МЕНЕДЖЕРОМ. РЕДАКТИРОВАНИЕ ЗАКРЫТО.'}
                     </span>
                 </div>
             )}
@@ -138,7 +138,7 @@ export const SellerOrderDetails: React.FC<SellerOrderDetailsProps> = ({
                 onClose={() => setIsChatOpen(false)} 
                 orderId={order.id} 
                 offerId={myOffer?.id} 
-                supplierName={sellerAuth?.name || 'Поставщик'}
+                supplierName={BuyerAuth?.name || 'Поставщик'}
                 currentUserRole="SUPPLIER"
             />
         )}

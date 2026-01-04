@@ -6,16 +6,28 @@ interface OperatorOrderRowProps {
   order: Order;
   isExpanded: boolean;
   onToggle: () => void;
+  onStatusChange?: (orderId: string, status: string) => void;
 }
 
-export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle }) => {
+export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange }) => {
   const [datePart, timePart] = order.createdAt.split(', ');
+
+  const handleProcessed = () => {
+      if (onStatusChange) {
+          onStatusChange(order.id, 'КП готово');
+      }
+  };
+
+  // Извлекаем тему из первого комментария (предполагаем, что тема сохраняется там)
+  // В OperatorInterface мы сохраняем комментарий как: `[Тема: ...] Бренд: ...`
+  const subjectMatch = order.items?.[0]?.comment?.match(/\[Тема: (.*?)\]/);
+  const subject = subjectMatch ? subjectMatch[1] : '-';
 
   return (
     <div className={`border-b border-slate-50 transition-all ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50/30'}`}>
       <div 
         onClick={onToggle}
-        className={`p-3 grid grid-cols-[70px_1.5fr_100px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
+        className={`p-3 grid grid-cols-[70px_1fr_1fr_100px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
       >
         <div className="text-[11px] font-black text-indigo-600">#{order.id}</div>
         
@@ -23,6 +35,8 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
             <div className="text-[11px] font-bold text-slate-700 truncate">{order.clientName || 'Не указано'}</div>
             <div className="text-[9px] text-slate-400 font-medium">{order.clientPhone}</div>
         </div>
+
+        <div className="text-[10px] font-medium text-slate-600 truncate" title={subject}>{subject}</div>
 
         <div className="text-[10px] font-bold text-slate-500">{datePart}</div>
         <div className="text-[10px] font-medium text-slate-400">{timePart}</div>
@@ -58,11 +72,26 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                 <span className="font-bold text-slate-700">{item.name}</span>
                                 <div className="flex items-center gap-4 text-slate-500 font-black">
                                     <span>{item.quantity} ШТ</span>
+                                    {/* Show Price if available */}
+                                    {item.adminPriceRub && (
+                                        <span className="text-indigo-600 bg-indigo-50 px-2 py-1 rounded shadow-sm">{new Intl.NumberFormat('ru-RU').format(item.adminPriceRub)} ₽</span>
+                                    )}
                                 </div>
                             </div>
                         ))
                     ) : (
                         <div className="text-center text-[10px] font-bold text-slate-300 py-4 uppercase italic">Загрузка позиций...</div>
+                    )}
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                    {order.statusAdmin === 'В обработке' && (
+                        <button 
+                            onClick={handleProcessed}
+                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-lg hover:shadow-indigo-200 transition-all flex items-center gap-2 active:scale-95"
+                        >
+                            Обработано
+                        </button>
                     )}
                 </div>
             </div>

@@ -9,12 +9,13 @@ interface AiAssistantProps {
   onStats: (tokens: number) => void;
   onCreateOrder: () => void;
   isSaving: boolean;
-  brandsList: string[]; // Добавлено
+  brandsList: string[];
+  isFormValid?: boolean;
 }
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
-export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, brandsList }) => {
+export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, brandsList, isFormValid = true }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -25,8 +26,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
 
     try {
       const estimatedInputTokens = Math.ceil(inputText.length / 4);
-      const currentYear = new Date().getFullYear();
-
+      
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -174,8 +174,14 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
 
             <button 
                 onClick={onCreateOrder}
-                disabled={isSaving}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
+                disabled={isSaving || !isFormValid}
+                className={`
+                    flex-1 font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 
+                    ${isSaving || !isFormValid 
+                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' 
+                        : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200 hover:-translate-y-0.5'
+                    }
+                `}
             >
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
                 СОЗДАТЬ ЗАЯВКУ

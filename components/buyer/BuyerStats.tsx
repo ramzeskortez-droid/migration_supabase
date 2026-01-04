@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, Clock, Calendar, ShieldCheck, Car, Loader2 } from 'lucide-react';
 
-interface SellerStatsProps {
+interface BuyerStatsProps {
   stats: {
     today: number;
     week: number;
@@ -19,7 +19,7 @@ const StatCard = ({ icon, label, value, subLabel, loading }: { icon: React.React
     </div>
 );
 
-export const SellerStats: React.FC<SellerStatsProps> = ({ stats, loading }) => {
+export const BuyerStats: React.FC<BuyerStatsProps> = ({ stats, loading }) => {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard icon={<Clock size={16} className="text-indigo-600"/>} label="СЕГОДНЯ" value={stats.today} subLabel="ЗАКАЗОВ" loading={loading} />

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SupabaseService } from '../services/supabaseService';
-import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab } from '../types';
+import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab, ExchangeRates } from '../types';
 import { CheckCircle2, AlertCircle, Settings, FileText, Send, ShoppingCart, CreditCard, Truck, PackageCheck } from 'lucide-react';
 import { AdminSidebar } from './admin/AdminSidebar';
 import { AdminHeader } from './admin/AdminHeader';
 import { AdminToolbar } from './admin/AdminToolbar';
 import { AdminOrdersList } from './admin/AdminOrdersList';
-import { AdminGlobalChat } from './admin/AdminGlobalChat';
+import { AdminFinanceSettings } from './admin/AdminFinanceSettings';
 import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
+import { useQueryClient } from '@tanstack/react-query';
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -24,7 +25,8 @@ const TAB_MAPPING: Record<string, AdminTab> = {
 };
 
 export const AdminInterface: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'listing' | 'statuses'>('listing');
+  const queryClient = useQueryClient();
+  const [currentView, setCurrentView] = useState<'listing' | 'statuses' | 'finance'>('listing');
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('new');
@@ -38,10 +40,7 @@ export const AdminInterface: React.FC = () => {
   const [adminModal, setAdminModal] = useState<AdminModalState | null>(null);
   const [refusalReason, setRefusalReason] = useState("");
   const [seedProgress, setSeedProgress] = useState<number | null>(null);
-  
-  // ЧАТ
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   
   // Сортировка
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
@@ -87,24 +86,18 @@ export const AdminInterface: React.FC = () => {
       } catch (e) {}
   };
 
+  const fetchRates = async () => {
+      try {
+          const rates = await SupabaseService.getExchangeRates();
+          setExchangeRates(rates);
+      } catch (e) {}
+  };
+
   useEffect(() => {
       fetchCounts();
-      const interval = setInterval(fetchCounts, 60000);
+      fetchRates();
+      const interval = setInterval(fetchCounts, 5000); // Опрос раз в 5 секунд
       return () => clearInterval(interval);
-  }, []);
-
-  // Чат поллинг
-  useEffect(() => { 
-      const fetchUnread = async () => {
-          try {
-              const count = await SupabaseService.getUnreadChatCount();
-              setUnreadCount(count);
-          } catch (e) {}
-      };
-      
-      fetchUnread();
-      const interval = setInterval(fetchUnread, 60000); 
-      return () => clearInterval(interval); 
   }, []);
 
   const addLog = (text: string, type: 'info' | 'success' | 'error') => {
@@ -125,13 +118,19 @@ export const AdminInterface: React.FC = () => {
       }); 
   };
 
-  const handleLocalUpdateRank = (offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number) => {
-      // Пока просто обновляем UI, в идеале через mutation
+  const handleLocalUpdateRank = async (orderId: string, offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number) => {
+      try {
+          const actionType = (currentRank === 'ЛИДЕР' || currentRank === 'LEADER') ? 'RESET' : undefined;
+          await SupabaseService.updateRank(vin, itemName, offerId, adminPrice, adminCurrency, actionType, adminComment, deliveryRate, adminPriceRub);
+          // Инвалидируем детали конкретного заказа, чтобы обновить UI
+          queryClient.invalidateQueries({ queryKey: ['order-details', orderId] });
+      } catch (e) {
+          console.error(e);
+          showToast("Ошибка при выборе поставщика");
+      }
   };
 
-  const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {
-      // Пока не нужно, так как данные меняются через форму
-  };
+  const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {};
 
   const handleFormCP = async (orderId: string) => {
       executeApproval(orderId);
@@ -142,7 +141,6 @@ export const AdminInterface: React.FC = () => {
       setIsSubmitting(orderId); 
       
       try {
-          // Получаем актуальные данные для заказа, чтобы найти победителей (так как в списке их может не быть)
           const details = await SupabaseService.getOrderDetails(orderId);
           
           const winnersPayload: any[] = [];
@@ -170,7 +168,7 @@ export const AdminInterface: React.FC = () => {
           
           showToast("КП успешно сформировано");
           setActiveTab('kp_sent'); 
-          refetch(); // Обновляем список
+          refetch(); 
           
       } catch (e) { 
           console.error(e);
@@ -199,11 +197,6 @@ export const AdminInterface: React.FC = () => {
   const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
   const toggleRegistry = (id: string) => { setOpenRegistry(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
 
-  const handleNavigateToOrder = (orderId: string) => {
-      setSearchQuery(orderId);
-      setExpandedId(orderId);
-  };
-
   const renderStatusSettings = () => (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 animate-in fade-in slide-in-from-left-4 duration-500">
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
@@ -222,7 +215,7 @@ export const AdminInterface: React.FC = () => {
                 </div>
             </div>
             <div className="space-y-4">
-                <div className="px-4 py-2 bg-indigo-600 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Поставщика</div>
+                <div className="px-4 py-2 bg-indigo-600 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Закупщика</div>
                 <div className="space-y-2">
                     {['Сбор офферов', 'Идут торги', 'ВЫИГРАЛ', 'ПРОИГРАЛ', 'ЧАСТИЧНО', 'ОТКАЗ', 'Торги завершены'].map(s => (
                         <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
@@ -232,7 +225,7 @@ export const AdminInterface: React.FC = () => {
                 </div>
             </div>
             <div className="space-y-4">
-                <div className="px-4 py-2 bg-amber-500 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Админа</div>
+                <div className="px-4 py-2 bg-amber-500 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Менеджера</div>
                 <div className="space-y-2">
                     {STATUS_STEPS.map(s => (
                         <div key={s.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
@@ -255,7 +248,7 @@ export const AdminInterface: React.FC = () => {
           <AdminSidebar currentView={currentView} setCurrentView={setCurrentView} />
 
           <main className="flex-grow p-4 overflow-y-auto">
-              {currentView === 'statuses' ? renderStatusSettings() : (
+              {currentView === 'statuses' ? renderStatusSettings() : currentView === 'finance' ? <AdminFinanceSettings /> : (
                   <div className="max-w-6xl mx-auto space-y-4">
                       {successToast && (
                          <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 border border-slate-700">
@@ -272,8 +265,6 @@ export const AdminInterface: React.FC = () => {
                         onClearDB={async () => { if(!confirm('Удалить все?')) return; setLoading(true); try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setLoading(false); } }}
                         onSeed={async (count) => { setLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c)); refetch(); } catch(e) {} finally { setLoading(false); setSeedProgress(null); } }}
                         seedProgress={seedProgress}
-                        unreadCount={unreadCount}
-                        onOpenGlobalChat={() => setIsGlobalChatOpen(true)}
                       />
 
                       <AdminToolbar 
@@ -310,12 +301,11 @@ export const AdminInterface: React.FC = () => {
                         handleLocalUpdateRank={handleLocalUpdateRank}
                         openRegistry={openRegistry}
                         toggleRegistry={toggleRegistry}
+                        exchangeRates={exchangeRates}
                       />
                   </div>
               )}
           </main>
-          
-          <AdminGlobalChat isOpen={isGlobalChatOpen} onClose={() => setIsGlobalChatOpen(false)} onNavigateToOrder={handleNavigateToOrder} />
 
           {adminModal && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">

@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SupabaseService } from '../services/supabaseService';
-import { Order } from '../types';
+import { Order, AppUser } from '../types';
 import { Toast } from './shared/Toast';
-import { SellerAuthModal } from './seller/SellerAuthModal';
-import { SellerHeader } from './seller/SellerHeader';
-import { SellerStats } from './seller/SellerStats';
-import { SellerToolbar } from './seller/SellerToolbar';
-import { SellerOrdersList } from './seller/SellerOrdersList';
-import { SellerGlobalChat } from './seller/SellerGlobalChat';
+import { BuyerAuthModal } from './buyer/BuyerAuthModal';
+import { BuyerHeader } from './buyer/BuyerHeader';
+import { BuyerStats } from './buyer/BuyerStats';
+import { BuyerToolbar } from './buyer/BuyerToolbar';
+import { BuyerOrdersList } from './buyer/BuyerOrdersList';
+import { BuyerGlobalChat } from './buyer/BuyerGlobalChat';
 import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
 
-export const SellerInterface: React.FC = () => {
+export const BuyerInterface: React.FC = () => {
   // --- Auth ---
-  const [sellerAuth, setSellerAuth] = useState(() => {
-      try { return JSON.parse(localStorage.getItem('seller_auth') || 'null'); } catch { return null; }
+  const [buyerAuth, setBuyerAuth] = useState<AppUser | null>(() => {
+      try { return JSON.parse(localStorage.getItem('buyer_auth_token') || 'null'); } catch { return null; }
   });
-  const [showAuthModal, setShowAuthModal] = useState(!sellerAuth);
+  const [showAuthModal, setShowAuthModal] = useState(!buyerAuth);
 
   // --- UI State ---
-  const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
+  const [activeTab, setActiveTab] = useState<'new' | 'history' | 'hot'>('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeBrand, setActiveBrand] = useState<string | null>(null);
@@ -34,25 +34,24 @@ export const SellerInterface: React.FC = () => {
   const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
 
   // --- Handlers Pre-definition ---
-  const handleLogin = (name: string, phone: string) => {
-      const auth = { name, phone };
-      setSellerAuth(auth);
-      localStorage.setItem('seller_auth', JSON.stringify(auth));
+  const handleLogin = (user: AppUser) => {
+      setBuyerAuth(user);
+      localStorage.setItem('buyer_auth_token', JSON.stringify(user));
       setShowAuthModal(false);
   };
 
   const handleLogout = () => {
-      setSellerAuth(null);
-      localStorage.removeItem('seller_auth');
+      setBuyerAuth(null);
+      localStorage.removeItem('buyer_auth_token');
       setShowAuthModal(true);
   };
 
   const getMyOffer = useCallback((order: Order) => {
-      if (!sellerAuth?.name) return null;
+      if (!buyerAuth?.name) return null;
       return order.offers?.find(off => 
-        String(off.clientName || '').trim().toUpperCase() === sellerAuth.name.trim().toUpperCase()
+        String(off.clientName || '').trim().toUpperCase() === buyerAuth.name.trim().toUpperCase()
       ) || null;
-  }, [sellerAuth]);
+  }, [buyerAuth]);
 
   // --- React Query Infinite Scroll ---
   const {
@@ -66,23 +65,42 @@ export const SellerInterface: React.FC = () => {
       searchQuery,
       statusFilter: activeTab === 'new' ? 'В обработке' : undefined,
       brandFilter: activeBrand,
-      onlyWithMyOffersName: activeTab === 'history' ? sellerAuth?.name : undefined,
+      onlyWithMyOffersName: activeTab === 'history' ? buyerAuth?.name : undefined,
+      excludeOffersFrom: activeTab === 'new' ? buyerAuth?.name : undefined,
       sortDirection: 'desc',
-      limit: 20
+      limit: 20,
+      buyerToken: buyerAuth?.token // Используем ТОКЕН из базы, а не телефон
   });
 
-  const orders = useMemo(() => data?.pages.flatMap(page => page.data) || [], [data]);
+  const orders = useMemo(() => {
+      let result = data?.pages.flatMap(page => page.data) || [];
+      
+      // Задача 2.4: Таб "Горящие" (created_at > 3 дней и 0 предложений)
+      if (activeTab === 'hot') {
+          const threeDaysAgo = new Date();
+          threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+          
+          return result.filter(o => {
+              // Парсим дату "04.01.2026, 12:00:00"
+              const parts = o.createdAt.split(',')[0].split('.');
+              const orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+              return orderDate < threeDaysAgo && (!o.offers || o.offers.length === 0);
+          });
+      }
+      
+      return result;
+  }, [data, activeTab]);
 
   // --- Effects ---
   
   // Чат: получение количества непрочитанных
   const fetchUnreadCount = useCallback(async () => {
-      if (!sellerAuth?.name) return;
+      if (!buyerAuth?.name) return;
       try {
-          const { count } = await SupabaseService.getUnreadChatCountForSupplier(sellerAuth.name);
+          const { count } = await SupabaseService.getUnreadChatCountForSupplier(buyerAuth.name);
           setUnreadChatCount(count);
       } catch (e) {}
-  }, [sellerAuth]);
+  }, [buyerAuth]);
 
   useEffect(() => {
       fetchUnreadCount();
@@ -92,12 +110,12 @@ export const SellerInterface: React.FC = () => {
 
   // Load Brands & Stats
   useEffect(() => {
-      if (!sellerAuth) return;
+      if (!buyerAuth) return;
       const loadInitialData = async () => {
           setStatsLoading(true);
           try {
               const [brands, stats] = await Promise.all([
-                  SupabaseService.getSellerBrands(sellerAuth.name),
+                  SupabaseService.getSellerBrands(buyerAuth.name),
                   SupabaseService.getMarketStats()
               ]);
               setAvailableBrands(brands);
@@ -106,13 +124,14 @@ export const SellerInterface: React.FC = () => {
           finally { setStatsLoading(false); }
       };
       loadInitialData();
-  }, [sellerAuth]);
+  }, [buyerAuth]);
 
   const handleSubmitOffer = async (orderId: string, items: any[]) => {
+      if (!buyerAuth) return;
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
-          await SupabaseService.createOffer(orderId, sellerAuth.name, items, '', sellerAuth.phone);
+          await SupabaseService.createOffer(orderId, buyerAuth.name, items, '', buyerAuth.phone);
           setExpandedId(null);
           setSuccessToast({ message: 'Предложение отправлено!', id: Date.now().toString() });
           refetch(); // Обновляем список
@@ -146,25 +165,25 @@ export const SellerInterface: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
         {successToast && <Toast message={successToast.message} onClose={() => setSuccessToast(null)} />}
-        <SellerAuthModal isOpen={showAuthModal} onLogin={handleLogin} />
-        {sellerAuth && (
+        <BuyerAuthModal isOpen={showAuthModal} onLogin={handleLogin} />
+        {buyerAuth && (
             <>
-                <SellerHeader 
-                    sellerName={sellerAuth.name} 
-                    sellerPhone={sellerAuth.phone} 
+                <BuyerHeader 
+                    buyerName={buyerAuth.name} 
+                    buyerPhone={buyerAuth.phone || ''} 
                     onLogout={handleLogout} 
                     onOpenChat={() => setIsGlobalChatOpen(true)}
                     unreadCount={unreadChatCount}
                 />
-                <SellerStats stats={marketStats} loading={statsLoading} />
-                <SellerToolbar 
+                <BuyerStats stats={marketStats} loading={statsLoading} />
+                <BuyerToolbar 
                     activeTab={activeTab} setActiveTab={setActiveTab}
                     searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                     activeBrand={activeBrand} setActiveBrand={setActiveBrand}
                     availableBrands={availableBrands} counts={{ new: 0, history: 0 }} 
                     onRefresh={() => refetch()} isSyncing={isLoading || isFetchingNextPage}
                 />
-                <SellerOrdersList 
+                <BuyerOrdersList 
                     orders={orders}
                     expandedId={expandedId} onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
                     onLoadMore={() => fetchNextPage()}
@@ -174,12 +193,13 @@ export const SellerInterface: React.FC = () => {
                     onSubmit={handleSubmitOffer} isSubmitting={isSubmitting}
                     sortConfig={sortConfig} onSort={() => {}}
                     getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
+                    buyerToken={buyerAuth?.token}
                 />
-                <SellerGlobalChat 
+                <BuyerGlobalChat 
                     isOpen={isGlobalChatOpen}
                     onClose={() => setIsGlobalChatOpen(false)}
                     currentUserRole="SUPPLIER"
-                    currentSupplierName={sellerAuth.name}
+                    currentSupplierName={buyerAuth.name}
                     onNavigateToOrder={handleNavigateToOrder}
                 />
             </>

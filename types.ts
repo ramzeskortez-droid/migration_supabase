@@ -19,6 +19,7 @@ export interface AppUser {
   name: string;
   token: string;
   role: UserRole;
+  phone?: string; // Добавлено поле телефона
 }
 
 export interface ExchangeRates {

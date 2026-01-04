@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronRight, TrendingUp, 
   FileText, Send, ShoppingCart, CheckCircle2, CreditCard, Truck, PackageCheck, Ban, 
-  Edit2, Loader2, Check 
+  Edit2, Loader2, Check, Tag
 } from 'lucide-react';
 import { Order, OrderStatus, RankType, Currency } from '../../types';
 import { AdminItemsTable } from './AdminItemsTable';
@@ -10,7 +10,10 @@ import { Virtuoso } from 'react-virtuoso';
 import { useQuery } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
 
-const GRID_COLS = "grid-cols-[80px_90px_1fr_50px_110px_100px_80px_130px_80px_100px_30px]";
+// Updated Columns: 
+// ID (80), Subject (1.5fr), Brand (90), First Item (1fr), Date (80), Time (60), Offers (70), Stats (70), Status (110), Arrow (30)
+// Removed "Model" column effectively by merging or ignoring.
+const GRID_COLS = "grid-cols-[80px_1.5fr_90px_1fr_80px_60px_70px_70px_110px_30px]";
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -32,7 +35,7 @@ const AdminOrderRow = memo(({
     handleStatusChange, handleNextStep, setAdminModal,
     startEditing, saveEditing, handleFormCP, isSubmitting,
     editForm, setEditForm, handleItemChange, handleLocalUpdateRank,
-    openRegistry, toggleRegistry
+    openRegistry, toggleRegistry, exchangeRates
 }: any) => {
     const isEditing = editingOrderId === order.id;
     const carBrand = (order.car?.AdminModel || order.car?.model || '').split(' ')[0];
@@ -49,8 +52,36 @@ const AdminOrderRow = memo(({
         staleTime: 60000
     });
 
-    const fullOrder = { ...order, items: details?.items || [], offers: details?.offers || [] };
-    const offersCount = details?.offers?.length || 0; 
+    const fullOrder = { ...order, items: details?.items || order.items || [], offers: details?.offers || order.offers || [] };
+    const offersCount = order.offers?.length || 0; 
+
+    // Stats: Total Items / Covered
+    const totalItems = order.items?.length || 0;
+    const itemsWithWinners = new Set();
+    order.offers?.forEach((o: any) => {
+        o.items?.forEach((i: any) => {
+            if (i.rank === 'ЛИДЕР') itemsWithWinners.add(i.name);
+        });
+    });
+    const coveredItems = itemsWithWinners.size;
+
+    // Subject & First Item & Brand (from item)
+    const firstItem = order.items?.[0];
+    const firstItemName = firstItem?.name || '-';
+    // Brand logic: Try to find brand in the first item's comment if structured, or just use what we have.
+    // In OperatorInterface, we save brand in the item structure if possible, but here we might rely on the old "carBrand" column 
+    // OR we should look at item description.
+    // However, the user said "remove car vin...". 
+    // We'll display the "Brand" from the order record (which Operator now fills with item brand? No, operator fills item brand in parts list).
+    // Actually, `car_brand` in DB is used. Let's assume we repurposed `car_brand` to `Main Brand`.
+    const displayBrand = order.car?.brand || '-'; 
+
+    const subjectMatch = firstItem?.comment?.match(/\[Тема: (.*?)\]/);
+    const subject = subjectMatch ? subjectMatch[1] : '-';
+
+    // Status Badge
+    const statusConfig = STATUS_STEPS.find(s => s.id === currentStatus);
+    const statusBadgeColor = statusConfig ? `${statusConfig.bg} ${statusConfig.color} border ${statusConfig.border}` : 'bg-slate-100 text-slate-500 border-slate-200';
 
     let statusBorderColor = 'border-l-transparent';
     let statusBgColor = 'hover:bg-slate-50';
@@ -59,36 +90,53 @@ const AdminOrderRow = memo(({
     else if (currentStatus === 'Подтверждение от поставщика' || currentStatus === 'КП отправлено') { statusBorderColor = 'border-l-amber-400'; statusBgColor = 'bg-amber-50/30 hover:bg-amber-50/50'; }
     else if (currentStatus === 'В пути' || currentStatus === 'Ожидает оплаты') { statusBorderColor = 'border-l-blue-500'; statusBgColor = 'bg-blue-50/30 hover:bg-blue-50/50'; }
 
-    const statusConfig = STATUS_STEPS.find(s => s.id === currentStatus);
-    const statusBadgeColor = statusConfig ? `${statusConfig.bg} ${statusConfig.color} border ${statusConfig.border}` : 'bg-slate-100 text-slate-500 border-slate-200';
+    // Sticker logic (first label)
+    const stickerColor = order.buyerLabels?.[0]?.color;
 
     return (
         <div className={`transition-all duration-500 border-l-4 ${isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4 mx-4' : `${statusBorderColor} ${statusBgColor} border-b border-slate-200`}`}>
             <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px]`} onClick={() => !isEditing && onToggle(isExpanded ? null : order.id)}>
-                <div className="flex items-center justify-between md:justify-start">
+                
+                {/* 1. ID + Sticker */}
+                <div className="flex items-center gap-2">
                     <div className="font-mono font-bold text-slate-700">{order.id}</div>
-                    <div className="md:hidden flex items-center gap-2">
-                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${offersCount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400'}`}>
-                            {offersCount} ОФ.
-                        </span>
-                        <span className={`px-2 py-1 rounded-md font-black text-[8px] uppercase border ${statusBadgeColor}`}>{currentStatus}</span>
-                        <ChevronDown size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
-                    </div>
+                    {stickerColor && <div className={`w-2.5 h-2.5 rounded-full bg-${stickerColor}-500 shadow-sm`}></div>}
                 </div>
-                <div className="font-bold text-slate-900 uppercase truncate">{carBrand}</div>
-                <div className="font-bold text-slate-700 uppercase truncate break-words leading-tight">{carModel}</div>
-                <div className="font-bold text-slate-500">{carYear}</div>
-                <div className="font-mono text-slate-500 truncate">{order.vin}</div>
-                <div className="font-bold text-slate-500 uppercase truncate break-words leading-tight">{order.clientName}</div>
-                <div className="hidden md:block">
-                    <span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-nowrap ${offersCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-400'}`}>
-                        {detailsLoading ? '...' : `[${offersCount}] ОФФЕРОВ`}
+                
+                {/* 2. Subject (Longest) */}
+                <div className="font-bold text-slate-600 truncate" title={subject}>{subject}</div>
+
+                {/* 3. Brand */}
+                <div className="font-bold text-slate-900 uppercase truncate">{displayBrand}</div>
+
+                {/* 4. First Item */}
+                <div className="font-bold text-slate-700 truncate">{firstItemName}</div>
+
+                {/* 5. Date */}
+                <div className="text-right font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
+
+                {/* 6. Time */}
+                <div className="text-right font-mono font-bold text-slate-500">{order.statusUpdatedAt ? order.statusUpdatedAt.split(',')[1]?.trim() : '-'}</div>
+
+                {/* 7. Offers */}
+                <div className="flex justify-center">
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${offersCount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                        {offersCount} ОФ.
                     </span>
                 </div>
-                <div className="hidden md:block"><span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-normal text-center leading-tight border ${statusBadgeColor}`}>{currentStatus}</span></div>
-                <div className="text-left md:text-right font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
-                <div className="text-left md:text-right font-mono text-[9px] font-bold text-slate-500">{order.statusUpdatedAt ? order.statusUpdatedAt.split(',')[1]?.trim() : '-'}</div>
-                <div className="hidden md:flex justify-end"><ChevronRight size={16} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : ''}`}/></div>
+
+                {/* 8. Stats */}
+                <div className="text-center font-mono font-bold text-slate-600 bg-slate-100 rounded px-1">
+                    {totalItems} / <span className={coveredItems === totalItems ? 'text-emerald-600' : 'text-slate-600'}>{coveredItems}</span>
+                </div>
+
+                {/* 9. Status (Rightmost) */}
+                <div className="flex justify-center">
+                    <span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-normal text-center leading-tight border ${statusBadgeColor}`}>{currentStatus}</span>
+                </div>
+
+                {/* 10. Arrow */}
+                <div className="flex justify-end"><ChevronRight size={16} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : ''}`}/></div>
             </div>
             
             {isExpanded && (
@@ -122,21 +170,15 @@ const AdminOrderRow = memo(({
                             <div className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
                                 <div className="flex items-center gap-2 mb-3"><FileText size={14} className="text-slate-400"/><span className="text-[10px] font-black uppercase text-slate-500">Детали заказа</span></div>
                                 {isEditing ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                                        <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Марка/Модель</label><input value={editForm['car_model']} onChange={e => setEditForm({...editForm, 'car_model': e.target.value})} className="w-full p-2 border rounded text-xs font-bold uppercase"/></div>
-                                        <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Год</label><input value={editForm['car_year']} onChange={e => setEditForm({...editForm, 'car_year': e.target.value})} className="w-full p-2 border rounded text-xs font-bold"/></div>
-                                        <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Кузов</label><input value={editForm['car_body']} onChange={e => setEditForm({...editForm, 'car_body': e.target.value})} className="w-full p-2 border rounded text-xs font-bold uppercase"/></div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Бренд</label><input value={editForm['car_model']} onChange={e => setEditForm({...editForm, 'car_model': e.target.value})} className="w-full p-2 border rounded text-xs font-bold uppercase" placeholder="Бренд товара..."/></div>
                                         <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-indigo-400 uppercase">Срок (нед)</label><input type="number" value={editForm['delivery_weeks']} onChange={e => setEditForm({...editForm, 'delivery_weeks': e.target.value})} className="w-full p-2 border-2 border-indigo-100 rounded text-xs font-black text-indigo-600 focus:border-indigo-300"/></div>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-7 gap-3 md:gap-6 text-[10px]">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Клиент</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span><span className="font-bold text-slate-700">{order.clientPhone || "-"}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">VIN</span><span className="font-mono font-bold text-slate-600">{order.vin}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Модель</span><span className="font-black text-slate-800 uppercase">{order.car?.AdminModel || order.car?.model}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Марка</span><span className="font-bold text-slate-700 uppercase">{carBrand}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Год</span><span className="font-bold text-slate-700">{carYear}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Кузов</span><span className="font-bold text-slate-700 uppercase">{order.car?.AdminBodyType || order.car?.bodyType || '-'}</span></div>
+                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Бренд</span><span className="font-black text-slate-800 uppercase">{displayBrand}</span></div>
                                     </div>
                                 )}
                             </div>
@@ -151,6 +193,7 @@ const AdminOrderRow = memo(({
                                 currentStatus={currentStatus}
                                 openRegistry={openRegistry}
                                 toggleRegistry={toggleRegistry}
+                                exchangeRates={exchangeRates}
                             />
 
                             <div className="flex flex-wrap md:flex-nowrap justify-end gap-2 md:gap-3 mt-6 pt-4 border-t border-slate-200">
@@ -158,7 +201,7 @@ const AdminOrderRow = memo(({
                                     <><button onClick={() => setEditingOrderId(null)} className="px-6 py-3 rounded-xl border border-slate-200 text-slate-500 font-black text-[10px] uppercase">Отмена</button><button onClick={() => saveEditing(fullOrder)} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-[10px] uppercase shadow-lg hover:bg-indigo-700 flex items-center gap-2">{isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} Сохранить</button></>
                                 ) : (
                                     <>{!isCancelled && !order.isProcessed && <button onClick={() => startEditing(fullOrder)} className="px-4 py-3 rounded-xl border border-indigo-100 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase flex items-center gap-2"><Edit2 size={14}/> Изменить</button>}{!isCancelled && <button onClick={() => setAdminModal({ type: 'ANNUL', orderId: order.id })} className="px-4 py-3 rounded-xl border border-red-100 text-red-500 bg-red-50 font-black text-[10px] uppercase flex items-center gap-2"><Ban size={14}/> Аннулировать</button>}
-                                    {currentStatus === 'В обработке' && offersCount > 0 && (
+                                    {currentStatus === 'В обработке' && (order.offers?.length > 0) && (
                                         <button onClick={() => { handleFormCP(order.id); }} className="px-8 py-3 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase shadow-xl hover:bg-slate-800 transition-all active:scale-95 w-full md:w-auto flex items-center justify-center gap-2">
                                             {isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle2 size={14}/>} 
                                             Утвердить КП и Отправить
@@ -199,14 +242,15 @@ interface AdminOrdersListProps {
   editForm: any;
   setEditForm: (form: any) => void;
   handleItemChange: (orderId: string, offerId: string, itemName: string, field: string, value: any) => void;
-  handleLocalUpdateRank: (offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number) => void;
+  handleLocalUpdateRank: (orderId: string, offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number) => void;
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
+  exchangeRates: any;
 }
 
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   orders, sortConfig, handleSort, expandedId, setExpandedId,
-  onLoadMore, hasMore, isLoading,
+  onLoadMore, hasMore, isLoading, exchangeRates,
   ...rowProps
 }) => {
 
@@ -223,16 +267,15 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[70vh]">
         {/* Header (Sticky) */}
         <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none shrink-0 z-20`}>
-             <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>ID <SortIcon column="id"/></div>
-             <div className="cursor-pointer flex items-center group" onClick={() => handleSort('clientName')}>Имя <SortIcon column="clientName"/></div> 
-             <div>Модель</div>
-             <div className="cursor-pointer flex items-center group" onClick={() => handleSort('created_at')}>Дата <SortIcon column="created_at"/></div>
-             <div>VIN</div>
-             <div>Клиент</div>
-             <div>ОФФЕРЫ</div>
-             <div>СТАТУС</div>
-             <div className="flex justify-end">Дата</div>
-             <div className="flex justify-end cursor-pointer group" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
+             <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ ЗАКАЗА <SortIcon column="id"/></div>
+             <div className="flex items-center">ТЕМА ПИСЬМА</div>
+             <div>БРЕНД</div>
+             <div>ПОЗИЦИЯ</div>
+             <div className="text-right">ДАТА</div>
+             <div className="text-right cursor-pointer group" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
+             <div className="text-center">ОФФЕРЫ</div>
+             <div className="text-center">ПОЗИЦИЙ</div>
+             <div className="text-center">СТАТУС</div>
              <div></div>
          </div>
 
@@ -242,7 +285,6 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                 style={{ height: '100%' }}
                 data={orders}
                 endReached={() => { 
-                    console.log('Virtuoso endReached. hasMore:', hasMore, 'isLoading:', isLoading);
                     if (hasMore && !isLoading) onLoadMore(); 
                 }}
                 atBottomThreshold={200}
@@ -253,6 +295,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                         order={order}
                         isExpanded={expandedId === order.id}
                         onToggle={toggleExpand}
+                        exchangeRates={exchangeRates}
                         {...rowProps}
                     />
                 )}

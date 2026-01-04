@@ -1,12 +1,14 @@
 import React from 'react';
-import { Database, User, Bell, LogOut } from 'lucide-react';
+import { Database, User, Bell, LogOut, MessageCircle } from 'lucide-react';
 
 interface OperatorHeaderProps {
   operatorName: string | null;
   onLogout: () => void;
+  onOpenChat: () => void;
+  unreadCount?: number;
 }
 
-export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ operatorName, onLogout }) => {
+export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ operatorName, onLogout, onOpenChat, unreadCount = 0 }) => {
   return (
     <header className="bg-white border-b border-slate-200 h-16 shrink-0 z-20 px-6 flex items-center justify-between">
       <div className="flex items-center gap-8">
@@ -22,6 +24,19 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ operatorName, on
       </div>
 
       <div className="flex items-center gap-6">
+        <button 
+            onClick={onOpenChat}
+            className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all relative"
+            title="Все сообщения от закупщиков"
+        >
+            <MessageCircle size={20} />
+            {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                    {unreadCount}
+                </span>
+            )}
+        </button>
+
         {operatorName && (
             <div className="flex items-center gap-3 pl-6 border-l border-slate-100">
                 <div className="text-right hidden sm:block">

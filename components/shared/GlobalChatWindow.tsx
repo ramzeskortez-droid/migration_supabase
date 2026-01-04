@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, MessageCircle, ChevronRight, User, Hash } from 'lucide-react';
-import { ChatWindow } from '../shared/ChatWindow';
+import { ChatWindow } from './ChatWindow';
 import { SupabaseService } from '../../services/supabaseService';
 
-interface AdminGlobalChatProps {
+interface GlobalChatWindowProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigateToOrder?: (orderId: string) => void;
+  currentUserRole: 'ADMIN' | 'SUPPLIER' | 'OPERATOR';
+  currentUserName?: string;
 }
 
-export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClose, onNavigateToOrder }) => {
+export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
@@ -31,10 +33,12 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
   };
 
   useEffect(() => {
-      fetchThreads();
-      const interval = setInterval(fetchThreads, 10000); // Обновляем список тредов раз в 10 сек
-      return () => clearInterval(interval);
-  }, [isOpen, activeTab]); // Added activeTab dependency
+      if (isOpen) {
+          fetchThreads();
+          const interval = setInterval(fetchThreads, 10000); 
+          return () => clearInterval(interval);
+      }
+  }, [isOpen, activeTab]);
 
     const handleDelete = async (e: React.MouseEvent, orderId: string, supplierName?: string) => {
       e.stopPropagation();
@@ -46,9 +50,7 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
 
       try {
           await SupabaseService.deleteChatHistory(orderId, supplierName);
-          // Обновляем локально или ждем поллинга
           fetchThreads();
-          // Если был выбран этот чат - сбрасываем выбор
           if (selectedOrder === orderId) {
               if (!supplierName || selectedSupplier === supplierName) {
                   setSelectedOrder(null);
@@ -206,7 +208,8 @@ export const AdminGlobalChat: React.FC<AdminGlobalChatProps> = ({ isOpen, onClos
                             <ChatWindow 
                                 orderId={selectedOrder}
                                 supplierName={selectedSupplier}
-                                currentUserRole="ADMIN"
+                                currentUserRole={currentUserRole}
+                                currentUserName={currentUserName}
                                 onNavigateToOrder={handleNavigate}
                                 onRead={handleRead}
                             />

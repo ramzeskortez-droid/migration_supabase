@@ -70,7 +70,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
 
   useEffect(() => {
     loadOrders();
-  }, [refreshTrigger, activeTab, sortField, sortDir, ownerToken]); // Добавил ownerToken в зависимости
+  }, [refreshTrigger, activeTab, sortField, sortDir, ownerToken]);
 
   const loadMore = useCallback(() => {
       if (!loading && hasMore) {
@@ -109,6 +109,16 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       }
   };
 
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+      try {
+          await SupabaseService.updateWorkflowStatus(orderId, newStatus);
+          loadOrders(); // Refresh list to reflect changes
+      } catch (e) {
+          console.error(e);
+          alert('Ошибка обновления статуса');
+      }
+  };
+
   return (
     <div className="space-y-4 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -138,9 +148,10 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
           {/* Table Header */}
           <div className="hidden md:block border-b border-slate-100 bg-slate-50 shrink-0">
-              <div className="p-3 grid grid-cols-[70px_1.5fr_100px_100px_140px_20px] gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left border-l-4 border-transparent">
+              <div className="p-3 grid grid-cols-[70px_1fr_1fr_100px_100px_140px_20px] gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left border-l-4 border-transparent">
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ Заказа <SortIcon field="id"/></div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('client_name')}>Клиент <SortIcon field="client_name"/></div>
+                  <div className="flex items-center">Тема</div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('created_at')}>Дата <SortIcon field="created_at"/></div>
                   <div className="flex items-center">Время</div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('status_admin')}>Статус <SortIcon field="status_admin"/></div>
@@ -160,6 +171,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
                           order={order}
                           isExpanded={expandedId === order.id}
                           onToggle={() => handleToggle(order.id)}
+                          onStatusChange={handleStatusChange}
                       />
                   )}
                   components={{
