@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { ClientInterface } from './components/ClientInterface';
 import { SellerInterface } from './components/SellerInterface';
 import { AdminInterface } from './components/AdminInterface';
+import { OperatorInterface } from './components/OperatorInterface';
 import { Users, ShoppingBag, ShieldCheck, Phone, Send } from 'lucide-react';
 
 // Хардкодим URL по умолчанию
@@ -36,10 +37,10 @@ const App: React.FC = () => {
           <div className="flex-grow flex justify-center overflow-x-auto no-scrollbar">
              <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
                 <button 
-                  onClick={() => navigate('/client')} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/client') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                  onClick={() => navigate('/operator')} 
+                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/operator') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                  <Users size={14}/> <span>Клиент</span>
+                  <Users size={14}/> <span>Оператор</span>
                 </button>
                 <button 
                   onClick={() => navigate('/supplier')} 
@@ -71,13 +72,14 @@ const App: React.FC = () => {
 
       <main>
         <Routes>
+          <Route path="/operator" element={<OperatorInterface />} />
           <Route path="/client" element={<ClientInterface />} />
           <Route path="/supplier" element={<SellerInterface />} />
           <Route path="/admin" element={<AdminInterface />} />
           {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/client" replace />} />
+          <Route path="/" element={<Navigate to="/operator" replace />} />
           {/* Catch all redirect */}
-          <Route path="*" element={<Navigate to="/client" replace />} />
+          <Route path="*" element={<Navigate to="/operator" replace />} />
         </Routes>
       </main>
     </div>
