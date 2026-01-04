@@ -81,6 +81,7 @@ export const OperatorInterface: React.FC = () => {
           await SupabaseService.addBrand(name);
           setBrandsList(prev => [...prev, name].sort());
           addLog(`Бренд "${name}" добавлен в базу.`);
+          setToast({ message: `Бренд ${name} добавлен`, type: 'success' });
       } catch (e: any) {
           console.error(e);
           setToast({ message: 'Ошибка добавления бренда: ' + e.message, type: 'error' });

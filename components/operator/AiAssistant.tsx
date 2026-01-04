@@ -99,9 +99,10 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
         }
 
         if (parsedData.parts && Array.isArray(parsedData.parts)) {
+          const safeBrandsList = brandsList || [];
           const newParts = parsedData.parts.map((p: any, index: number) => {
             // Нормализация бренда по списку
-            const existingBrand = brandsList.find(b => b.toLowerCase() === (p.brand || '').toLowerCase());
+            const existingBrand = safeBrandsList.find(b => b.toLowerCase() === (p.brand || '').toLowerCase());
             
             return {
               id: Date.now() + index,
