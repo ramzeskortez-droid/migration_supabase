@@ -9,8 +9,8 @@ interface OperatorOrderRowProps {
   onStatusChange?: (orderId: string, status: string) => void;
 }
 
-const PRODUCT_GRID = "grid-cols-[50px_1fr_120px_80px_80px_80px]";
-const OFFER_GRID = "grid-cols-[1.5fr_100px_1fr_1.2fr_1fr]";
+const PRODUCT_GRID = "grid-cols-[50px_1fr_100px_100px_80px_80px_80px]";
+const OFFER_GRID = "grid-cols-[1.2fr_1fr_70px_80px_1.8fr_80px]";
 
 export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange }) => {
   const [datePart, timePart] = order.createdAt.split(', ');
@@ -114,6 +114,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                     <div className={`grid ${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                         <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">№</div>
                         <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
+                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Бренд</div>
                         <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Артикул</div>
                         <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Кол-во</div>
                         <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Ед.</div>
@@ -135,7 +136,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                         (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
                                     );
                                     if (matching && (matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER')) {
-                                        winners.push(matching);
+                                        winners.push({ ...matching, brand: item.brand });
                                     }
                                 });
                             }
@@ -155,6 +156,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                             <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">
                                                 {item.AdminName || item.name}
                                             </div>
+                                            <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{item.brand || '-'}</div>
                                             <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
                                             <div className="text-gray-700 text-center font-black text-xs">{item.quantity}</div>
                                             <div className="text-gray-600 text-center text-[10px] font-bold uppercase">{item.uom || 'шт'}</div>
@@ -168,16 +170,17 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                         </div>
                                     </div>
 
-                                    {/* Вложенные офферы (как у менеджера, но без поставщика) */}
+                                    {/* Вложенные офферы */}
                                     {isItemExpanded && winners.length > 0 && (
                                         <div className="bg-white animate-in slide-in-from-top-1 duration-200 overflow-x-auto">
                                             <div className="bg-slate-800 text-white hidden md:block min-w-[1000px]">
-                                                <div className={`grid ${OFFER_GRID} gap-4 px-6 py-2 text-[8px] font-black uppercase tracking-widest`}>
+                                                <div className={`grid ${OFFER_GRID} gap-4 px-6 py-2 text-[8px] font-black uppercase tracking-widest items-center`}>
                                                     <div>Варианты</div>
+                                                    <div>Бренд</div>
                                                     <div className="text-center">Кол-во</div>
                                                     <div className="text-center">Фото</div>
-                                                    <div>Цена для клиента</div>
-                                                    <div className="text-center">Срок для клиента</div>
+                                                    <div className="text-left">Цена с учетом доставки</div>
+                                                    <div className="text-center">Срок</div>
                                                 </div>
                                             </div>
 
@@ -189,6 +192,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                                                                 Вариант {wIdx + 1}
                                                             </div>
+                                                            <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{win.brand || '-'}</div>
                                                             <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
                                                             <div className="flex items-center justify-center">
                                                                 {win.photoUrl ? (
@@ -197,10 +201,10 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                                                     </a>
                                                                 ) : ( <Camera className="w-4 h-4 text-gray-200" /> )}
                                                             </div>
-                                                            <div className="text-base font-black text-gray-900 leading-none">
+                                                            <div className="text-base font-black text-gray-900 leading-none text-left">
                                                                 {formatPrice(win.adminPriceRub || win.sellerPrice)} ₽
                                                             </div>
-                                                            <div className="text-orange-600 text-center font-black text-[11px]">{win.deliveryWeeks || '-'} нед.</div>
+                                                            <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.deliveryWeeks || '-'} нед.</div>
                                                         </div>
                                                     </div>
                                                 ))}
