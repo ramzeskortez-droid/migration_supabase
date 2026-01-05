@@ -1,5 +1,12 @@
 # Version History
 
+## 1.7.0 - Buyer Interface Restoration
+- **Supabase Service:** Restored `getBrandsList` to support legacy static filters.
+- **Buyer Interface:** 
+  - Fixed the Brand filter dropdown which was broken due to missing data.
+  - Cleaned up `BuyerToolbar`: removed the redundant "Plus" button next to the Brands selector.
+  - Ensured `availableBrands` are correctly fetched and displayed.
+
 ## 1.6.9 - Partial Match Visualization
 - **Operator Interface:**
   - Restored the **Warning (Yellow)** state in `PartsList` for brand inputs.

@@ -427,6 +427,12 @@ export class SupabaseService {
       return data ? data.name : null;
   }
 
+  static async getBrandsList(): Promise<string[]> {
+      const { data, error } = await supabase.from('brands').select('name').order('name');
+      if (error) throw error;
+      return data?.map((b: any) => b.name) || [];
+  }
+
   static async getBrandsFull(page: number = 1, limit: number = 100, search: string = '', sortField: string = 'id', sortDirection: 'asc' | 'desc' = 'desc'): Promise<{ data: Brand[], count: number }> {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
