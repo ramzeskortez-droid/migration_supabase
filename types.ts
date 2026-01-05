@@ -102,6 +102,7 @@ export interface OrderItem {
   deliveryWeeks?: number; // НОВОЕ: Срок в неделях
   deliveryRate?: number; // НОВОЕ: Тариф доставки (руб)
   photoUrl?: string; // НОВОЕ: Ссылка на фото
+  opPhotoUrl?: string; // НОВОЕ: Ссылка на фото от оператора
   clientPhone?: string; // Телефон клиента (из заказа)
   sellerPhone?: string; // Телефон поставщика (из оффера)
   

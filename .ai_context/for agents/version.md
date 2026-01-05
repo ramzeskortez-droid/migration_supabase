@@ -1,5 +1,15 @@
 # Version History
 
+## 1.6.4 - Media Data Isolation
+- **Data Model:** Introduced `opPhotoUrl` field in `OrderItem` to separate the operator's source photo from the supplier's offer photo.
+- **Supabase Service:** Updated `getOrders` and `getOrderDetails` to map source photos to `opPhotoUrl`.
+- **UI Components:**
+  - **Buyer Interface:** Fixed a bug in `BuyerItemCard` where uploading a new photo would overwrite the display of the operator's original photo.
+  - **Admin Interface:** Updated `AdminItemsTable` to correctly show the operator's file in the item header and the supplier's file in the offer row.
+
+## 1.6.3 - Commit Convention Update
+- **Internal Rules:** Updated `rules.md` and `System prompt.md` to enforce a new mandatory git commit structure: Header, Description, "БЫЛА ПРОБЛЕМА", and "КАК РЕШИЛИ".
+
 ## 1.5.2 - Brand Management Stability & RLS
 - **Database:** Added missing RLS policies for `brands` table (`INSERT`, `UPDATE`, `DELETE`) to allow administrative actions from the client.
 - **Admin Interface:**

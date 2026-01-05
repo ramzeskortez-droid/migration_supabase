@@ -100,8 +100,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                 </div>
                             ) : (
                                 <><span className="font-black text-sm uppercase tracking-wide">{item.AdminName || item.name}</span><span className="text-[10px] font-bold opacity-60 ml-2">({item.AdminQuantity || item.quantity} ШТ)</span>
-                                {item.photoUrl && (
-                                    <a href={item.photoUrl} target="_blank" rel="noreferrer" className="ml-4 text-[10px] bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition-colors flex items-center gap-1" title="Файл от оператора">
+                                {item.opPhotoUrl && (
+                                    <a href={item.opPhotoUrl} target="_blank" rel="noreferrer" className="ml-4 text-[10px] bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition-colors flex items-center gap-1" title="Файл от оператора">
                                         📷 Файл
                                     </a>
                                 )}</>

@@ -260,7 +260,7 @@ export class SupabaseService {
         deadline: order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : undefined,
         buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: order.order_items?.map((i: any) => ({
-                id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, photoUrl: i.photo_url
+                id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url
             })) || [],
             offers: order.offers?.map((o: any) => ({
                 id: o.id, clientName: o.supplier_name, items: o.offer_items?.map((oi: any) => ({
@@ -302,7 +302,7 @@ export class SupabaseService {
         quantity: item.quantity,
         comment: item.comment,
         category: item.category,
-        photoUrl: item.photo_url,
+        opPhotoUrl: item.photo_url,
         adminPriceRub: item.admin_price_rub,
         brand: item.brand,
         article: item.article,

@@ -55,7 +55,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
   const opBrand = item.brand || '-';
   const opArticle = item.article || '-';
   const opUom = item.uom || 'шт';
-  const opPhoto = item.photoUrl;
+  const opPhoto = item.opPhotoUrl; // Changed from photoUrl
 
   return (
     <div className={`flex flex-col gap-3 border rounded-xl p-3 transition-all ${isWinner ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-100' : 'bg-slate-50/30 border-slate-100'}`}>
