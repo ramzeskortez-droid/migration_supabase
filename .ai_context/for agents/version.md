@@ -1,5 +1,35 @@
 # Version History
 
+## 1.7.6 - Leader Offer Visualization
+- **Admin Interface:**
+  - Enhanced the highlighting of the selected "Leader" offer row with a more solid green background (`bg-emerald-50`) and a thick left accent border (`border-l-4 border-emerald-500`).
+  - Added a pulsating status dot next to the winner's name for immediate visual recognition.
+  - Applied the highlighting to the entire offer block, including the supplier comment field.
+
+## 1.7.5 - Responsive Offer Table & Bidding Control
+- **Admin Interface:**
+  - Optimized `OFFER_GRID` layout using fractional units to ensure the "Select" button is visible on standard screens.
+  - Added horizontal scrolling support for the offers section to prevent data cutoff.
+  - Implemented bidding access control: the "Select" button is now only active during the "In processing" and "Bidding" stages.
+  - Improved table compactness and typography.
+
+## 1.7.4 - Space Optimization & Price Editing
+- **Admin Interface:**
+  - Implemented a collapsible sidebar that expands on hover, maximizing horizontal space for tables.
+  - Restored the "Pencil" icon and manual price override logic in `AdminItemsTable`.
+  - Improved layout responsiveness for wide screens.
+
+## 1.7.3 - UI Media Unification
+- **Admin Interface:** Replaced the file icon in the lot header with a visual thumbnail preview for operator photos, matching the style of supplier offers.
+
+## 1.7.2 - Manager Order View Redesign
+- **Admin Interface:**
+  - Completely rebuilt `AdminItemsTable` to follow the new hierarchical design (Lots > Offers).
+  - Added new columns: Brand, Article, and UOM directly to the lot header.
+  - Implemented dual-photo logic: operator photo in the lot row, supplier thumbnail in the offer row.
+  - Moved the comment field into the individual offer rows for per-supplier notes.
+  - Applied new styling with gradients and a dark sub-header for offers.
+
 ## 1.7.1 - Quick Brands Logic Fix (Buyer)
 - **Supabase Service:** 
   - Optimized `getSupplierUsedBrands` to use case-insensitive matching (`ilike`) for supplier names.
