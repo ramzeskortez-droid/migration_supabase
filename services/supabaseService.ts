@@ -264,7 +264,8 @@ export class SupabaseService {
             })) || [],
             offers: order.offers?.map((o: any) => ({
                 id: o.id, clientName: o.supplier_name, items: o.offer_items?.map((oi: any) => ({
-                    id: oi.id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity
+                    id: oi.id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
+                    sellerPrice: oi.price, sellerCurrency: oi.currency
                 })) || []
             })) || [],
         car: {
@@ -409,7 +410,7 @@ export class SupabaseService {
       return data?.map((b: any) => b.name) || [];
   }
 
-  static async getBrandsFull(page: number = 1, limit: number = 100, search: string = ''): Promise<{ data: Brand[], count: number }> {
+  static async getBrandsFull(page: number = 1, limit: number = 100, search: string = '', sortField: string = 'id', sortDirection: 'asc' | 'desc' = 'desc'): Promise<{ data: Brand[], count: number }> {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
@@ -420,11 +421,32 @@ export class SupabaseService {
       }
 
       const { data, error, count } = await query
-          .order('id', { ascending: false })
+          .order(sortField, { ascending: sortDirection === 'asc' })
           .range(from, to);
 
       if (error) throw error;
       return { data: data || [], count: count || 0 };
+  }
+
+  static async getSupplierUsedBrands(supplierName: string): Promise<string[]> {
+      const { data: ordersWithOffers } = await supabase
+        .from('offers')
+        .select('order_id')
+        .eq('supplier_name', supplierName);
+        
+      if (!ordersWithOffers?.length) return [];
+      
+      const orderIds = ordersWithOffers.map(o => o.order_id);
+      
+      const { data: brands } = await supabase
+        .from('order_items')
+        .select('brand')
+        .in('order_id', orderIds)
+        .not('brand', 'is', null)
+        .neq('brand', '');
+        
+      const unique = Array.from(new Set(brands?.map(b => b.brand))).sort().slice(0, 7);
+      return unique;
   }
 
   static async addBrand(name: string, createdBy: string = 'Admin'): Promise<void> {
@@ -493,11 +515,16 @@ export class SupabaseService {
     if (offerError) throw offerError;
 
     const offerItemsToInsert = items.map(item => ({
-      offer_id: offerData.id, name: item.name, 
+      offer_id: offerData.id, 
+      name: item.name, 
       quantity: item.offeredQuantity || item.quantity || 1,
-      price: item.sellerPrice || 0, currency: item.sellerCurrency || 'RUB',
+      price: item.sellerPrice || item.BuyerPrice || 0, // Поддержка обоих имен полей
+      currency: item.sellerCurrency || item.BuyerCurrency || 'RUB',
       delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
-      weight: item.weight || 0, photo_url: item.photoUrl || '', comment: item.comment || ''
+      weight: item.weight || 0, 
+      photo_url: item.photoUrl || '', 
+      comment: item.comment || '',
+      order_item_id: item.id // Важно для точной привязки
     }));
 
     const { error: oiError } = await supabase.from('offer_items').insert(offerItemsToInsert);

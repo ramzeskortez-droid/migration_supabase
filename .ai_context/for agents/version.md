@@ -7,6 +7,43 @@
   - Users now receive immediate feedback on success or failure of brand operations.
   - Improved robustness of brand addition and deletion logic.
 
+## 1.6.2 - UI Polish & Real-time Details
+- **Admin Interface:**
+  - Fixed a layout bug in `AdminItemsTable` where the CNY price hint overlapped with the client comment input.
+  - Forced immediate data refresh on order expansion by setting `staleTime` to 0. This ensures newly received offers appear instantly without manual page reloads.
+
+## 1.6.1 - Critical Fixes: Prices & Navigation
+- **Supabase Service:** Fixed `createOffer` to correctly map `BuyerPrice` from the frontend, resolving the issue where prices were saved as "0" in the database.
+- **Admin Interface:** Synchronized status naming between frontend and database. Changed "КП отправлено" to "КП готово" to match the server-side status update, ensuring orders remain visible in the correct tab after approval.
+
+## 1.6.0 - Manager UI & Data Accuracy
+- **Supabase Service:** Fixed a data mapping issue in `getOrders` where offer prices and currencies were missing, resulting in "0" values in the UI.
+- **Admin Interface:** Renamed "Цена Закупа" to "Цена закупщика" in the order details table for better clarity.
+
+## 1.5.9 - Manager Offer Visibility Fix
+- **Admin Interface:**
+  - Improved offer matching logic: now uses `order_item_id` as primary key and robust string matching as fallback.
+  - Expanded offer visibility: managers can now see and re-select offers even when the order status is "КП готово" or "КП отправлено".
+  - Fixed a bug where offers were hidden if the supplier didn't explicitly specify an `offeredQuantity`.
+
+## 1.5.8 - Service Layer Fix (Buyer Interface)
+- **Supabase Service:** Restored the `getSupplierUsedBrands` method which was accidentally removed in 1.4.9. This fixes the "is not a function" error when buyers attempt to submit offers.
+
+## 1.5.7 - Tabular Item View for Operator
+- **Operator Interface:**
+  - Redesigned the expanded order view: replaced the simple item list with a structured table.
+  - Added columns: `#`, `Name`, `Brand`, `Article`, `UOM`, `Qty`, and `Photo`.
+  - Improved data clarity and alignment for easier order processing.
+  - Implemented file attachment preview icon in the table.
+
+## 1.5.6 - Brand Sorting & Precise Counting
+- **Supabase Service:** Extended `getBrandsFull` to handle dynamic sorting (field and direction).
+- **Admin Interface:**
+  - Made "ID" and "Brand Name" columns sortable. Default sort is **ID DESC**.
+  - Implemented dual-counter system: **Absolute Total** (all brands in DB) and **Filtered Count** (search results).
+  - Fixed a bug where the total count didn't update immediately after adding a brand.
+  - Improved UI feedback for brand data operations.
+
 ## 1.5.4 - Brand Management UI Fix
 - **Admin Interface:** Fixed an infinite loading issue in the Brands section caused by corrupted source code and non-terminating async operations. Restored full component logic and optimized hook dependencies.
 

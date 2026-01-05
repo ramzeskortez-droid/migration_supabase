@@ -13,7 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
-  { id: 'КП отправлено', label: 'КП отправлено', icon: Send, color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
+  { id: 'КП готово', label: 'КП готово', icon: Send, color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
   { id: 'Готов купить', label: 'Готов купить', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
   { id: 'Подтверждение от поставщика', label: 'Подтверждение', icon: CheckCircle2, color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' },
   { id: 'Ожидает оплаты', label: 'Ждет оплаты', icon: CreditCard, color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-200' },
@@ -22,7 +22,7 @@ const STATUS_STEPS = [
 ];
 
 const TAB_MAPPING: Record<string, AdminTab> = {
-    'В обработке': 'new', 'КП отправлено': 'kp_sent', 'Готов купить': 'ready_to_buy', 'Подтверждение от поставщика': 'supplier_confirmed', 'Ожидает оплаты': 'awaiting_payment', 'В пути': 'in_transit', 'Выполнен': 'completed', 'Аннулирован': 'annulled', 'Отказ': 'refused'
+    'В обработке': 'new', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'Подтверждение от поставщика': 'supplier_confirmed', 'Ожидает оплаты': 'awaiting_payment', 'В пути': 'in_transit', 'Выполнен': 'completed', 'Аннулирован': 'annulled', 'Отказ': 'refused'
 };
 
 export const AdminInterface: React.FC = () => {
@@ -51,7 +51,7 @@ export const AdminInterface: React.FC = () => {
   const getStatusFilter = (tab: AdminTab) => {
       switch(tab) {
           case 'new': return 'В обработке';
-          case 'kp_sent': return 'КП отправлено';
+          case 'kp_sent': return 'КП готово';
           case 'ready_to_buy': return 'Готов купить';
           case 'supplier_confirmed': return 'Подтверждение от поставщика';
           case 'awaiting_payment': return 'Ожидает оплаты';

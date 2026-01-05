@@ -65,9 +65,15 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
             const itemOffers: any[] = []; 
             if (order.offers) { 
                 for (const off of order.offers) { 
-                    const matching = off.items.find(i => i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase()); 
-                    if (matching && (matching.offeredQuantity || 0) > 0) 
+                    // Пытаемся найти соответствие: по ID позиции или по названию (регистронезависимо)
+                    const matching = off.items.find(i => 
+                        (i.order_item_id && i.order_item_id === item.id) || 
+                        (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
+                    ); 
+                    
+                    if (matching) {
                         itemOffers.push({ offerId: off.id, clientName: off.clientName, item: matching }); 
+                    }
                 } 
             }
             
@@ -77,8 +83,9 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
             });
 
             const leaders = itemOffers.filter(o => o.item.rank === 'ЛИДЕР' || o.item.rank === 'LEADER');
-            // Show all offers if status is 'В обработке' or 'Идут торги' (just in case)
-            const showRegistry = !['В обработке', 'Идут торги'].includes(currentStatus);
+            
+            // Офферы видны в реестре, если статус начальный или КП только что отправлено
+            const showRegistry = !['В обработке', 'Идут торги', 'КП отправлено', 'КП готово'].includes(currentStatus);
             const displayOffers = showRegistry ? leaders : itemOffers;
             const isRegistryOpen = openRegistry.has(item.name);
 
@@ -105,7 +112,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                     {/* Настольный заголовок */}
                     <div className="hidden md:grid grid-cols-[2fr_1fr_0.5fr_0.5fr_0.5fr_0.5fr_1.8fr_1fr] gap-2 px-6 py-3 bg-white/5 text-[9px] font-black text-slate-500 uppercase tracking-widest items-center text-center">
                         <div className="text-left">Закупщик</div>
-                        <div>Цена Закупа</div>
+                        <div>Цена закупщика</div>
                         <div>Кол-во</div>
                         <div>Вес</div>
                         <div>Срок</div>
@@ -252,7 +259,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         )}
                                     </div>
                                     
-                                    <div className="col-span-full mt-1 flex gap-2">
+                                    <div className="col-span-full mt-4 flex gap-2">
                                         <input 
                                             type="text" 
                                             maxLength={90} 

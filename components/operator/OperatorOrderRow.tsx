@@ -66,36 +66,75 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
       {isExpanded && (
         <div className="p-4 bg-white border-t border-slate-100 animate-in slide-in-from-top-1 duration-200">
-            <div className="max-w-3xl">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+            <div className="max-w-5xl">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                     <div className="w-1 h-3 bg-indigo-500 rounded-full"></div>
                     Состав заявки
                 </h4>
-                <div className="space-y-1">
-                    {order.items && order.items.length > 0 ? (
-                        order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-[11px] group hover:bg-slate-100 transition-colors">
-                                <span className="font-bold text-slate-700">{item.name}</span>
-                                <div className="flex items-center gap-4 text-slate-500 font-black">
-                                    <span>{item.quantity} ШТ</span>
-                                    {item.adminPriceRub && (
-                                        <span className="text-indigo-600 bg-indigo-50 px-2 py-1 rounded shadow-sm">{new Intl.NumberFormat('ru-RU').format(item.adminPriceRub)} ₽</span>
-                                    )}
+                
+                <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden shadow-inner">
+                    {/* Items Table Header */}
+                    <div className="grid grid-cols-[30px_3fr_1.5fr_1.5fr_60px_60px_80px] gap-2 px-4 py-2 bg-slate-100/50 border-b border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-wider items-center">
+                        <div className="text-center">#</div>
+                        <div>Наименование</div>
+                        <div>Бренд</div>
+                        <div>Артикул</div>
+                        <div className="text-center">Ед.</div>
+                        <div className="text-center">Кол-во</div>
+                        <div className="text-center text-[8px]">Фото (файл)</div>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                        {order.items && order.items.length > 0 ? (
+                            order.items.map((item, idx) => (
+                                <div key={idx} className="grid grid-cols-[30px_3fr_1.5fr_1.5fr_60px_60px_80px] gap-2 px-4 py-2.5 items-center text-[11px] group hover:bg-white transition-colors">
+                                    <div className="text-center font-mono text-slate-300 text-[10px]">{idx + 1}</div>
+                                    <div className="font-bold text-slate-700">{item.name}</div>
+                                    <div className="font-black text-slate-500 uppercase text-[10px]">{item.brand || '-'}</div>
+                                    <div className="font-mono text-slate-400 text-[10px]">{item.article || '-'}</div>
+                                    <div className="text-center font-bold text-slate-400">{item.uom || 'шт'}</div>
+                                    <div className="text-center">
+                                        <span className="bg-slate-200/50 text-slate-600 px-2 py-0.5 rounded-md font-black text-[10px]">
+                                            {item.quantity}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-center">
+                                        {item.photoUrl ? (
+                                            <a 
+                                                href={item.photoUrl} 
+                                                target="_blank" 
+                                                rel="noreferrer"
+                                                className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg transition-all shadow-sm"
+                                                title="Посмотреть файл"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.51a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                            </a>
+                                        ) : (
+                                            <span className="text-slate-200">—</span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-center text-[10px] font-bold text-slate-300 py-4 uppercase italic">Загрузка позиций...</div>
-                    )}
+                            ))
+                        ) : (
+                            <div className="text-center text-[10px] font-bold text-slate-300 py-8 uppercase italic">Позиции не найдены</div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-6 flex justify-between items-center">
+                    <div>
+                        {order.statusAdmin === 'КП готово' && (
+                            <div className="text-[10px] font-bold text-slate-400 uppercase italic">
+                                * Заказ обработан менеджером. Проверьте данные перед отправкой.
+                            </div>
+                        )}
+                    </div>
                     {order.statusAdmin === 'КП готово' && (
                         <button 
                             onClick={handleProcessed}
                             className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2 active:scale-95"
                         >
-                            <Check size={14} /> Отправлено клиенту (Обработано)
+                            <Check size={14} /> Отправлено клиенту
                         </button>
                     )}
                 </div>

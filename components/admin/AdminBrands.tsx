@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { SupabaseService } from '../../services/supabaseService';
 import { Brand } from '../../types';
-import { Trash2, Edit2, Plus, Check, X, Loader2, Search, User, Tag, AlertCircle } from 'lucide-react';
+import { Trash2, Edit2, Plus, Check, X, Loader2, Search, User, Tag, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { Pagination } from '../Pagination';
 import { Toast } from '../shared/Toast';
 
-// Функция для поиска похожих строк (простая проверка на вхождение и регистр)
+// Функция для поиска похожих строк
 function findSimilar(input: string, allBrands: Brand[]): string[] {
     if (input.length < 2) return [];
     const lowInput = input.toLowerCase();
@@ -22,16 +22,17 @@ export const AdminBrands: React.FC = () => {
     const [brands, setBrands] = useState<Brand[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [totalCount, setTotalCount] = useState(0);
+    const [totalCount, setTotalCount] = useState(0); // Найдено по поиску
+    const [absoluteTotal, setAbsoluteTotal] = useState(0); // Всего в БД
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(100);
+    const [sortField, setSortField] = useState('id');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     
-    // Состояния для добавления
     const [isAddingMode, setIsAddingMode] = useState(false);
     const [newBrandName, setNewBrandName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     
-    // Состояния для редактирования
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editName, setEditName] = useState('');
     
@@ -44,10 +45,22 @@ export const AdminBrands: React.FC = () => {
             const { data, count } = await SupabaseService.getBrandsFull(
                 pageToLoad, 
                 itemsPerPage, 
-                search
+                search,
+                sortField,
+                sortDirection
             );
             setBrands(data);
             setTotalCount(count);
+            
+            // Если поиска нет, обновляем и абсолютный тотал из этого же запроса
+            if (!search) {
+                setAbsoluteTotal(count);
+            } else {
+                // Если поиск есть, запрашиваем абсолютный тотал отдельно
+                const { count: absCount } = await SupabaseService.getBrandsFull(1, 1, '');
+                setAbsoluteTotal(absCount);
+            }
+
             if (isSearchAction) setCurrentPage(1);
         } catch (e) {
             console.error('Load Brands Error:', e);
@@ -55,9 +68,9 @@ export const AdminBrands: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, itemsPerPage, search]);
+    }, [currentPage, itemsPerPage, search, sortField, sortDirection]);
 
-    useEffect(() => { loadBrands(); }, [currentPage, itemsPerPage]);
+    useEffect(() => { loadBrands(); }, [currentPage, itemsPerPage, sortField, sortDirection]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -66,8 +79,16 @@ export const AdminBrands: React.FC = () => {
         return () => clearTimeout(handler);
     }, [search]);
 
-    // Поиск похожих брендов среди загруженных для подсказки
     const similarBrands = useMemo(() => findSimilar(newBrandName, brands), [newBrandName, brands]);
+
+    const handleSort = (field: string) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('desc');
+        }
+    };
 
     const handleAdd = async () => {
         const name = newBrandName.trim();
@@ -79,7 +100,9 @@ export const AdminBrands: React.FC = () => {
             setNewBrandName('');
             setIsAddingMode(false);
             setToast({ message: `Бренд "${name}" успешно добавлен`, type: 'success' });
-            loadBrands();
+            
+            // Принудительная перезагрузка для обновления счетчиков
+            await loadBrands();
         } catch (e: any) {
             if (e.code === '23505') {
                 setToast({ message: `Бренд "${name}" уже существует в базе`, type: 'error' });
@@ -127,7 +150,10 @@ export const AdminBrands: React.FC = () => {
                     </div>
                     <div>
                         <h2 className="text-lg font-black uppercase text-slate-800 tracking-tight leading-none">Бренды</h2>
-                        <p className="text-[9px] font-black text-slate-400 uppercase mt-1 tracking-wider">Всего в базе: {totalCount}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Всего: {absoluteTotal}</span>
+                            {search && <span className="text-[9px] font-black text-indigo-500 uppercase tracking-wider">• Найдено: {totalCount}</span>}
+                        </div>
                     </div>
                 </div>
 
@@ -201,8 +227,18 @@ export const AdminBrands: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
                         <tr className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th className="px-6 py-3 w-20">ID</th>
-                            <th className="px-6 py-3">Название бренда</th>
+                            <th className="px-6 py-3 w-20 cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('id')}>
+                                <div className="flex items-center gap-1">
+                                    ID 
+                                    {sortField === 'id' && (sortDirection === 'asc' ? <ArrowUp size={10}/> : <ArrowDown size={10}/>)}
+                                </div>
+                            </th>
+                            <th className="px-6 py-3 cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('name')}>
+                                <div className="flex items-center gap-1">
+                                    Название бренда
+                                    {sortField === 'name' && (sortDirection === 'asc' ? <ArrowUp size={10}/> : <ArrowDown size={10}/>)}
+                                </div>
+                            </th>
                             <th className="px-6 py-3">Кем создан</th>
                             <th className="px-6 py-3 text-right">Действия</th>
                         </tr>

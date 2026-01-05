@@ -46,7 +46,7 @@ const AdminOrderRow = memo(({
         queryKey: ['order-details', order.id],
         queryFn: () => SupabaseService.getOrderDetails(order.id),
         enabled: isExpanded,
-        staleTime: 60000
+        staleTime: 0
     });
 
     const fullOrder = { ...order, items: details?.items || order.items || [], offers: details?.offers || order.offers || [] };
