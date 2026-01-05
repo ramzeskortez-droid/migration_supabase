@@ -120,7 +120,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
   };
 
   return (
-    <div className="space-y-4 pb-10">
+    <div className="space-y-4 pb-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-lg font-black text-slate-800 flex items-center gap-2 uppercase tracking-tight">
               <Package size={20} className="text-indigo-600" />

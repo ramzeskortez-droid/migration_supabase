@@ -1,5 +1,10 @@
 # Version History
 
+## 1.7.8 - Layout Compactness
+- **App Wrapper:** Removed `pb-20` from the main container in `App.tsx` to eliminate excessive empty space at the bottom of the screen.
+- **Operator Interface:** Reduced bottom padding in `OperatorOrdersList` for a tighter layout.
+
+## 1.7.7 - Syntax Fix & Highlight Update
 ## 1.7.6 - Leader Offer Visualization
 - **Admin Interface:**
   - Enhanced the highlighting of the selected "Leader" offer row with a more solid green background (`bg-emerald-50`) and a thick left accent border (`border-l-4 border-emerald-500`).
