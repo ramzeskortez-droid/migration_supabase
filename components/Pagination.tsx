@@ -39,6 +39,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <option value={10}>10</option>
             <option value={20}>20</option>
             <option value={50}>50</option>
+            <option value={100}>100</option>
           </select>
           <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
         </div>

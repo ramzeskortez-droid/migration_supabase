@@ -12,7 +12,6 @@ import { SupabaseService } from '../../services/supabaseService';
 
 // Updated Columns: 
 // ID (80), Subject (1.5fr), Brand (90), First Item (1fr), Date (80), Time (60), Offers (70), Stats (70), Status (110), Arrow (30)
-// Removed "Model" column effectively by merging or ignoring.
 const GRID_COLS = "grid-cols-[80px_1.5fr_90px_1fr_80px_60px_70px_70px_110px_30px]";
 
 const STATUS_STEPS = [
@@ -39,8 +38,6 @@ const AdminOrderRow = memo(({
 }: any) => {
     const isEditing = editingOrderId === order.id;
     const carBrand = (order.car?.AdminModel || order.car?.model || '').split(' ')[0];
-    const carModel = (order.car?.AdminModel || order.car?.model || '').split(' ').slice(1).join(' ');
-    const carYear = order.car?.AdminYear || order.car?.year;
     const currentStatus = order.workflowStatus || 'В обработке';
     const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
 
@@ -65,19 +62,16 @@ const AdminOrderRow = memo(({
     });
     const coveredItems = itemsWithWinners.size;
 
-    // Subject & First Item & Brand (from item)
+    // Subject & First Item
     const firstItem = order.items?.[0];
     const firstItemName = firstItem?.name || '-';
-    // Brand logic: Try to find brand in the first item's comment if structured, or just use what we have.
-    // In OperatorInterface, we save brand in the item structure if possible, but here we might rely on the old "carBrand" column 
-    // OR we should look at item description.
-    // However, the user said "remove car vin...". 
-    // We'll display the "Brand" from the order record (which Operator now fills with item brand? No, operator fills item brand in parts list).
-    // Actually, `car_brand` in DB is used. Let's assume we repurposed `car_brand` to `Main Brand`.
-    const displayBrand = order.car?.brand || '-'; 
-
-    const subjectMatch = firstItem?.comment?.match(/\[Тема: (.*?)\]/);
+    // Safe comment access
+    const comment = firstItem?.comment || '';
+    const subjectMatch = comment.match(/\[Тема: (.*?)\]/);
     const subject = subjectMatch ? subjectMatch[1] : '-';
+
+    // Brand from item logic
+    const displayBrand = order.car?.brand || '-'; 
 
     // Status Badge
     const statusConfig = STATUS_STEPS.find(s => s.id === currentStatus);

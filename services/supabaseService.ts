@@ -409,29 +409,36 @@ export class SupabaseService {
       return data?.map((b: any) => b.name) || [];
   }
 
-  static async getSupplierUsedBrands(supplierName: string): Promise<string[]> {
-      const { data: ordersWithOffers } = await supabase
-        .from('offers')
-        .select('order_id')
-        .eq('supplier_name', supplierName);
-        
-      if (!ordersWithOffers?.length) return [];
+  static async getBrandsFull(page: number = 1, limit: number = 100, search: string = ''): Promise<{ data: Brand[], count: number }> {
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      let query = supabase.from('brands').select('*', { count: 'exact' });
       
-      const orderIds = ordersWithOffers.map(o => o.order_id);
-      
-      const { data: brands } = await supabase
-        .from('order_items')
-        .select('brand')
-        .in('order_id', orderIds)
-        .not('brand', 'is', null)
-        .neq('brand', '');
-        
-      const unique = Array.from(new Set(brands?.map(b => b.brand))).sort().slice(0, 7);
-      return unique;
+      if (search) {
+          query = query.ilike('name', `%${search}%`);
+      }
+
+      const { data, error, count } = await query
+          .order('id', { ascending: false })
+          .range(from, to);
+
+      if (error) throw error;
+      return { data: data || [], count: count || 0 };
   }
 
-  static async addBrand(name: string): Promise<void> {
-      const { error } = await supabase.from('brands').insert({ name });
+  static async addBrand(name: string, createdBy: string = 'Admin'): Promise<void> {
+      const { error } = await supabase.from('brands').insert({ name, created_by: createdBy });
+      if (error) throw error;
+  }
+
+  static async updateBrand(id: number, name: string): Promise<void> {
+      const { error } = await supabase.from('brands').update({ name }).eq('id', id);
+      if (error) throw error;
+  }
+
+  static async deleteBrand(id: number): Promise<void> {
+      const { error } = await supabase.from('brands').delete().eq('id', id);
       if (error) throw error;
   }
 

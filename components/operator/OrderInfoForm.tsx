@@ -73,7 +73,7 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         </div>
 
         <div className="md:col-span-4">
-           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Дедлайн</label>
+           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Срок до</label>
            <input 
             type="date"
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-medium text-slate-700"

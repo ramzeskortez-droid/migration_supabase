@@ -7,6 +7,7 @@ import { AdminHeader } from './admin/AdminHeader';
 import { AdminToolbar } from './admin/AdminToolbar';
 import { AdminOrdersList } from './admin/AdminOrdersList';
 import { AdminFinanceSettings } from './admin/AdminFinanceSettings';
+import { AdminBrands } from './admin/AdminBrands';
 import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -26,7 +27,7 @@ const TAB_MAPPING: Record<string, AdminTab> = {
 
 export const AdminInterface: React.FC = () => {
   const queryClient = useQueryClient();
-  const [currentView, setCurrentView] = useState<'listing' | 'statuses' | 'finance'>('listing');
+  const [currentView, setCurrentView] = useState<'listing' | 'statuses' | 'finance' | 'brands'>('listing');
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('new');
@@ -249,7 +250,7 @@ export const AdminInterface: React.FC = () => {
           <AdminSidebar currentView={currentView} setCurrentView={setCurrentView} />
 
           <main className="flex-grow p-4 overflow-y-auto">
-              {currentView === 'statuses' ? renderStatusSettings() : currentView === 'finance' ? <AdminFinanceSettings /> : (
+              {currentView === 'brands' ? <AdminBrands /> : currentView === 'statuses' ? renderStatusSettings() : currentView === 'finance' ? <AdminFinanceSettings /> : (
                   <div className="max-w-6xl mx-auto space-y-4">
                       {successToast && (
                          <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 border border-slate-700">

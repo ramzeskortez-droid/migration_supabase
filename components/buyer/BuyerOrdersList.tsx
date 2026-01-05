@@ -22,26 +22,45 @@ interface BuyerOrdersListProps {
   buyerToken?: string;
 }
 
-// -- Подкомпонент строки (Мемоизированный) --
-const MemoizedBuyerOrderRow = memo(({ 
-    order, isExpanded, onToggle, 
+// Columns: ID+Sticker (80), Deadline (90), Subject (1.5fr), Item (1fr), Status (110), Date (80), Arrow (30)
+const GRID_COLS = "grid-cols-[80px_90px_1.5fr_1fr_110px_80px_30px]";
+
+const MemoizedBuyerOrderRow = memo(({
+    order, isExpanded, onToggle,
     editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
     statusInfo, myOffer, buyerToken
-}: any) => (
-    <BuyerOrderRow 
-        order={order}
-        isExpanded={isExpanded}
-        onToggle={onToggle}
-        editingItems={isExpanded ? (editingItemsMap[order.id] || order.items) : undefined}
-        setEditingItems={(items: any[]) => setEditingItemsMap((prev: any) => ({ ...prev, [order.id]: items }))}
-        onSubmit={onSubmit}
-        isSubmitting={isSubmitting}
-        statusInfo={statusInfo}
-        myOffer={myOffer}
-        buyerToken={buyerToken}
-    />
-));
+}: any) => {
+    
+    // Инициализация пустых полей для нового оффера
+    const getInitialItems = () => {
+        if (editingItemsMap[order.id]) return editingItemsMap[order.id];
+        return order.items.map((i: any) => ({
+            ...i,
+            comment: '', // Очищаем комментарий для ввода закупщика
+            originalComment: i.comment, // Сохраняем оригинал (тему) если нужно
+            offeredQuantity: i.quantity,
+            BuyerPrice: 0,
+            weight: 0,
+            deliveryWeeks: 0
+        }));
+    };
 
+    return (
+        <BuyerOrderRow 
+            order={order}
+            isExpanded={isExpanded}
+            onToggle={onToggle}
+            editingItems={isExpanded ? getInitialItems() : undefined}
+            setEditingItems={(items: any[]) => setEditingItemsMap((prev: any) => ({ ...prev, [order.id]: items }))}
+            onSubmit={onSubmit}
+            isSubmitting={isSubmitting}
+            statusInfo={statusInfo}
+            myOffer={myOffer}
+            buyerToken={buyerToken}
+            gridCols={GRID_COLS} 
+        />
+    );
+});
 export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 
   editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
@@ -57,14 +76,13 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[75vh]">
         {/* HEADER ROW (Фиксированный) */}
         <div className="hidden md:block border-b border-slate-50 border-l-4 border-transparent shrink-0 z-20 bg-slate-50">
-            <div className="p-3 grid grid-cols-[70px_100px_2fr_1.5fr_60px_90px_140px_20px] gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left select-none">
+            <div className={`p-3 grid ${GRID_COLS} gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left select-none`}>
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('id')}>№ заказа <SortIcon column="id"/></div>
-               <div className="cursor-pointer flex items-center group" onClick={() => onSort('brand')}>Марка <SortIcon column="brand"/></div>
-               <div className="cursor-pointer flex items-center group" onClick={() => onSort('model')}>Модель <SortIcon column="model"/></div>
-               <div>VIN</div>
-               <div className="cursor-pointer flex items-center group" onClick={() => onSort('year')}>Год <SortIcon column="year"/></div>
-               <div className="cursor-pointer flex items-center group" onClick={() => onSort('date')}>Дата <SortIcon column="date"/></div>
+               <div>Срок до</div>
+               <div>Тема письма</div>
+               <div>Первая позиция</div>
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('status')}>Статус <SortIcon column="status"/></div>
+               <div className="cursor-pointer flex items-center group" onClick={() => onSort('date')}>Дата <SortIcon column="date"/></div>
                <div></div>
             </div>
         </div>

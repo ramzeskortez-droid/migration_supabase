@@ -1,5 +1,52 @@
 # Version History
 
+## 1.5.2 - Brand Management Stability & RLS
+- **Database:** Added missing RLS policies for `brands` table (`INSERT`, `UPDATE`, `DELETE`) to allow administrative actions from the client.
+- **Admin Interface:**
+  - Implemented error handling and `Toast` notifications in the Brands section.
+  - Users now receive immediate feedback on success or failure of brand operations.
+  - Improved robustness of brand addition and deletion logic.
+
+## 1.5.4 - Brand Management UI Fix
+- **Admin Interface:** Fixed an infinite loading issue in the Brands section caused by corrupted source code and non-terminating async operations. Restored full component logic and optimized hook dependencies.
+
+## 1.5.3 - Brand Management Feedback & Reliability
+- **Admin Interface:**
+  - Added loading states (`isAdding`) to the brand creation button to prevent double-clicks.
+  - Implemented explicit error handling for database unique constraint violations (Brand already exists).
+  - Added console logging for easier debugging of failed database operations.
+  - Improved `Toast` notifications for better user feedback.
+
+## 1.5.5 - Case Sensitivity & Hints
+- **Admin Interface:**
+  - Removed global `uppercase` styling for brand names to allow precise case tracking (e.g., Makita vs makita).
+  - Redesigned Action Bar: the main input is now for search only; new brands are added via a toggleable form.
+  - Implemented "Did you mean..." hint system during brand creation to prevent unintended duplicates.
+  - Improved UX for brand management with clearer visual separation of actions.
+
+## 1.5.1 - Brand Management Improvements
+- **Supabase Service:** Changed brand sorting to **ID descending** (newest first).
+- **UI Components:**
+  - Added "100" as an option in the `Pagination` component's dropdown.
+  - Updated `AdminBrands` to correctly handle items-per-page changes.
+
+## 1.5.0 - Brand Management Optimization (Pagination)
+- **Supabase Service:** Updated `getBrandsFull` to support server-side pagination and count retrieval.
+- **Admin Interface:**
+  - Implemented pagination (100 items per page) for the Brands section.
+  - Redesigned the brands table to be more compact (reduced row height and padding).
+  - Added debounced search for efficient brand filtering.
+  - Fixed total count display to show actual database size (e.g., 3100+).
+
+## 1.4.9 - Brand Management System
+- **Database:** Added `created_by` column to `brands` table (defaults to 'Admin').
+- **Admin Interface:**
+  - Created a new "Brands" section in the sidebar.
+  - Implemented full CRUD for brands (Create, Read, Update, Delete).
+  - Added search/filter functionality for brands.
+  - Implemented creator tracking (identifies if a brand was added by an Operator or Admin).
+- **Operator Interface:** Updated `addBrand` logic to automatically record the current operator's name as the creator.
+
 ## 1.4.8 - Dynamic Brands & Cleanup
 - **Codebase Refactor:** 
   - Deleted `constants/cars.ts` (Removed hardcoded car lists).

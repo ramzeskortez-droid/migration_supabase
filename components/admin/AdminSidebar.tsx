@@ -1,9 +1,9 @@
 import React from 'react';
-import { LayoutDashboard, ClipboardList, Settings, Banknote } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Settings, Banknote, Tag } from 'lucide-react';
 
 interface AdminSidebarProps {
-  currentView: 'listing' | 'statuses' | 'finance';
-  setCurrentView: (view: 'listing' | 'statuses' | 'finance') => void;
+  currentView: 'listing' | 'statuses' | 'finance' | 'brands';
+  setCurrentView: (view: 'listing' | 'statuses' | 'finance' | 'brands') => void;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setCurrentView }) => {
@@ -21,6 +21,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setCurr
         className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${currentView === 'listing' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
       >
         <ClipboardList size={18} /> Листинг
+      </button>
+
+      <button 
+        onClick={() => setCurrentView('brands')}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase transition-all ${currentView === 'brands' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+      >
+        <Tag size={18} /> Бренды
       </button>
 
       <button 

@@ -20,14 +20,15 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
   };
 
   // Извлекаем тему из первого комментария
-  const subjectMatch = order.items?.[0]?.comment?.match(/\[Тема: (.*?)\]/);
+  const comment = order.items?.[0]?.comment || '';
+  const subjectMatch = comment.match(/\[Тема: (.*?)\]/);
   const subject = subjectMatch ? subjectMatch[1] : '-';
 
   return (
     <div className={`border-b border-slate-50 transition-all ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50/30'}`}>
       <div 
         onClick={onToggle}
-        className={`p-3 grid grid-cols-[70px_1fr_1fr_100px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
+        className={`p-3 grid grid-cols-[70px_1fr_1fr_90px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
       >
         <div className="text-[11px] font-black text-indigo-600">#{order.id}</div>
         
@@ -38,8 +39,13 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
         <div className="text-[10px] font-medium text-slate-600 truncate" title={subject}>{subject}</div>
 
-        <div className="text-[10px] font-bold text-slate-500">{datePart}</div>
-        <div className="text-[10px] font-medium text-slate-400">{timePart}</div>
+        <div className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded text-center truncate">
+            {order.deadline || '-'}
+        </div>
+
+        <div className="flex flex-col items-start">
+            <span className="text-[10px] font-bold text-slate-500">{datePart}</span>
+        </div>
 
         <div>
             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter

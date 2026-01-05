@@ -127,6 +127,7 @@ export interface Order {
   visibleToClient?: 'Y' | 'N';
   offers?: Order[];
   ownerToken?: string; // НОВОЕ: Токен владельца (Оператора)
+  deadline?: string; // НОВОЕ: Срок до
   buyerLabels?: BuyerLabel[]; // НОВОЕ: Стикеры для текущего юзера
   
   // Система трех статусов
@@ -159,6 +160,12 @@ export interface AdminModalState {
   type: 'ANNUL' | 'VALIDATION';
   orderId?: string;
   missingItems?: string[];
+}
+
+export interface Brand {
+  id: number;
+  name: string;
+  created_by?: string;
 }
 
 export type AdminTab = 'new' | 'kp_sent' | 'ready_to_buy' | 'supplier_confirmed' | 'awaiting_payment' | 'in_transit' | 'completed' | 'annulled' | 'refused';

@@ -123,14 +123,27 @@ export const OperatorInterface: React.FC = () => {
 
   const handleAddBrand = async (name: string) => {
       if (!name) return;
+      
+      // Проверка на дубликат перед отправкой (case-insensitive)
+      const exists = brandsList.some(b => b.toLowerCase() === name.trim().toLowerCase());
+      if (exists) {
+          setToast({ message: `Бренд ${name} уже существует в базе`, type: 'info' });
+          return;
+      }
+
       try {
-          await SupabaseService.addBrand(name);
+          await SupabaseService.addBrand(name, currentUser?.name || 'Operator');
           setBrandsList(prev => [...prev, name].sort());
           addLog(`Бренд "${name}" добавлен в базу.`);
           setToast({ message: `Бренд ${name} добавлен`, type: 'success' });
       } catch (e: any) {
-          console.error(e);
-          setToast({ message: 'Ошибка добавления бренда: ' + e.message, type: 'error' });
+          // Если все же произошла гонка и бренд добавили параллельно
+          if (e.code === '23505') {
+             setToast({ message: `Бренд ${name} уже существует`, type: 'info' });
+          } else {
+             console.error(e);
+             setToast({ message: 'Ошибка добавления бренда: ' + e.message, type: 'error' });
+          }
       }
   };
 
@@ -187,12 +200,25 @@ export const OperatorInterface: React.FC = () => {
 
     setIsSaving(true);
     try {
-        const itemsForDb = parts.map(p => ({
-            name: p.name,
-            quantity: p.quantity,
-            comment: `${orderInfo.emailSubject ? `[Тема: ${orderInfo.emailSubject}] ` : ''}Бренд: ${p.brand || '-'}, Арт: ${p.article || '-'}`,
-            category: 'Оригинал'
-        }));
+        const itemsForDb = parts.map((p, index) => {
+            // Тему письма сохраняем в комментарий только первой позиции для отображения в списках
+            // Остальные комментарии оставляем пустыми
+            let comment = '';
+            if (index === 0 && orderInfo.emailSubject) {
+                comment = `[Тема: ${orderInfo.emailSubject}]`;
+            }
+
+            return {
+                name: p.name,
+                quantity: p.quantity,
+                comment: comment, 
+                category: 'Оригинал',
+                brand: p.brand,
+                article: p.article,
+                uom: p.uom,
+                photoUrl: p.photoUrl
+            };
+        });
 
         const orderId = await SupabaseService.createOrder(
             'VIN-UNKNOWN',
@@ -204,7 +230,8 @@ export const OperatorInterface: React.FC = () => {
                 year: '' 
             },
             orderInfo.clientPhone,
-            currentUser.token 
+            currentUser.token,
+            orderInfo.deadline // Передаем дедлайн
         );
 
         setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });

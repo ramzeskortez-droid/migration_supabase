@@ -92,7 +92,12 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <input type="number" value={editForm[`item_${idx}_qty`]} onChange={e => setEditForm({...editForm, [`item_${idx}_qty`]: e.target.value})} className="bg-slate-800 text-white px-2 py-1 rounded border border-slate-600 text-xs font-bold w-16 text-center"/>
                                 </div>
                             ) : (
-                                <><span className="font-black text-sm uppercase tracking-wide">{item.AdminName || item.name}</span><span className="text-[10px] font-bold opacity-60 ml-2">({item.AdminQuantity || item.quantity} ШТ)</span></>
+                                <><span className="font-black text-sm uppercase tracking-wide">{item.AdminName || item.name}</span><span className="text-[10px] font-bold opacity-60 ml-2">({item.AdminQuantity || item.quantity} ШТ)</span>
+                                {item.photoUrl && (
+                                    <a href={item.photoUrl} target="_blank" rel="noreferrer" className="ml-4 text-[10px] bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition-colors flex items-center gap-1" title="Файл от оператора">
+                                        📷 Файл
+                                    </a>
+                                )}</>
                             )}
                         </div>
                     </div>
