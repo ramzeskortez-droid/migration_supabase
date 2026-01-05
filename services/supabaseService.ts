@@ -167,7 +167,7 @@ export class SupabaseService {
         owner_token,
         deadline,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url),
-        offers (id, supplier_name, offer_items (is_winner, quantity, name))
+        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price_rub, delivery_days))
     `);
 
     if (ownerToken) query = query.eq('owner_token', ownerToken);
@@ -265,7 +265,9 @@ export class SupabaseService {
             offers: order.offers?.map((o: any) => ({
                 id: o.id, clientName: o.supplier_name, items: o.offer_items?.map((oi: any) => ({
                     id: oi.id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
-                    sellerPrice: oi.price, sellerCurrency: oi.currency
+                    sellerPrice: oi.price, sellerCurrency: oi.currency,
+                    adminPriceRub: oi.admin_price_rub,
+                    deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0
                 })) || []
             })) || [],
         car: {
@@ -325,6 +327,7 @@ export class SupabaseService {
           sellerCurrency: oi.currency as Currency,
           adminPrice: oi.admin_price,
           adminCurrency: oi.admin_currency as Currency,
+          adminPriceRub: oi.admin_price_rub,
           rank: oi.is_winner ? 'ЛИДЕР' : 'РЕЗЕРВ',
           deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
           weight: oi.weight,
@@ -569,13 +572,17 @@ export class SupabaseService {
     const { data: offer } = await supabase.from('offers').select('order_id').eq('id', offerId).single();
     if (!offer) return;
 
-    const orderId = offer.order_id;
-    const { data: siblingOffers } = await supabase.from('offers').select('id').eq('order_id', orderId);
-    const offerIds = siblingOffers?.map(o => o.id) || [];
-
-    await supabase.from('offer_items').update({ is_winner: false }).in('offer_id', offerIds).eq('name', itemName);
-
-    if (actionType !== 'RESET') {
+    if (actionType === 'RESET') {
+      await supabase.from('offer_items')
+        .update({ is_winner: false, admin_price_rub: null })
+        .eq('offer_id', offerId).eq('name', itemName);
+      
+      // Также сбрасываем в основном заказе (для упрощения отображения лидеров)
+      await supabase.from('order_items')
+        .update({ admin_price_rub: null })
+        .eq('order_id', offer.order_id)
+        .eq('name', itemName);
+    } else {
       await supabase.from('offer_items')
         .update({
             is_winner: true, 
@@ -583,27 +590,16 @@ export class SupabaseService {
             admin_currency: adminCurrency || 'RUB', 
             delivery_rate: deliveryRate || 0, 
             admin_comment: adminComment || '',
-            admin_price_rub: isNaN(Number(adminPriceRub)) ? 0 : adminPriceRub 
+            admin_price_rub: isNaN(Number(adminPriceRub)) ? (adminPrice || 0) : adminPriceRub 
         })
         .eq('offer_id', offerId).eq('name', itemName);
 
-      const { data: offerData } = await supabase.from('offers').select('order_id').eq('id', offerId).single();
-      if (offerData) {
-          await supabase.from('order_items')
-            .update({
-                admin_price_rub: isNaN(Number(adminPriceRub)) ? 0 : adminPriceRub 
-            })
-            .eq('order_id', offerData.order_id)
-            .eq('name', itemName);
-      }
-    } else {
-        const { data: offerData } = await supabase.from('offers').select('order_id').eq('id', offerId).single();
-        if (offerData) {
-            await supabase.from('order_items')
-                .update({ admin_price_rub: null })
-                .eq('order_id', offerData.order_id)
-                .eq('name', itemName);
-        }
+      await supabase.from('order_items')
+        .update({
+            admin_price_rub: isNaN(Number(adminPriceRub)) ? (adminPrice || 0) : adminPriceRub 
+        })
+        .eq('order_id', offer.order_id)
+        .eq('name', itemName);
     }
   }
 

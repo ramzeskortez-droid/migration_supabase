@@ -11,8 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
 
 // Updated Columns: 
-// ID (80), Subject (1.5fr), Deadline (90), Date (80), Time (60), Offers (70), Stats (70), Status (110), Arrow (30)
-const GRID_COLS = "grid-cols-[80px_1.5fr_90px_80px_60px_70px_70px_110px_30px]";
+// ID (80), Subject (1.5fr), Deadline (110), Date (130), Time (100), Offers (100), Stats (100), Status (1.2fr), Arrow (40)
+const GRID_COLS = "grid-cols-[80px_1.5fr_110px_130px_100px_100px_100px_1.2fr_40px]";
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },

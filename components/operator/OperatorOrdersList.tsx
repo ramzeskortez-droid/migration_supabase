@@ -100,10 +100,15 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       } else {
           setExpandedId(id);
           const order = orders.find(o => o.id === id);
-          if (order && (!order.items || order.items.length === 0)) {
+          // Fetch if items are missing OR if it's a 'Processed' status where we need offers
+          if (order && (!order.items || order.items.length === 0 || !order.offers)) {
               try {
                   const details = await SupabaseService.getOrderDetails(id);
-                  setOrders(prev => prev.map(o => o.id === id ? { ...o, items: details.items as any } : o));
+                  setOrders(prev => prev.map(o => o.id === id ? { 
+                      ...o, 
+                      items: details.items as any,
+                      offers: details.offers as any 
+                  } : o));
               } catch (e) { console.error(e); }
           }
       }
