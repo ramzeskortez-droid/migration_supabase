@@ -41,6 +41,7 @@ export const AdminInterface: React.FC = () => {
   const [refusalReason, setRefusalReason] = useState("");
   const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
+  const [isDbLoading, setIsDbLoading] = useState(false);
   
   // Сортировка
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
@@ -260,10 +261,10 @@ export const AdminInterface: React.FC = () => {
                       <AdminHeader 
                         showLogs={showLogs}
                         setShowLogs={setShowLogs}
-                        loading={isLoading}
+                        loading={isLoading || isDbLoading}
                         logs={logs}
-                        onClearDB={async () => { if(!confirm('Удалить все?')) return; setLoading(true); try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setLoading(false); } }}
-                        onSeed={async (count) => { setLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c)); refetch(); } catch(e) {} finally { setLoading(false); setSeedProgress(null); } }}
+                        onClearDB={async () => { if(!confirm('Удалить все?')) return; setIsDbLoading(true); try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setIsDbLoading(false); } }}
+                        onSeed={async (count) => { setIsDbLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c), 'op1'); refetch(); } catch(e) {} finally { setIsDbLoading(false); setSeedProgress(null); } }}
                         seedProgress={seedProgress}
                       />
 

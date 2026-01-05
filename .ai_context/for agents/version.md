@@ -1,5 +1,27 @@
 # Version History
 
+## 1.4.8 - Dynamic Brands & Cleanup
+- **Codebase Refactor:** 
+  - Deleted `constants/cars.ts` (Removed hardcoded car lists).
+  - Updated `NewOrderForm` to fetch brands dynamically from the database (`SupabaseService.getBrandsList`).
+- **Test Data Generation:** 
+  - `seedOrders` now uses real brands from the DB instead of a static array.
+  - Removed "Car Model" generation logic (set to empty string) to align with the new data model.
+
+## 1.4.7 - Enhanced Test Data Generation
+- **Supabase Service:** 
+  - Upgraded `seedOrders` to generate realistic random data for testing.
+  - **Features:** Random email subjects (6 chars), phone numbers (+7 999...), client names, delivery addresses, and deadlines (Feb 2026).
+  - **Items:** Orders now contain 1-3 random items with varied names, brands, and articles.
+
+## 1.4.6 - Admin Tools & Stability
+- **Admin Interface:**
+  - Fixed "Clear DB" and "Seed Orders" buttons which were crashing due to undefined loading state.
+  - "Seed Orders" now correctly assigns generated orders to **Operator 1 (op1)**, ensuring visibility in the demo account.
+- **Supabase Service:**
+  - `deleteAllOrders`: Added manual cascade delete fallback if `reset_db` RPC fails.
+  - `seedOrders`: Added `ownerToken` parameter.
+
 ## 1.4.5 - Critical Bug Fixes (Data Mapping)
 - **Supabase Service:** 
   - Fixed a critical bug in `getOrders` where `items` and `offers` were referenced incorrectly.

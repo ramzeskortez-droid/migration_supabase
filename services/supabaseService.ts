@@ -586,32 +586,93 @@ export class SupabaseService {
 
   static async deleteAllOrders(): Promise<void> {
     const { error } = await supabase.rpc('reset_db');
-    if (error) await supabase.from('orders').delete().neq('id', 0);
+    if (error) {
+        console.warn('reset_db RPC failed, performing manual cascade delete:', error);
+        // Manual cleanup if RPC fails
+        await supabase.from('chat_messages').delete().neq('id', 0);
+        await supabase.from('buyer_order_labels').delete().neq('id', 0);
+        await supabase.from('offer_items').delete().neq('id', 0);
+        await supabase.from('order_items').delete().neq('id', 0);
+        await supabase.from('offers').delete().neq('id', 0);
+        await supabase.from('orders').delete().neq('id', 0);
+    }
   }
 
-  static async seedOrders(count: number, onProgress: (created: number) => void): Promise<void> {
-    const BATCH_SIZE = 1000;
+  static async seedOrders(count: number, onProgress: (created: number) => void, ownerToken: string = 'op1'): Promise<void> {
+    const BATCH_SIZE = 50; 
     const iterations = Math.ceil(count / BATCH_SIZE);
-    const brands = ['Toyota', 'BMW', 'Mercedes', 'Audi', 'Kia', 'Hyundai', 'Lada'];
-    const models = ['Camry', 'X5', 'E-Class', 'A6', 'Rio', 'Solaris', 'Vesta'];
+    
+    // Helpers
+    const randStr = (len: number) => Math.random().toString(36).substring(2, 2 + len).toUpperCase();
+    const randNum = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const randPhone = () => `+7 (999) ${randNum(100, 999)}-${randNum(10, 99)}-${randNum(10, 99)}`;
+    
+    // Fetch real brands from DB
+    const dbBrands = await this.getBrandsList();
+    const brands = dbBrands.length > 0 ? dbBrands : ['Generic Brand']; // Fallback if empty
+    
+    const parts = ['Фильтр масляный', 'Колодки тормозные', 'Свеча зажигания', 'Амортизатор', 'Диск тормозной', 'Ступица', 'Рычаг подвески', 'Фара правая'];
 
     for (let i = 0; i < iterations; i++) {
       const ordersBatch = [];
+      const itemsBatch = [];
+
       for (let j = 0; j < BATCH_SIZE; j++) {
         if (i * BATCH_SIZE + j >= count) break;
+        
+        const subject = randStr(6);
+        const clientName = `CLI-${randStr(6)}`;
+        const location = `City-${randStr(4)} St-${randStr(4)}`;
+        const deadlineDay = randNum(8, 28); 
+        const deadline = new Date(2026, 1, deadlineDay).toISOString();
+
+        const carBrand = brands[Math.floor(Math.random() * brands.length)];
+
         ordersBatch.push({
-          client_name: 'КЛИЕНТ № 1', client_phone: '+7 (999) 111-22-33',
-          car_brand: brands[Math.floor(Math.random() * brands.length)],
-          car_model: models[Math.floor(Math.random() * models.length)],
-          car_year: '2020', vin: `VIN${Date.now()}${j}`, location: 'Москва',
-          status_admin: 'В обработке', status_client: 'В обработке'
+          client_name: clientName, 
+          client_phone: randPhone(),
+          car_brand: carBrand,
+          car_model: '', // Removed hardcoded models
+          car_year: String(randNum(2015, 2025)), 
+          vin: `VIN${randStr(10)}`, 
+          location: location,
+          status_admin: 'В обработке', 
+          status_client: 'В обработке',
+          owner_token: ownerToken,
+          deadline: deadline,
+          _temp_subject: subject 
         });
       }
-      const { data: createdOrders, error: orderError } = await supabase.from('orders').insert(ordersBatch).select('id');
+
+      const { data: createdOrders, error: orderError } = await supabase
+        .from('orders')
+        .insert(ordersBatch.map(({ _temp_subject, ...o }) => o))
+        .select('id');
+
       if (orderError) throw orderError;
       if (!createdOrders) continue;
-      const itemsBatch = createdOrders.map(o => ({ order_id: o.id, name: 'Масляный фильтр', quantity: 1 }));
-      await supabase.from('order_items').insert(itemsBatch);
+
+      createdOrders.forEach((order, idx) => {
+        const originalOrder = ordersBatch[idx];
+        const subject = originalOrder._temp_subject;
+        const itemCount = randNum(1, 3);
+
+        for (let k = 0; k < itemCount; k++) {
+            itemsBatch.push({
+                order_id: order.id,
+                name: parts[Math.floor(Math.random() * parts.length)],
+                brand: originalOrder.car_brand, 
+                article: randStr(8),
+                uom: 'шт',
+                quantity: randNum(1, 10),
+                comment: k === 0 ? `[Тема: ${subject}]` : '' 
+            });
+        }
+      });
+
+      const { error: itemsError } = await supabase.from('order_items').insert(itemsBatch);
+      if (itemsError) throw itemsError;
+
       onProgress(Math.min((i + 1) * BATCH_SIZE, count));
     }
   }

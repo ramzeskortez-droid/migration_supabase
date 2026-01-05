@@ -1,7 +1,7 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Car, Send, Zap, Plus, Trash2, Loader2 } from 'lucide-react';
-import { POPULAR_BRANDS, ALL_BRANDS } from '../../constants/cars';
 import { PartCategory } from '../../types';
+import { SupabaseService } from '../../services/supabaseService';
 
 interface NewOrderFormProps {
   clientName: string;
@@ -9,8 +9,6 @@ interface NewOrderFormProps {
   onSubmit: (vin: string, car: any, items: any[]) => Promise<void>;
   isSubmitting: boolean;
 }
-
-const FULL_BRAND_SET = new Set([...POPULAR_BRANDS, ...ALL_BRANDS]);
 
 const DEMO_ITEMS_POOL = [
     { name: "Фильтр масляный", category: "Оригинал" },
@@ -39,8 +37,13 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ clientName, clientPh
   
   const [isBrandOpen, setIsBrandOpen] = useState(false);
   const brandListRef = useRef<HTMLDivElement>(null);
+  const [brandsList, setBrandsList] = useState<string[]>([]);
 
-  const isFormValid = useMemo(() => car.brand && FULL_BRAND_SET.has(car.brand) && items.every(i => i.name.trim().length > 0), [car.brand, items]);
+  useEffect(() => {
+      SupabaseService.getBrandsList().then(setBrandsList).catch(console.error);
+  }, []);
+
+  const isFormValid = useMemo(() => car.brand && brandsList.includes(car.brand) && items.every(i => i.name.trim().length > 0), [car.brand, items, brandsList]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +92,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ clientName, clientPh
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1 relative">
                       <input value={car.brand} onChange={(e) => { setCar({...car, brand: e.target.value}); setIsBrandOpen(true); }} onFocus={() => setIsBrandOpen(true)} className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-[10px] font-bold uppercase outline-none" placeholder="Марка..." />
-                      {isBrandOpen && (<div ref={brandListRef} className="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl">{ALL_BRANDS.filter(b => b.toLowerCase().includes(car.brand.toLowerCase())).map(brand => (<div key={brand} onClick={() => { setCar({...car, brand}); setIsBrandOpen(false); }} className="px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 cursor-pointer uppercase">{brand}</div>))}</div>)}
+                      {isBrandOpen && (<div ref={brandListRef} className="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl">{brandsList.filter(b => b.toLowerCase().includes(car.brand.toLowerCase())).map(brand => (<div key={brand} onClick={() => { setCar({...car, brand}); setIsBrandOpen(false); }} className="px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 cursor-pointer uppercase">{brand}</div>))}</div>)}
                   </div>
                   <input value={car.model} onChange={e => setCar({...car, model: e.target.value})} className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-[10px] font-bold outline-none uppercase" placeholder="Модель" />
                   <input value={car.year} onChange={e => setCar({...car, year: e.target.value})} className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-md text-[10px] font-bold text-center" placeholder="Год" />
