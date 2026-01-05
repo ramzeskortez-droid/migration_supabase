@@ -65,7 +65,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   };
 
   // Гибкая сетка для офферов (суммарно 100%)
-  const PRODUCT_GRID = "grid-cols-[50px_1fr_120px_120px_80px_80px_80px]";
+  const PRODUCT_GRID = "grid-cols-[50px_1fr_120px_80px_80px_80px]";
   const OFFER_GRID = "grid-cols-[1.5fr_1fr_70px_70px_100px_80px_1.2fr_1fr_130px]";
 
   return (
@@ -74,7 +74,6 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
             <div className={`grid ${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">№</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
-                <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Бренд</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Артикул</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Кол-во</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Ед.</div>
@@ -114,7 +113,6 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">{item.AdminName || item.name}</div>
                                 )}
                             </div>
-                            <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{item.brand || '-'}</div>
                             <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
                             <div className="text-gray-700 text-center font-black text-xs">
                                 {isEditing ? (

@@ -11,8 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
 
 // Updated Columns: 
-// ID (80), Subject (1.5fr), Brand (90), First Item (1fr), Date (80), Time (60), Offers (70), Stats (70), Status (110), Arrow (30)
-const GRID_COLS = "grid-cols-[80px_1.5fr_90px_1fr_80px_60px_70px_70px_110px_30px]";
+// ID (80), Subject (1.5fr), Deadline (90), Date (80), Time (60), Offers (70), Stats (70), Status (110), Arrow (30)
+const GRID_COLS = "grid-cols-[80px_1.5fr_90px_80px_60px_70px_70px_110px_30px]";
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -89,7 +89,7 @@ const AdminOrderRow = memo(({
 
     return (
         <div className={`transition-all duration-500 border-l-4 ${isExpanded ? 'border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-4 mx-4' : `${statusBorderColor} ${statusBgColor} border-b border-slate-200`}`}>
-            <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px]`} onClick={() => !isEditing && onToggle(isExpanded ? null : order.id)}>
+            <div className={`grid grid-cols-1 md:${GRID_COLS} gap-2 md:gap-3 p-4 items-center cursor-pointer text-[10px] text-left`} onClick={() => !isEditing && onToggle(isExpanded ? null : order.id)}>
                 
                 {/* 1. ID + Sticker */}
                 <div className="flex items-center gap-2">
@@ -100,33 +100,32 @@ const AdminOrderRow = memo(({
                 {/* 2. Subject (Longest) */}
                 <div className="font-bold text-slate-600 truncate" title={subject}>{subject}</div>
 
-                {/* 3. Brand */}
-                <div className="font-bold text-slate-900 truncate">{displayBrand}</div>
-
-                {/* 4. First Item */}
-                <div className="font-bold text-slate-700 truncate">{firstItemName}</div>
+                {/* 4.5 Deadline */}
+                <div className="text-left font-black text-red-500 bg-red-50 px-2 py-1 rounded truncate mr-2">
+                    {order.deadline || '-'}
+                </div>
 
                 {/* 5. Date */}
-                <div className="text-right font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
+                <div className="text-left font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
 
                 {/* 6. Time */}
-                <div className="text-right font-mono font-bold text-slate-500">{order.statusUpdatedAt ? order.statusUpdatedAt.split(',')[1]?.trim() : '-'}</div>
+                <div className="text-left font-mono font-bold text-slate-500">{order.statusUpdatedAt ? order.statusUpdatedAt.split(',')[1]?.trim() : '-'}</div>
 
                 {/* 7. Offers */}
-                <div className="flex justify-center">
+                <div className="text-left">
                     <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${offersCount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
                         {offersCount} ОФ.
                     </span>
                 </div>
 
                 {/* 8. Stats */}
-                <div className="text-center font-mono font-bold text-slate-600 bg-slate-100 rounded px-1">
+                <div className="text-left font-mono font-bold text-slate-600 bg-slate-100 rounded px-1 w-fit">
                     {totalItems} / <span className={coveredItems === totalItems ? 'text-emerald-600' : 'text-slate-600'}>{coveredItems}</span>
                 </div>
 
                 {/* 9. Status (Rightmost) */}
-                <div className="flex justify-center">
-                    <span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-normal text-center leading-tight border ${statusBadgeColor}`}>{currentStatus}</span>
+                <div className="text-left">
+                    <span className={`inline-flex px-2 py-1 rounded font-black uppercase text-[8px] whitespace-normal text-left leading-tight border ${statusBadgeColor}`}>{currentStatus}</span>
                 </div>
 
                 {/* 10. Arrow */}
@@ -139,40 +138,18 @@ const AdminOrderRow = memo(({
                         <div className="flex items-center justify-center py-12"><Loader2 className="animate-spin text-indigo-500" size={24}/></div>
                     ) : (
                         <>
-                            {!isCancelled && (
-                            <div className="mb-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Процесс выполнения</h3>
-                                {currentStatus !== 'Выполнен' && currentStatus !== 'В обработке' && (<button onClick={() => handleNextStep(fullOrder)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 transition-colors">Следующий шаг <ChevronRight size={12}/></button>)}
-                                </div>
-                                <div className="flex items-center justify-between relative px-2 overflow-x-auto no-scrollbar pb-2">
-                                    <div className="absolute top-4 left-0 w-full h-0.5 bg-slate-100 -z-0"></div>
-                                    {STATUS_STEPS.map((step, idx) => {
-                                        const currentStatusIdx = STATUS_STEPS.findIndex(s => s.id === currentStatus);
-                                        const isPassed = idx <= currentStatusIdx; const isInteractive = currentStatus !== 'В обработке';
-                                        return (
-                                            <div key={step.id} className={`relative z-10 flex flex-col items-center gap-1.5 group shrink-0 ${isInteractive ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'} ${idx > 0 ? 'ml-8' : ''}`} onClick={() => isInteractive && handleStatusChange(order.id, step.id)}>
-                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isPassed ? `${step.bg} ${step.color} ${step.border}` : 'bg-white border-slate-200 text-slate-300'}`}><step.icon size={12} className={idx === currentStatusIdx ? 'animate-pulse' : ''} /></div>
-                                                <span className={`text-[7px] font-black uppercase transition-colors whitespace-nowrap ${isPassed ? 'text-slate-800' : 'text-slate-300'}`}>{step.label}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            )}
-
                             <div className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
-                                <div className="flex items-center gap-2 mb-3"><FileText size={14} className="text-slate-400"/><span className="text-[10px] font-black uppercase text-slate-500">Детали заказа</span></div>
+                                <div className="flex items-center gap-2 mb-3"><FileText size={14} className="text-slate-400"/><span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span></div>
                                 {isEditing ? (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-slate-400 uppercase">Бренд</label><input value={editForm['car_model']} onChange={e => setEditForm({...editForm, 'car_model': e.target.value})} className="w-full p-2 border rounded text-xs font-bold uppercase" placeholder="Бренд товара..."/></div>
                                         <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-indigo-400 uppercase">Срок (нед)</label><input type="number" value={editForm['delivery_weeks']} onChange={e => setEditForm({...editForm, 'delivery_weeks': e.target.value})} className="w-full p-2 border-2 border-indigo-100 rounded text-xs font-black text-indigo-600 focus:border-indigo-300"/></div>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Клиент</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
+                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span><span className="font-bold text-slate-700">{order.clientPhone || "-"}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Бренд</span><span className="font-black text-slate-800 uppercase">{displayBrand}</span></div>
+                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
+                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Тема письма</span><span className="font-bold text-slate-700 uppercase">{subject}</span></div>
                                     </div>
                                 )}
                             </div>
@@ -260,16 +237,15 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[70vh]">
         {/* Header (Sticky) */}
-        <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none shrink-0 z-20`}>
+        <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none shrink-0 z-20 border-l-4 border-transparent`}>
              <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ ЗАКАЗА <SortIcon column="id"/></div>
              <div className="flex items-center">ТЕМА ПИСЬМА</div>
-             <div>БРЕНД</div>
-             <div>ПОЗИЦИЯ</div>
-             <div className="text-right">ДАТА</div>
-             <div className="text-right cursor-pointer group" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
-             <div className="text-center">ОФФЕРЫ</div>
-             <div className="text-center">ПОЗИЦИЙ</div>
-             <div className="text-center">СТАТУС</div>
+             <div className="text-left">СРОК ДО</div>
+             <div className="text-left">ДАТА СОЗДАНИЯ</div>
+             <div className="text-left cursor-pointer group" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
+             <div className="text-left">ОФФЕРЫ</div>
+             <div className="text-left">ПОЗИЦИЙ</div>
+             <div className="text-left">СТАТУС</div>
              <div></div>
          </div>
 
@@ -297,7 +273,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                     Footer: () => (
                         <div className="py-8 flex flex-col items-center gap-2">
                             {isLoading && <Loader2 className="animate-spin text-slate-300" size={20}/>}
-                            {!hasMore && orders.length > 0 && <div className="text-[10px] font-bold text-slate-300 uppercase italic">Все заказы загружены ({orders.length})</div>}
+                            {!hasMore && orders.length > 0 && <div className="text-[10px] font-bold text-slate-300 uppercase italic text-left w-full px-6">Все заказы загружены ({orders.length})</div>}
                             {hasMore && !isLoading && <button onClick={onLoadMore} className="text-[10px] text-indigo-500 hover:underline">Загрузить еще</button>}
                         </div>
                     )

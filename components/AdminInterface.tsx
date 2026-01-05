@@ -192,9 +192,31 @@ export const AdminInterface: React.FC = () => {
 
   const handleRefuse = async () => { if (!adminModal?.orderId) return; setIsSubmitting(adminModal.orderId); try { await SupabaseService.refuseOrder(adminModal.orderId, refusalReason, 'ADMIN'); setAdminModal(null); setRefusalReason(""); refetch(); } catch (e) {} finally { setIsSubmitting(null); } };
 
-  const startEditing = (order: Order) => { setEditingOrderId(order.id); const form: any = {}; form[`car_model`] = order.car?.AdminModel || order.car?.model || ''; form[`car_year`] = order.car?.AdminYear || order.car?.year || ''; form[`car_body`] = order.car?.AdminBodyType || order.car?.bodyType || ''; form[`delivery_weeks`] = order.items[0]?.deliveryWeeks?.toString() || ''; order.items.forEach((item, idx) => { form[`item_${idx}_name`] = item.AdminName || item.name; form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity; }); setEditForm(form); };
+  const startEditing = (order: Order) => { 
+      setEditingOrderId(order.id); 
+      const form: any = {}; 
+      form[`delivery_weeks`] = order.items[0]?.deliveryWeeks?.toString() || ''; 
+      order.items.forEach((item, idx) => { 
+          form[`item_${idx}_name`] = item.AdminName || item.name; 
+          form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity; 
+      }); 
+      setEditForm(form); 
+  };
 
-  const saveEditing = async (order: Order) => { setIsSubmitting(order.id); const newItems = order.items.map((item, idx) => ({ ...item, AdminName: editForm[`item_${idx}_name`], AdminQuantity: Number(editForm[`item_${idx}_qty`]), deliveryWeeks: Number(editForm[`delivery_weeks`]), car: { ...order.car, AdminModel: editForm[`car_model`], AdminYear: editForm[`car_year`], AdminBodyType: editForm[`car_body`] } })); try { await SupabaseService.updateOrderJson(order.id, newItems); setEditingOrderId(null); refetch(); } catch (e) { } finally { setIsSubmitting(null); } };
+  const saveEditing = async (order: Order) => { 
+      setIsSubmitting(order.id); 
+      const newItems = order.items.map((item, idx) => ({ 
+          ...item, 
+          AdminName: editForm[`item_${idx}_name`], 
+          AdminQuantity: Number(editForm[`item_${idx}_qty`]), 
+          deliveryWeeks: Number(editForm[`delivery_weeks`])
+      })); 
+      try { 
+          await SupabaseService.updateOrderJson(order.id, newItems); 
+          setEditingOrderId(null); 
+          refetch(); 
+      } catch (e) { } finally { setIsSubmitting(null); } 
+  };
 
   const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
   const toggleRegistry = (id: string) => { setOpenRegistry(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };

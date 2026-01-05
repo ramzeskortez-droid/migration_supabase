@@ -1,5 +1,14 @@
 # Version History
 
+## 1.8.0 - Listing Uniformity
+- **Admin Interface:**
+  - Aligned all columns and data rows in the main order listing to the **left** for improved readability and visual consistency.
+  - Renamed the "ДАТА" (Date) column header to "ДАТА СОЗДАНИЯ" (Date Created) to more accurately describe the data.
+  - Standardized the placement of status badges and counters.
+
+## 1.7.9 - Manager List Enhancements
+- **Admin Interface:** Added "СРОК ДО" (Deadline) column to the main order listing. Deadlines are displayed in bold red text with a light red background for high visibility, matching the operator's view.
+
 ## 1.7.8 - Layout Compactness
 - **App Wrapper:** Removed `pb-20` from the main container in `App.tsx` to eliminate excessive empty space at the bottom of the screen.
 - **Operator Interface:** Reduced bottom padding in `OperatorOrdersList` for a tighter layout.

@@ -72,27 +72,45 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                     Состав заявки
                 </h4>
                 
-                <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden shadow-inner">
-                    {/* Items Table Header */}
-                    <div className="grid grid-cols-[30px_3fr_1.5fr_1.5fr_60px_60px_80px] gap-2 px-4 py-2 bg-slate-100/50 border-b border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-wider items-center">
-                        <div className="text-center">#</div>
-                        <div>Наименование</div>
-                        <div>Бренд</div>
-                        <div>Артикул</div>
-                        <div className="text-center">Ед.</div>
-                        <div className="text-center">Кол-во</div>
-                        <div className="text-center text-[8px]">Фото (файл)</div>
-                    </div>
-
-                    <div className="divide-y divide-slate-100">
-                        {order.items && order.items.length > 0 ? (
-                            order.items.map((item, idx) => (
-                                <div key={idx} className="grid grid-cols-[30px_3fr_1.5fr_1.5fr_60px_60px_80px] gap-2 px-4 py-2.5 items-center text-[11px] group hover:bg-white transition-colors">
-                                    <div className="text-center font-mono text-slate-300 text-[10px]">{idx + 1}</div>
-                                    <div className="font-bold text-slate-700">{item.name}</div>
-                                    <div className="font-black text-slate-500 text-[10px]">{item.brand || '-'}</div>
-                                    <div className="font-mono text-slate-400 text-[10px]">{item.article || '-'}</div>
-                                    <div className="text-center font-bold text-slate-400">{item.uom || 'шт'}</div>
+                                                <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden shadow-inner">
+                
+                                                    {/* Items Table Header */}
+                
+                                                    <div className="grid grid-cols-[30px_3fr_1.5fr_1.5fr_60px_60px_80px] gap-2 px-4 py-2 bg-slate-100/50 border-b border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-wider items-center">
+                
+                                                        <div className="text-center">#</div>
+                
+                                                        <div>Наименование</div>
+                
+                                                        <div>Бренд</div>
+                
+                                                        <div>Артикул</div>
+                
+                                                        <div className="text-center">Ед.</div>
+                
+                                                        <div className="text-center">Кол-во</div>
+                
+                                                        <div className="text-center text-[8px]">Фото (файл)</div>
+                
+                                                    </div>
+                
+                                
+                
+                                                    <div className="divide-y divide-slate-100">
+                
+                                                        {order.items && order.items.length > 0 ? (
+                
+                                                            order.items.map((item, idx) => (
+                
+                                                                <div key={idx} className="grid grid-cols-[30px_3fr_1.5fr_1.5fr_60px_60px_80px] gap-2 px-4 py-2.5 items-center text-[11px] group hover:bg-white transition-colors">
+                
+                                                                    <div className="text-center font-mono text-slate-300 text-[10px]">{idx + 1}</div>
+                
+                                                                    <div className="font-bold text-slate-700">{item.name}</div>
+                
+                                                                    <div className="font-black text-slate-500 text-[10px]">{item.brand || '-'}</div>
+                
+                                                                    <div className="font-mono text-slate-400 text-[10px]">{item.article || '-'}</div>                                    <div className="text-center font-bold text-slate-400">{item.uom || 'шт'}</div>
                                     <div className="text-center">
                                         <span className="bg-slate-200/50 text-slate-600 px-2 py-0.5 rounded-md font-black text-[10px]">
                                             {item.quantity}
