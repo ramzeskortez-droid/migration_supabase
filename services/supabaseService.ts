@@ -452,24 +452,28 @@ export class SupabaseService {
   }
 
   static async getSupplierUsedBrands(supplierName: string): Promise<string[]> {
-      const { data: ordersWithOffers } = await supabase
+      // Получаем бренды через связь офферов и позиций заказа
+      const { data, error } = await supabase
         .from('offers')
-        .select('order_id')
-        .eq('supplier_name', supplierName);
+        .select(`
+            order_id,
+            orders (
+                order_items (brand)
+            )
+        `)
+        .ilike('supplier_name', supplierName)
+        .limit(100); // Берем последние 100 заказов для статистики
         
-      if (!ordersWithOffers?.length) return [];
+      if (error || !data) return [];
       
-      const orderIds = ordersWithOffers.map(o => o.order_id);
-      
-      const { data: brands } = await supabase
-        .from('order_items')
-        .select('brand')
-        .in('order_id', orderIds)
-        .not('brand', 'is', null)
-        .neq('brand', '');
+      const brands: string[] = [];
+      data.forEach(offer => {
+          offer.orders?.order_items?.forEach((item: any) => {
+              if (item.brand) brands.push(item.brand);
+          });
+      });
         
-      const unique = Array.from(new Set(brands?.map(b => b.brand))).sort().slice(0, 7);
-      return unique;
+      return Array.from(new Set(brands)).sort().slice(0, 10);
   }
 
   static async addBrand(name: string, createdBy: string = 'Admin'): Promise<void> {

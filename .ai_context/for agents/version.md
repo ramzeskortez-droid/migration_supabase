@@ -1,5 +1,12 @@
 # Version History
 
+## 1.7.1 - Quick Brands Logic Fix (Buyer)
+- **Supabase Service:** 
+  - Optimized `getSupplierUsedBrands` to use case-insensitive matching (`ilike`) for supplier names.
+  - Improved data retrieval logic to fetch brand history directly via linked orders and items.
+  - Increased the number of displayed quick brand tags to 10.
+- **Buyer Interface:** Fixed an issue where brand history was inconsistent across different environments (local vs server).
+
 ## 1.7.0 - Buyer Interface Restoration
 - **Supabase Service:** Restored `getBrandsList` to support legacy static filters.
 - **Buyer Interface:** 
