@@ -186,10 +186,14 @@ export class SupabaseService {
     }
 
     if (statusFilter) {
-        if (statusFilter.includes(',')) {
-            query = query.in('status_admin', statusFilter.split(',').map(s => s.trim()));
-        } else {
-            query = query.eq('status_admin', statusFilter);
+        // Если есть поисковый запрос по ID (число), игнорируем фильтр статуса для глобального поиска
+        const isIdSearch = searchQuery && !isNaN(Number(searchQuery.trim()));
+        if (!isIdSearch) {
+            if (statusFilter.includes(',')) {
+                query = query.in('status_admin', statusFilter.split(',').map(s => s.trim()));
+            } else {
+                query = query.eq('status_admin', statusFilter);
+            }
         }
     }
 

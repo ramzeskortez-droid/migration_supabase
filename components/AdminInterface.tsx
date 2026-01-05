@@ -155,13 +155,16 @@ export const AdminInterface: React.FC = () => {
                               admin_price: item.adminPrice || item.sellerPrice,
                               admin_currency: item.adminCurrency || item.sellerCurrency,
                               delivery_rate: item.deliveryRate || 0,
-                              admin_comment: item.adminComment || ''
+                              admin_comment: item.adminComment || '',
+                              admin_price_rub: item.adminPriceRub || item.sellerPrice // Fallback
                           });
                       } 
                   } 
               } 
           }
           
+          console.log('APPROVING ORDER:', orderId, 'WINNERS:', winnersPayload);
+
           if (winnersPayload.length === 0) {
               if(!confirm('Нет победителей. Утвердить пустое КП?')) return;
           }
@@ -169,6 +172,7 @@ export const AdminInterface: React.FC = () => {
           await SupabaseService.approveOrderFast(orderId, winnersPayload);
           
           showToast("КП успешно сформировано");
+          setSearchQuery(''); // Сбрасываем поиск, чтобы увидеть заказ в новом табе
           setActiveTab('kp_sent'); 
           refetch(); 
           
