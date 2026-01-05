@@ -1,5 +1,11 @@
 # Version History
 
+## 1.4.5 - Critical Bug Fixes (Data Mapping)
+- **Supabase Service:** 
+  - Fixed a critical bug in `getOrders` where `items` and `offers` were referenced incorrectly.
+  - Added `offeredQuantity` mapping to `getOrders` to ensure offers are visible in the Manager Interface even during initial load/fallback.
+  - Verified RLS policies are active and functioning correctly.
+
 ## 1.4.4 - Sorting & Formatting
 - **Admin Interface:**
   - **Sorting:** "New" orders now sort by **Offer Count** (descending) by default, highlighting orders with more activity. All other tabs sort by **Last Status Change** (descending).
