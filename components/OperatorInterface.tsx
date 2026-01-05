@@ -32,7 +32,6 @@ export const OperatorInterface: React.FC = () => {
     clientPhone: ''
   });
 
-  const [brandsList, setBrandsList] = useState<string[]>([]);
   const [requestHistory, setRequestHistory] = useState<LogHistory[]>([]);
   const [displayStats, setDisplayStats] = useState<DisplayStats>({
     rpm: 0,
@@ -43,7 +42,7 @@ export const OperatorInterface: React.FC = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [toast, setToast] = useState<{message: string, type?: 'success' | 'error'} | null>(null);
+  const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
@@ -87,21 +86,6 @@ export const OperatorInterface: React.FC = () => {
       }
   }, [currentUser, fetchUnreadCount]);
 
-  // Load Brands
-  useEffect(() => {
-      if (!currentUser) return; // Don't load if not auth
-
-      const loadBrands = async () => {
-          try {
-              const list = await SupabaseService.getBrandsList();
-              setBrandsList(list);
-          } catch (e) {
-              console.error('Ошибка загрузки брендов:', e);
-          }
-      };
-      loadBrands();
-  }, [currentUser]);
-
   const handleLogin = (user: AppUser) => {
       setCurrentUser(user);
       localStorage.setItem('operatorToken', user.token);
@@ -124,20 +108,11 @@ export const OperatorInterface: React.FC = () => {
   const handleAddBrand = async (name: string) => {
       if (!name) return;
       
-      // Проверка на дубликат перед отправкой (case-insensitive)
-      const exists = brandsList.some(b => b.toLowerCase() === name.trim().toLowerCase());
-      if (exists) {
-          setToast({ message: `Бренд ${name} уже существует в базе`, type: 'info' });
-          return;
-      }
-
       try {
           await SupabaseService.addBrand(name, currentUser?.name || 'Operator');
-          setBrandsList(prev => [...prev, name].sort());
           addLog(`Бренд "${name}" добавлен в базу.`);
           setToast({ message: `Бренд ${name} добавлен`, type: 'success' });
       } catch (e: any) {
-          // Если все же произошла гонка и бренд добавили параллельно
           if (e.code === '23505') {
              setToast({ message: `Бренд ${name} уже существует`, type: 'info' });
           } else {
@@ -176,25 +151,21 @@ export const OperatorInterface: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Валидация: бренд должен быть в списке (если список загружен)
-  // Если бренда нет в списке, оператор должен его добавить через PartsList
-  const isFormValid = parts.length > 0 && parts.every(p => 
-      p.name && 
-      p.brand && 
-      p.brand.trim() !== '' && 
-      (brandsList.length === 0 || brandsList.some(b => b.toLowerCase() === p.brand?.trim().toLowerCase()))
-  );
+  // Валидация: проверяем заполненность основных полей.
+  // Мы больше не блокируем кнопку по базе брендов, чтобы избежать "хождения по кругу".
+  // Оператор видит статус бренда (✅/⚠️) и принимает решение сам.
+  const isFormValid = parts.length > 0 && parts.every(p => p.name?.trim() && p.brand?.trim());
 
   const handleCreateOrder = async () => {
     if (!currentUser) return;
 
     if (!isFormValid) {
-        setToast({ message: 'Заполните все обязательные поля (Бренд, Наименование)', type: 'error' });
+        setToast({ message: 'Заполните обязательные поля (Бренд, Наименование)', type: 'error' });
         return;
     }
     
     if (!orderInfo.clientPhone) {
-        setToast({ message: 'Укажите телефон клиента (хотя бы примерно)', type: 'error' });
+        setToast({ message: 'Укажите телефон клиента', type: 'error' });
         return;
     }
 
@@ -270,7 +241,7 @@ export const OperatorInterface: React.FC = () => {
       {/* Toast Notification: Top Right */}
       {toast && (
           <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
-              <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type} duration={2000} />
+              <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type as any} duration={2000} />
           </div>
       )}
       
@@ -293,7 +264,6 @@ export const OperatorInterface: React.FC = () => {
                 <PartsList 
                     parts={parts} 
                     setParts={setParts} 
-                    brandsList={brandsList}
                     onAddBrand={handleAddBrand}
                 />
                 
@@ -301,7 +271,8 @@ export const OperatorInterface: React.FC = () => {
                     onImport={(newParts) => {
                         if (parts.length === 1 && !parts[0].name) {
                             setParts(newParts);
-                        } else {
+                        }
+                        else {
                             setParts([...parts, ...newParts]);
                         }
                     }}
@@ -313,7 +284,6 @@ export const OperatorInterface: React.FC = () => {
                     }}
                     onCreateOrder={handleCreateOrder}
                     isSaving={isSaving}
-                    brandsList={brandsList}
                     isFormValid={isFormValid} // Pass validity
                 />
             </div>

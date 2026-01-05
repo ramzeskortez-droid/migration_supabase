@@ -9,13 +9,12 @@ interface AiAssistantProps {
   onStats: (tokens: number) => void;
   onCreateOrder: () => void;
   isSaving: boolean;
-  brandsList: string[];
   isFormValid?: boolean;
 }
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
-export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, brandsList, isFormValid = true }) => {
+export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, isFormValid = true }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -99,16 +98,12 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
         }
 
         if (parsedData.parts && Array.isArray(parsedData.parts)) {
-          const safeBrandsList = brandsList || [];
           const newParts = parsedData.parts.map((p: any, index: number) => {
-            // Нормализация бренда по списку
-            const existingBrand = safeBrandsList.find(b => b.toLowerCase() === (p.brand || '').toLowerCase());
-            
             return {
               id: Date.now() + index,
               name: p.name || '',
               article: p.article || '',
-              brand: existingBrand || p.brand || '', // Используем оригинал из базы или то что нашли
+              brand: p.brand || '', 
               uom: p.uom || 'шт',
               quantity: p.quantity || 1
             };

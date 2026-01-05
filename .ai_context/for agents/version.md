@@ -1,5 +1,40 @@
 # Version History
 
+## 1.6.9 - Partial Match Visualization
+- **Operator Interface:**
+  - Restored the **Warning (Yellow)** state in `PartsList` for brand inputs.
+  - The field now turns yellow if partial matches are found in the DB (e.g., typing "Mak" when "Makita" exists).
+  - Added visual priority: Green (Exact case-insensitive match) > Yellow (Partial matches available) > Red (No results).
+  - Improved the user experience by providing immediate feedback during the typing process.
+
+## 1.6.8 - Robust Brand Validation & Register Correction
+- **Supabase Service:** Updated `checkBrandExists` to be case-insensitive and return the actual database casing.
+- **Operator Interface:**
+  - Redesigned `PartsList` validation: brands are now verified in the background for all items simultaneously.
+  - Implemented **Register Correction**: if a user types a brand in the wrong case (e.g., "makita"), a 🔄 button appears to instantly fix it to the DB version ("Makita").
+  - Simplified order creation logic: the "Create" button is no longer hard-blocked by the database brand check, preventing UX deadlocks.
+  - Added brand verification caching to minimize redundant API calls.
+
+## 1.6.7 - ReferenceError Fix & Cleanup
+- **Operator Interface:** Removed all remaining `brandsList` references from `OperatorInterface.tsx` and `AiAssistant.tsx` to fix a runtime crash.
+- **AiAssistant:** Removed brand normalization logic, delegating it to the dynamic check in `PartsList`.
+
+## 1.6.6 - Dynamic Brand Autocomplete (Operator)
+- **Supabase Service:** Added `searchBrands` and `checkBrandExists` for real-time brand verification.
+- **Operator Interface:**
+  - Replaced static brand list loading with dynamic server-side autocomplete.
+  - Implemented "live" validation in `PartsList`: brands are now verified against the entire DB (3100+ entries) as the user types.
+  - Added visual status indicators: ✅ for verified brands, ⚠️ for unknown brands.
+  - Optimized performance by removing the need to download the full brand dictionary.
+
+## 1.6.5 - Global Brand Sync & Media Isolation
+- **Supabase Service:** Increased brand loading limit to 5000 to cover the entire database (3100+ items).
+- **Operator Interface:**
+  - Implemented automatic brand list refresh when the browser tab gains focus.
+  - Fixed "stale data" issue where newly added brands from Admin weren't available without a page reload.
+- **UI Consistency:** Removed `uppercase` styling from brand names across all interfaces (Admin, Operator, Buyer) to preserve original database casing.
+- **Media Fix:** Finalized separation of `opPhotoUrl` and `photoUrl` in the Buyer interface to prevent visual data overwriting.
+
 ## 1.6.4 - Media Data Isolation
 - **Data Model:** Introduced `opPhotoUrl` field in `OrderItem` to separate the operator's source photo from the supplier's offer photo.
 - **Supabase Service:** Updated `getOrders` and `getOrderDetails` to map source photos to `opPhotoUrl`.

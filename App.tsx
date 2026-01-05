@@ -4,7 +4,8 @@ import { ClientInterface } from './components/ClientInterface';
 import { BuyerInterface } from './components/BuyerInterface';
 import { AdminInterface } from './components/AdminInterface';
 import { OperatorInterface } from './components/OperatorInterface';
-import { Users, ShoppingBag, ShieldCheck, Phone, Send } from 'lucide-react';
+import { DebugInterface } from './components/DebugInterface';
+import { Users, ShoppingBag, ShieldCheck, Phone, Send, Bug } from 'lucide-react';
 
 // Хардкодим URL по умолчанию
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxooqVnUce3SIllt2RUtG-KJ5EzNswyHqrTpdsTGhc6XOKW6qaUdlr6ld77LR2KQz0-/exec';
@@ -54,6 +55,12 @@ const App: React.FC = () => {
                 >
                   <ShieldCheck size={14}/> <span>Менеджер</span>
                 </button>
+                <button 
+                  onClick={() => navigate('/debug')} 
+                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/debug') ? 'bg-white shadow-sm text-red-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  <Bug size={14}/> <span>Debug</span>
+                </button>
              </div>
           </div>
 
@@ -76,6 +83,7 @@ const App: React.FC = () => {
           <Route path="/client" element={<ClientInterface />} />
           <Route path="/buyer" element={<BuyerInterface />} />
           <Route path="/admin" element={<AdminInterface />} />
+          <Route path="/debug" element={<DebugInterface />} /> 
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/operator" replace />} />
           {/* Catch all redirect */}

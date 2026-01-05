@@ -1,39 +1,22 @@
-import React, { useState } from 'react';
-import { Trash2, Plus, CheckCircle, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Plus, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Part } from './types';
-import { ImageUploader } from '../shared/ImageUploader'; // Import
+import { ImageUploader } from '../shared/ImageUploader';
+import { SupabaseService } from '../../services/supabaseService';
 
 interface PartsListProps {
   parts: Part[];
   setParts: (parts: Part[]) => void;
-  brandsList: string[];
   onAddBrand: (name: string) => void;
 }
 
-// Simple Levenshtein distance
-function getLevenshteinDistance(a: string, b: string): number {
-  const matrix = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsList, onAddBrand }) => {
+export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBrand }) => {
   const [activeBrandInput, setActiveBrandInput] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  // Кэш проверенных брендов: { "makita": "Makita" } или { "unknown": null }
+  const [brandCache, setBrandCache] = useState<Record<string, string | null>>({});
+  const [validating, setValidating] = useState<Set<number>>(new Set());
 
   const addPart = () => {
     setParts([...parts, { id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
@@ -47,6 +30,44 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
     setParts(parts.map(part => part.id === id ? { ...part, [field]: value } : part));
   };
 
+  // Эффект 1: Динамические подсказки при вводе (только для активного поля)
+  useEffect(() => {
+      const activePart = parts.find(p => p.id === activeBrandInput);
+      const query = activePart?.brand?.trim();
+
+      if (!query || query.length < 2) {
+          setSuggestions([]);
+          return;
+      }
+
+      const handler = setTimeout(async () => {
+          try {
+              const results = await SupabaseService.searchBrands(query);
+              setSuggestions(results);
+          } catch (e) {}
+      }, 300);
+
+      return () => clearTimeout(handler);
+  }, [activeBrandInput, parts]);
+
+  // Эффект 2: Фоновая проверка существования бренда в базе (для всех полей)
+  useEffect(() => {
+      parts.forEach(part => {
+          const brandName = part.brand?.trim();
+          if (!brandName || brandCache[brandName.toLowerCase()] !== undefined) return;
+
+          const check = async () => {
+              setValidating(prev => new Set(prev).add(part.id));
+              try {
+                  const dbName = await SupabaseService.checkBrandExists(brandName);
+                  setBrandCache(prev => ({ ...prev, [brandName.toLowerCase()]: dbName }));
+              } catch (e) {}
+              finally { setValidating(prev => { const n = new Set(prev); n.delete(part.id); return n; }); }
+          };
+          check();
+      });
+  }, [parts, brandCache]);
+
   const inputClass = "w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-300 placeholder:text-xs text-slate-700 shadow-sm";
   const headerClass = "col-span-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider";
 
@@ -54,7 +75,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
     <section>
       <div className="flex items-center gap-2 mb-4">
         <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-        <h2 className="font-bold text-slate-800">Список позиций</h2>
+        <h2 className="font-bold text-slate-800 tracking-tight uppercase text-xs">Список позиций</h2>
       </div>
       
       <div className="space-y-3">
@@ -70,21 +91,18 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
         </div>
 
         {parts.map((part, idx) => {
-          const safeBrandsList = brandsList || [];
-          const normalizedInput = (part.brand || '').trim(); // Don't lower case immediately for display? No, compare lower.
-          const exactMatch = normalizedInput && safeBrandsList.some(b => b.toLowerCase() === normalizedInput.toLowerCase());
+          const brandValue = part.brand?.trim() || '';
+          const dbName = brandCache[brandValue.toLowerCase()];
+          const isChecking = validating.has(part.id);
           
-          let similarBrands: string[] = [];
-          if (!exactMatch && normalizedInput.length > 1) { // Threshold > 1 (2 chars)
-              similarBrands = safeBrandsList.filter(b => {
-                  const dist = getLevenshteinDistance(b.toLowerCase(), normalizedInput.toLowerCase());
-                  const threshold = normalizedInput.length > 4 ? 2 : 1;
-                  return dist <= threshold;
-              }).slice(0, 5);
-          }
-
-          const isWarning = !exactMatch && similarBrands.length > 0;
-          const isError = !exactMatch && similarBrands.length === 0 && normalizedInput.length > 0;
+          // Валидно, если нашли в базе (dbName не null)
+          const isValid = dbName !== undefined && dbName !== null;
+          // Предупреждение, если нет точного совпадения, но есть подсказки (только для активного поля)
+          const isWarning = !isValid && activeBrandInput === part.id && suggestions.length > 0;
+          // Ошибка, если проверили и не нашли ничего похожего
+          const isError = brandValue.length > 0 && dbName === null && !isChecking && !isWarning;
+          // Регистр отличается от базы
+          const needsFix = isValid && dbName !== brandValue;
 
           return (
             <div key={part.id} className="group relative grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
@@ -100,56 +118,60 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
                </div>
 
                {/* Brand Input */}
-               <div className="relative group/brand">
+               <div className="relative">
                  <input 
                     value={part.brand}
                     onChange={(e) => updatePart(part.id, 'brand', e.target.value)}
                     onFocus={() => setActiveBrandInput(part.id)}
                     onBlur={() => setTimeout(() => setActiveBrandInput(null), 200)}
                     placeholder="Бренд"
-                    className={`${inputClass} pr-8 transition-colors
+                    className={`${inputClass} pr-8
                         ${isError ? 'border-red-500 bg-red-50 text-red-700' : ''}
                         ${isWarning ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : ''}
+                        ${isValid ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : ''}
                     `}
                  />
                  
-                 {/* Icons */}
-                 {isError && (
-                     <button 
-                        onClick={() => onAddBrand(part.brand)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500 hover:text-green-600 transition-colors z-10"
-                        title="Добавить бренд в базу"
-                     >
-                        <CheckCircle size={16} />
-                     </button>
-                 )}
-                 {isWarning && (
-                     <div className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-500 cursor-help" title="Есть похожие варианты">
-                        <AlertTriangle size={16} />
-                     </div>
-                 )}
+                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {isChecking && <Loader2 size={12} className="animate-spin text-slate-400" />}
+                    {isValid && !needsFix && <CheckCircle size={14} className="text-emerald-500" />}
+                    {isWarning && <AlertTriangle size={14} className="text-yellow-500" />}
+                    {needsFix && (
+                        <button 
+                            onClick={() => updatePart(part.id, 'brand', dbName)}
+                            className="text-amber-500 hover:text-amber-600 transition-all hover:rotate-180"
+                            title={`Найдено: ${dbName}. Нажмите для исправления регистра.`}
+                        >
+                            <RefreshCw size={14} />
+                        </button>
+                    )}
+                    {isError && (
+                        <button 
+                            onClick={() => onAddBrand(part.brand)}
+                            className="text-red-500 hover:text-red-600 transition-colors"
+                            title="Бренда нет в базе. Нажмите чтобы добавить."
+                        >
+                            <AlertTriangle size={14} />
+                        </button>
+                    )}
+                 </div>
 
-                 {/* Similar Brands Dropdown */}
-                 {isWarning && activeBrandInput === part.id && (
-                     <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in slide-in-from-top-2">
-                         <div className="px-2 py-1 bg-yellow-50 text-[9px] font-bold text-yellow-700 uppercase tracking-wider">
-                             Возможно вы искали:
-                         </div>
-                         {similarBrands.map(suggestion => (
+                 {/* Suggestions */}
+                 {activeBrandInput === part.id && suggestions.length > 0 && (
+                     <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                         {suggestions.map(s => (
                              <div 
-                                key={suggestion}
-                                onClick={() => updatePart(part.id, 'brand', suggestion)}
-                                className="px-3 py-2 text-xs font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition-colors"
+                                key={s}
+                                onClick={() => {
+                                    updatePart(part.id, 'brand', s);
+                                    setBrandCache(prev => ({ ...prev, [s.toLowerCase()]: s }));
+                                    setSuggestions([]);
+                                }}
+                                className="px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
                              >
-                                {suggestion}
+                                {s}
                              </div>
                          ))}
-                         <div 
-                            className="px-3 py-2 text-[10px] text-slate-400 border-t border-slate-100 italic cursor-pointer hover:bg-slate-50"
-                            onClick={() => onAddBrand(part.brand)}
-                         >
-                            Нет, добавить как новый
-                         </div>
                      </div>
                  )}
                </div>
@@ -182,7 +204,6 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
                   />
                </div>
 
-               {/* Image Uploader */}
                <div className="flex justify-center">
                    <ImageUploader 
                        currentUrl={part.photoUrl} 
@@ -203,9 +224,9 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, brandsLis
 
         <button 
           onClick={addPart}
-          className="mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          className="mt-2 text-[10px] font-black text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 uppercase tracking-widest"
         >
-          <Plus size={14} /> ДОБАВИТЬ ПОЗИЦИЮ
+          <Plus size={14} /> Добавить позицию
         </button>
       </div>
     </section>

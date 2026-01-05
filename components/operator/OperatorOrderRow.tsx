@@ -90,7 +90,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                 <div key={idx} className="grid grid-cols-[30px_3fr_1.5fr_1.5fr_60px_60px_80px] gap-2 px-4 py-2.5 items-center text-[11px] group hover:bg-white transition-colors">
                                     <div className="text-center font-mono text-slate-300 text-[10px]">{idx + 1}</div>
                                     <div className="font-bold text-slate-700">{item.name}</div>
-                                    <div className="font-black text-slate-500 uppercase text-[10px]">{item.brand || '-'}</div>
+                                    <div className="font-black text-slate-500 text-[10px]">{item.brand || '-'}</div>
                                     <div className="font-mono text-slate-400 text-[10px]">{item.article || '-'}</div>
                                     <div className="text-center font-bold text-slate-400">{item.uom || 'шт'}</div>
                                     <div className="text-center">

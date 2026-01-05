@@ -404,10 +404,27 @@ export class SupabaseService {
       return data?.map((d: any) => d.brand) || [];
   }
 
-  static async getBrandsList(): Promise<string[]> {
-      const { data, error } = await supabase.from('brands').select('name').order('name');
+  static async searchBrands(query: string): Promise<string[]> {
+      if (!query || query.length < 2) return [];
+      const { data, error } = await supabase
+          .from('brands')
+          .select('name')
+          .ilike('name', `%${query}%`)
+          .order('name')
+          .limit(20);
       if (error) throw error;
       return data?.map((b: any) => b.name) || [];
+  }
+
+  static async checkBrandExists(name: string): Promise<string | null> {
+      if (!name) return null;
+      const { data, error } = await supabase
+          .from('brands')
+          .select('name')
+          .ilike('name', name) // Ищем без учета регистра
+          .maybeSingle();
+      if (error) return null;
+      return data ? data.name : null;
   }
 
   static async getBrandsFull(page: number = 1, limit: number = 100, search: string = '', sortField: string = 'id', sortDirection: 'asc' | 'desc' = 'desc'): Promise<{ data: Brand[], count: number }> {

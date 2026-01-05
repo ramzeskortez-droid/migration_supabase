@@ -73,7 +73,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
 
             <div>
                 <span className="block text-[7px] font-bold text-slate-400 uppercase mb-0.5">Бренд</span>
-                <span className="font-bold text-slate-700 text-[10px] uppercase">{opBrand}</span>
+                <span className="font-bold text-slate-700 text-[10px]">{opBrand}</span>
             </div>
 
             <div>

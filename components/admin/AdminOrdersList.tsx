@@ -101,7 +101,7 @@ const AdminOrderRow = memo(({
                 <div className="font-bold text-slate-600 truncate" title={subject}>{subject}</div>
 
                 {/* 3. Brand */}
-                <div className="font-bold text-slate-900 uppercase truncate">{displayBrand}</div>
+                <div className="font-bold text-slate-900 truncate">{displayBrand}</div>
 
                 {/* 4. First Item */}
                 <div className="font-bold text-slate-700 truncate">{firstItemName}</div>
