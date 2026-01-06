@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ChevronRight, ChevronDown, FileImage, Camera, Check, Edit2, 
-  ExternalLink, Loader2, Pencil
+  ExternalLink, Loader2, Pencil, HelpCircle
 } from 'lucide-react';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
 
@@ -18,12 +18,14 @@ interface AdminItemsTableProps {
   exchangeRates: ExchangeRates | null;
 }
 
+import { useQueryClient } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
 
 export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   order, isEditing, editForm, setEditForm, handleItemChange, handleLocalUpdateRank, 
   currentStatus, openRegistry, toggleRegistry, exchangeRates
 }) => {
+  const queryClient = useQueryClient();
   const [manualPriceIds, setManualPriceIds] = useState<Set<string>>(new Set());
   const [localPrices, setLocalPrices] = useState<Record<string, number>>({});
   const [generating, setGenerating] = useState(false);
@@ -143,7 +145,18 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <div className="text-center">Вес (кг)</div>
                                     <div className="text-center">Срок поставки</div>
                                     <div className="text-center">Фото</div>
-                                    <div>Цена для клиента</div>
+                                    <div className="flex items-center gap-1 group relative cursor-help">
+                                        <span>Цена для клиента</span>
+                                        <HelpCircle size={10} className="text-gray-400" />
+                                        <div className="absolute top-full right-0 mt-2 w-56 bg-slate-800 text-white p-3 rounded-lg text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border border-slate-600">
+                                            <div className="mb-2 font-bold text-indigo-300 border-b border-slate-600 pb-1 uppercase tracking-wider">Формула расчета</div>
+                                            <div className="space-y-1 font-mono text-[8px] text-slate-300">
+                                                <div>(ЦенаПост * КурсВалюты)</div>
+                                                <div>+ (Вес * ТарифДост * КурсUSD)</div>
+                                                <div>+ Наценка%</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="text-center">Срок для клиента</div>
                                     <div className="text-right pr-4">Действие</div>
                                 </div>
@@ -158,6 +171,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                             setGenerating(true);
                                             try {
                                                 await SupabaseService.generateTestOffers(order.id);
+                                                queryClient.invalidateQueries({ queryKey: ['order-details', order.id] });
                                             } catch (e) {
                                                 alert('Ошибка: ' + e);
                                             } finally {

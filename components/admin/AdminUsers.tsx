@@ -22,72 +22,100 @@ export const AdminUsers: React.FC = () => {
         }
     });
 
+    const getRoleTitle = (role: string) => {
+        switch(role) {
+            case 'operator': return 'Операторы';
+            case 'buyer': return 'Закупщики';
+            case 'admin': return 'Менеджеры';
+            default: return role;
+        }
+    };
+
+    const getRoleColor = (role: string) => {
+        switch(role) {
+            case 'operator': return 'bg-blue-50 text-blue-600 border-blue-200';
+            case 'buyer': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+            case 'admin': return 'bg-rose-50 text-rose-600 border-rose-200';
+            default: return 'bg-slate-50 text-slate-600';
+        }
+    };
+
     const filteredUsers = users?.filter(u => 
         u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         u.phone?.includes(searchTerm) ||
         u.token.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const groupUsersByRole = () => {
+        const groups = { operator: [], buyer: [], admin: [] } as Record<string, any[]>;
+        filteredUsers?.forEach(u => {
+            if (groups[u.role]) groups[u.role].push(u);
+        });
+        return groups;
+    };
+
+    const groupedUsers = groupUsersByRole();
+
     const renderUserCard = (user: any) => (
-        <div key={user.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all group">
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+        <div key={user.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base shrink-0 ${
                         user.role === 'admin' ? 'bg-rose-100 text-rose-600' : 
                         user.role === 'operator' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
                     }`}>
                         {user.name.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                        <h3 className="font-black text-slate-900 uppercase text-sm flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                        <h3 className="font-black text-slate-900 uppercase text-xs flex flex-wrap items-center gap-1.5 break-all">
                             {user.name}
-                            <span className={`text-[8px] px-1.5 py-0.5 rounded-full border ${
+                            <span className={`text-[7px] px-1 py-0.5 rounded-full border shrink-0 ${
                                 user.role === 'admin' ? 'bg-rose-50 border-rose-200 text-rose-600' : 
                                 user.role === 'operator' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'
                             }`}>
                                 {user.role}
                             </span>
                         </h3>
-                        <div className="flex flex-col gap-1 mt-1">
-                            <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-bold">
-                                <Phone size={12} className="text-slate-400" />
-                                {user.phone || 'Нет телефона'}
+                        <div className="flex flex-col gap-1 mt-1.5">
+                            <div className="flex items-start gap-1.5 text-slate-500 text-[9px] font-bold break-all">
+                                <Phone size={10} className="text-slate-400 mt-0.5 shrink-0" />
+                                <span>{user.phone || 'Нет телефона'}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-bold">
-                                <Shield size={12} className="text-slate-400" />
-                                Токен: <span className="font-mono bg-slate-100 px-1 rounded">{user.token}</span>
+                            <div className="flex items-start gap-1.5 text-slate-500 text-[9px] font-bold break-all">
+                                <Shield size={10} className="text-slate-400 mt-0.5 shrink-0" />
+                                <span className="opacity-60">Токен:</span> <span className="font-mono bg-slate-100 px-1 rounded">{user.token}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="text-right">
-                    <div className="flex items-center gap-1 text-slate-400 text-[9px] font-bold mb-3 uppercase">
+                <div className="text-right shrink-0">
+                    <div className="flex items-center justify-end gap-1 text-slate-400 text-[8px] font-bold mb-3 uppercase">
                         <Calendar size={10} />
                         {user.createdAt ? new Date(user.createdAt).toLocaleDateString('ru-RU') : '-'}
                     </div>
                     
                     {activeTab === 'pending' ? (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                             <button 
                                 onClick={() => mutation.mutate({ userId: user.id, status: 'rejected' })}
-                                className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                                className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm"
                                 title="Отклонить"
                             >
-                                <UserX size={16} />
+                                <UserX size={14} />
                             </button>
                             <button 
                                 onClick={() => mutation.mutate({ userId: user.id, status: 'approved' })}
-                                className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                                 title="Одобрить"
                             >
-                                <UserCheck size={16} />
+                                <UserCheck size={14} />
                             </button>
                         </div>
                     ) : (
                         <button 
                             onClick={() => mutation.mutate({ userId: user.id, status: 'rejected' })}
-                            className="text-[9px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors"
+                            className="text-[8px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors py-1"
                         >
                             Удалить
                         </button>
@@ -98,8 +126,8 @@ export const AdminUsers: React.FC = () => {
     );
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-6 space-y-6 h-full flex flex-col">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
                         <UsersIcon className="text-indigo-600" size={28} />
@@ -129,7 +157,7 @@ export const AdminUsers: React.FC = () => {
                 </div>
             </div>
 
-            <div className="relative">
+            <div className="relative shrink-0">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input 
                     type="text" 
@@ -141,9 +169,7 @@ export const AdminUsers: React.FC = () => {
             </div>
 
             {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[1,2,3].map(i => <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />)}
-                </div>
+                <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full"/></div>
             ) : filteredUsers?.length === 0 ? (
                 <div className="py-20 text-center">
                     <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -152,8 +178,21 @@ export const AdminUsers: React.FC = () => {
                     <p className="text-slate-400 font-black text-xs uppercase tracking-widest">Пользователи не найдены</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredUsers?.map(renderUserCard)}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow overflow-hidden min-h-0">
+                    {['operator', 'buyer', 'admin'].map(role => (
+                        <div key={role} className="flex flex-col bg-slate-50/50 rounded-2xl border border-slate-200/60 overflow-hidden h-full">
+                            <div className={`px-4 py-3 font-black text-xs uppercase tracking-widest border-b ${getRoleColor(role)}`}>
+                                {getRoleTitle(role)} ({groupedUsers[role]?.length || 0})
+                            </div>
+                            <div className="p-3 overflow-y-auto space-y-3 custom-scrollbar h-full">
+                                {groupedUsers[role]?.length === 0 ? (
+                                    <div className="text-center py-8 text-[10px] font-bold text-slate-300 uppercase">Пусто</div>
+                                ) : (
+                                    groupedUsers[role]?.map(renderUserCard)
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>

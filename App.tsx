@@ -5,7 +5,9 @@ import { BuyerInterface } from './components/BuyerInterface';
 import { AdminInterface } from './components/AdminInterface';
 import { OperatorInterface } from './components/OperatorInterface';
 import { DebugInterface } from './components/DebugInterface';
-import { Users, ShoppingBag, ShieldCheck, Phone, Send, Bug } from 'lucide-react';
+import { Users, ShoppingBag, ShieldCheck, Phone, Send, Bug, TrendingUp } from 'lucide-react';
+import { SupabaseService } from './services/supabaseService';
+import { ExchangeRates } from './types';
 
 // Хардкодим URL по умолчанию
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxooqVnUce3SIllt2RUtG-KJ5EzNswyHqrTpdsTGhc6XOKW6qaUdlr6ld77LR2KQz0-/exec';
@@ -13,12 +15,14 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxooqVnUce3SIll
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [rates, setRates] = React.useState<ExchangeRates | null>(null);
   
   // Инициализация URL API при первом запуске
   useEffect(() => {
      if (!localStorage.getItem('GAS_API_URL')) {
          localStorage.setItem('GAS_API_URL', DEFAULT_API_URL);
      }
+     SupabaseService.getExchangeRates().then(setRates).catch(console.error);
   }, []);
 
   const isActive = (path: string) => location.pathname.startsWith(path);
@@ -26,7 +30,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       {/* Navigation Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-[100]">
         <div className="max-w-6xl mx-auto px-2 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
              <img src="https://i.vgy.me/0lR7Mt.png" alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
@@ -34,6 +38,21 @@ const App: React.FC = () => {
                autoparts market | <span className="text-indigo-600">china-nai</span>
              </span>
           </div>
+
+          {rates && (
+              <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-slate-50/50 border border-slate-100 rounded-lg text-[9px] font-bold text-slate-500 whitespace-nowrap">
+                  <div className="flex items-center gap-1.5 text-indigo-400">
+                      <TrendingUp size={10} />
+                      <span>{new Date(rates.date).toLocaleDateString('ru-RU')}</span>
+                  </div>
+                  <div className="w-px h-2.5 bg-slate-200"></div>
+                  <div>¥/₽: <span className="text-slate-800">{rates.cny_rub}</span></div>
+                  <div className="w-px h-2.5 bg-slate-200"></div>
+                  <div>$/₽: <span className="text-slate-800">{rates.usd_rub}</span></div>
+                  <div className="w-px h-2.5 bg-slate-200"></div>
+                  <div>$/¥: <span className="text-slate-800">{rates.cny_usd}</span></div>
+              </div>
+          )}
 
           <div className="flex-grow flex justify-center overflow-x-auto no-scrollbar">
              <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">

@@ -10,10 +10,25 @@ export class SupabaseService {
       .from('app_users')
       .select('*')
       .eq('token', token)
-      .eq('status', 'approved') // Вход разрешен только одобренным
-      .maybeSingle(); // Используем maybeSingle, так как токенов может быть несколько (но мы возьмем первый подошедший)
+      .maybeSingle();
     
-    if (error || !data) return null;
+    if (error) throw error;
+    if (!data) return null;
+
+    if (data.status === 'pending') {
+        throw new Error('Ваш аккаунт находится на проверке. Ожидайте подтверждения менеджера.');
+    }
+
+    if (data.status === 'rejected') {
+        throw new Error('Доступ запрещен. Ваш аккаунт был отклонен.');
+    }
+
+    if (data.status !== 'approved') {
+         // Fallback for any other status (e.g. null if migration didn't run properly on some rows)
+         // But we assume 'approved' is required.
+         throw new Error('Статус аккаунта не подтвержден.');
+    }
+
     return {
       id: data.id,
       name: data.name,
@@ -301,7 +316,7 @@ export class SupabaseService {
                 id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url
             })) || [],
             offers: order.offers?.map((o: any) => ({
-                id: o.id, clientName: o.supplier_name, items: o.offer_items?.map((oi: any) => ({
+                id: o.id, clientName: o.supplier_name, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
                     id: oi.id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPriceRub: oi.admin_price_rub,
@@ -356,7 +371,7 @@ export class SupabaseService {
         clientName: offer.supplier_name,
         clientPhone: offer.supplier_phone,
         createdAt: new Date(offer.created_at).toLocaleString('ru-RU'),
-        items: offer.offer_items.map((oi: any) => ({
+        items: offer.offer_items.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
           id: oi.id,
           name: oi.name,
           quantity: oi.quantity,

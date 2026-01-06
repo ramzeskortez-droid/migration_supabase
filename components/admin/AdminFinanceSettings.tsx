@@ -109,7 +109,7 @@ export const AdminFinanceSettings: React.FC = () => {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Юань → Доллар (¥/$)</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Доллар → Юань ($/¥)</label>
                         <input 
                             type="text" 
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-black text-xl text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all"
