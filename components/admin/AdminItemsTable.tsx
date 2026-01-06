@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ChevronRight, ChevronDown, FileImage, Camera, Check, Edit2, 
-  ExternalLink, Loader2, Pencil, HelpCircle
+  ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle
 } from 'lucide-react';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
 
@@ -259,6 +259,15 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         )}
                                                     </div>
                                                     
+                                                    {off.item.comment && (
+                                                        <div className="col-span-full px-2 pb-1">
+                                                            <div className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg text-[9px] font-medium text-amber-800 flex items-start gap-2">
+                                                                <MessageCircle size={12} className="mt-0.5 text-amber-500 shrink-0" />
+                                                                <span><span className="font-bold">Поставщик:</span> {off.item.comment}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <div className="col-span-full mt-2 relative">
                                                         <input type="text" placeholder="Комментарий для поставщика (если проиграл)..." value={off.item.adminComment || ""} onChange={(e) => handleItemChange(order.id, off.offerId, item.name, 'adminComment', e.target.value)} className="w-full px-4 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-600 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all shadow-inner" />
                                                         <Edit2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
