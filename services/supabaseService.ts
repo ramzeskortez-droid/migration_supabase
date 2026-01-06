@@ -118,7 +118,7 @@ export class SupabaseService {
 
   // --- FILE STORAGE ---
 
-  static async uploadFile(file: File, folder: 'orders' | 'offers'): Promise<string> {
+  static async uploadFile(file: File, folder: 'orders' | 'offers' | 'chat'): Promise<string> {
       const fileExt = file.name.split('.').pop();
       const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
 
@@ -898,13 +898,15 @@ export class SupabaseService {
 
   static async sendChatMessage(payload: {
       order_id: string, offer_id?: string | null, sender_role: 'ADMIN' | 'SUPPLIER',
-      sender_name: string, recipient_name?: string, message: string, item_name?: string
+      sender_name: string, recipient_name?: string, message: string, item_name?: string,
+      file_url?: string, file_type?: string
   }): Promise<any> {
       const { data, error } = await supabase.from('chat_messages').insert(payload).select().single();
       if (error) throw error;
       const supplierName = payload.sender_role === 'SUPPLIER' ? payload.sender_name : payload.recipient_name;
       if (supplierName) {
           const escapedName = supplierName.split('"').join('"');
+          // Разархивируем чат при новом сообщении
           await supabase.from('chat_messages').update({ is_archived: false }).eq('order_id', payload.order_id).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`).eq('is_archived', true);
       }
       return data;

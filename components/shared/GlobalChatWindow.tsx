@@ -51,8 +51,8 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
               const orderId = String(msg.order_id);
               let supplier = '';
               
-              if (msg.sender_role === 'SUPPLIER') supplier = msg.sender_name;
-              else if (msg.sender_role === 'ADMIN') supplier = msg.recipient_name;
+              if (msg.sender_role === 'SUPPLIER') supplier = msg.sender_name?.trim();
+              else if (msg.sender_role === 'ADMIN') supplier = msg.recipient_name?.trim();
               
               if (!supplier || supplier === 'ADMIN') return; // Should not happen
 
@@ -78,26 +78,22 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
       }
   }, [isOpen, activeTab]);
 
-    const handleDelete = async (e: React.MouseEvent, orderId: string, supplierName?: string) => {
+    const handleArchive = async (e: React.MouseEvent, orderId: string, supplierName: string) => {
       e.stopPropagation();
-      const confirmMsg = supplierName 
-          ? `Удалить переписку с ${supplierName} по заказу #${orderId}?` 
-          : `Удалить ВСЮ историю чатов по заказу #${orderId}?`;
+      const confirmMsg = `Перенести переписку с ${supplierName} по заказу #${orderId} в архив для обоих участников?`;
       
       if (!confirm(confirmMsg)) return;
 
       try {
-          await SupabaseService.deleteChatHistory(orderId, supplierName);
+          await SupabaseService.archiveChat(orderId, supplierName);
           fetchThreads();
-          if (selectedOrder === orderId) {
-              if (!supplierName || selectedSupplier === supplierName) {
-                  setSelectedOrder(null);
-                  setSelectedSupplier(null);
-              }
+          if (selectedOrder === orderId && selectedSupplier === supplierName) {
+              setSelectedOrder(null);
+              setSelectedSupplier(null);
           }
       } catch (e) {
           console.error(e);
-          alert('Ошибка удаления');
+          alert('Ошибка архивации');
       }
   };
 
@@ -181,13 +177,6 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {totalUnread > 0 && <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{totalUnread}</span>}
-                                        <button 
-                                            onClick={(e) => handleDelete(e, orderId)}
-                                            className="opacity-0 group-hover/order:opacity-100 p-1 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded transition-all"
-                                            title="Удалить все чаты заказа"
-                                        >
-                                            <X size={12}/>
-                                        </button>
                                         <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90' : ''}`}/>
                                     </div>
                                 </div>
@@ -218,11 +207,11 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                                                         </span>
                                                     )}
                                                     <button 
-                                                        onClick={(e) => handleDelete(e, orderId, supplier)}
-                                                        className={`opacity-0 group-hover/supplier:opacity-100 p-1 rounded transition-all ${selectedSupplier === supplier ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-red-50 text-slate-300 hover:text-red-500'}`}
-                                                        title="Удалить чат"
+                                                        onClick={(e) => handleArchive(e, orderId, supplier)}
+                                                        className={`opacity-0 group-hover/supplier:opacity-100 p-1 rounded transition-all ${selectedSupplier === supplier ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-indigo-50 text-slate-300 hover:text-indigo-500'}`}
+                                                        title="В архив"
                                                     >
-                                                        <X size={10}/>
+                                                        <Archive size={10}/>
                                                     </button>
                                                 </div>
                                             </div>

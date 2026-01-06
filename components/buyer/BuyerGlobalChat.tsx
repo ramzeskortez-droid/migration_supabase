@@ -72,18 +72,13 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
           
           let relevantSupplier = '';
           if (currentUserRole === 'SUPPLIER') {
-              // I am the supplier. Messages are either from me or to me.
-              // If from me: sender_name = Me.
-              // If to me: recipient_name = Me.
-              // Key in threads is "Me" (currentSupplierName)
-              if (msg.sender_name === currentSupplierName || msg.recipient_name === currentSupplierName) {
-                  relevantSupplier = currentSupplierName || '';
+              const myName = currentSupplierName?.trim() || '';
+              if (msg.sender_name?.trim() === myName || msg.recipient_name?.trim() === myName) {
+                  relevantSupplier = myName;
               }
           } else {
-              // Admin view? BuyerGlobalChat usually for Buyer. 
-              // But just in case generic logic:
-              if (msg.sender_role === 'SUPPLIER') relevantSupplier = msg.sender_name;
-              else relevantSupplier = msg.recipient_name;
+              if (msg.sender_role === 'SUPPLIER') relevantSupplier = msg.sender_name?.trim();
+              else relevantSupplier = msg.recipient_name?.trim();
           }
 
           if (!relevantSupplier) return;
@@ -139,6 +134,22 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
           }
           return newThreads;
       });
+  };
+
+  const handleArchive = async (e: React.MouseEvent, orderId: string, supplierName: string) => {
+      e.stopPropagation();
+      if (!confirm('Перенести этот диалог в архив?')) return;
+      try {
+          await SupabaseService.archiveChat(orderId, supplierName);
+          fetchThreads();
+          if (selectedOrder === orderId && selectedSupplier === supplierName) {
+              setSelectedOrder(null);
+              setSelectedSupplier(null);
+          }
+      } catch (e) {
+          console.error(e);
+          alert('Ошибка архивации');
+      }
   };
 
   if (!isOpen) return null;
@@ -211,7 +222,7 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                                                 }}
                                                 className={`p-2 rounded-lg cursor-pointer flex justify-between items-center ${selectedSupplier === supplier ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
                                             >
-                                                <div className="flex flex-col overflow-hidden w-full">
+                                                <div className="flex flex-col overflow-hidden w-full group/supplier">
                                                     <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1 justify-between">
                                                         <span className="flex items-center gap-1">
                                                             <User size={10}/> 
@@ -221,11 +232,20 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                                                                     : `Оператор: ${info.lastAuthorName.replace('Оператор - ', '')}`) 
                                                                 : supplier}
                                                         </span>
-                                                        {info.unread > 0 && (
-                                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplier ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
-                                                                +{info.unread}
-                                                            </span>
-                                                        )}
+                                                        <div className="flex items-center gap-1">
+                                                            {info.unread > 0 && (
+                                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplier ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
+                                                                    +{info.unread}
+                                                                </span>
+                                                            )}
+                                                            <button 
+                                                                onClick={(e) => handleArchive(e, orderId, supplier)}
+                                                                className={`opacity-0 group-hover/supplier:opacity-100 p-1 rounded transition-all ${selectedSupplier === supplier ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-indigo-50 text-slate-300 hover:text-indigo-500'}`}
+                                                                title="В архив"
+                                                            >
+                                                                <Archive size={10}/>
+                                                            </button>
+                                                        </div>
                                                     </span>
                                                     <span className={`text-[9px] truncate mt-1 ${selectedSupplier === supplier ? 'text-indigo-200' : 'text-slate-400'}`}>
                                                         {info.lastMessage}

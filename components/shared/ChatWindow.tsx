@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
-import { Send, Link, Package, X, Archive } from 'lucide-react';
+import { Send, Link, Package, X, Archive, Paperclip, FileText } from 'lucide-react';
 import { SupabaseService } from '../../services/supabaseService';
 import { ConfirmationModal } from './ConfirmationModal';
 import { Toast } from './Toast';
@@ -16,6 +16,27 @@ interface ChatWindowProps {
 }
 
 // -- Sub-components for Optimization --
+
+const ChatImage = ({ src }: { src: string }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    return (
+        <div className="relative min-h-[100px] max-w-full bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center border border-black/5">
+            {!isLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
+                    <Loader2 className="animate-spin text-indigo-400" size={20} />
+                </div>
+            )}
+            <a href={src} target="_blank" rel="noreferrer" className="w-full">
+                <img 
+                    src={src} 
+                    alt="Вложение" 
+                    onLoad={() => setIsLoaded(true)}
+                    className={`max-w-full h-auto max-h-60 rounded-lg object-cover transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+                />
+            </a>
+        </div>
+    );
+};
 
 const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { messages: any[], currentUserRole: string, messagesEndRef: React.RefObject<HTMLDivElement | null> }) => {
     return (
@@ -49,6 +70,20 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
                                 <span>{displayName}</span>
                                 <span>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             </div>
+                            
+                            {msg.file_url && (
+                                <div className="mb-2 mt-1">
+                                    {msg.file_type === 'image' ? (
+                                        <ChatImage src={msg.file_url} />
+                                    ) : (
+                                        <a href={msg.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-black/10 p-2 rounded-lg hover:bg-black/20 transition-colors text-inherit">
+                                            <FileText size={16}/>
+                                            <span className="truncate max-w-[150px]">Файл</span>
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+
                             {msg.item_name && (
                                 <div className="mb-1 text-[9px] font-bold bg-black/10 px-2 py-0.5 rounded inline-flex items-center gap-1">
                                     <Package size={8}/> {msg.item_name}
@@ -64,33 +99,62 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
     );
 });
 
-const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (msg: string, item?: string) => void, loading: boolean, orderItems: string[], itemName?: string }) => {
+const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (msg: string, item?: string, file?: File) => void, loading: boolean, orderItems: string[], itemName?: string }) => {
     const inputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedItem, setSelectedItem] = useState<string | null>(itemName || null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [showItemSelector, setShowItemSelector] = useState(false);
 
     const handleSendClick = () => {
         const val = inputRef.current?.value;
-        if (!val?.trim()) return;
-        onSend(val, selectedItem || undefined);
+        if (!val?.trim() && !selectedFile) return;
+        onSend(val || '', selectedItem || undefined, selectedFile || undefined);
         if (inputRef.current) inputRef.current.value = '';
+        setSelectedFile(null);
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setSelectedFile(e.target.files[0]);
+        }
     };
 
     return (
         <div className="bg-white border-t border-slate-100 shrink-0">
-            {/* Item Selection Bar */}
-            <div className="px-3 pt-2 flex items-center gap-2">
+            {/* Item & File Selection Bar */}
+            <div className="px-3 pt-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
                 <button 
                     onClick={() => setShowItemSelector(!showItemSelector)}
-                    className={`text-[9px] font-bold uppercase px-2 py-1 rounded-lg border transition-all flex items-center gap-1 ${selectedItem ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-200 hover:text-indigo-500'}`}
+                    className={`text-[9px] font-bold uppercase px-2 py-1 rounded-lg border transition-all flex items-center gap-1 shrink-0 ${selectedItem ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-200 hover:text-indigo-500'}`}
                 >
                     <Package size={10}/>
-                    {selectedItem ? `Позиция: ${selectedItem}` : 'Прикрепить позицию'}
+                    {selectedItem ? `Позиция: ${selectedItem}` : 'Позиция'}
                 </button>
                 {selectedItem && (
-                    <button onClick={() => setSelectedItem(null)} className="text-slate-300 hover:text-red-400">
+                    <button onClick={() => setSelectedItem(null)} className="text-slate-300 hover:text-red-400 shrink-0">
                         <X size={12}/>
                     </button>
+                )}
+
+                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+
+                <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`text-[9px] font-bold uppercase px-2 py-1 rounded-lg border transition-all flex items-center gap-1 shrink-0 ${selectedFile ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-emerald-200 hover:text-emerald-500'}`}
+                >
+                    <Paperclip size={10}/>
+                    {selectedFile ? 'Файл выбран' : 'Файл'}
+                </button>
+                <input type="file" ref={fileInputRef} hidden onChange={handleFileSelect} />
+                
+                {selectedFile && (
+                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 shrink-0">
+                        <span className="text-[9px] font-bold text-emerald-700 truncate max-w-[100px]">{selectedFile.name}</span>
+                        <button onClick={() => { setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ''; }} className="text-emerald-400 hover:text-emerald-600">
+                            <X size={10}/>
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -238,7 +302,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = useCallback(async (msgText: string, selectedItemName?: string) => {
+  const handleSend = useCallback(async (msgText: string, selectedItemName?: string, file?: File) => {
       const tempId = Date.now();
       
       let senderName = 'ADMIN';
@@ -255,6 +319,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           dbRole = 'SUPPLIER';
       }
 
+      // Optimistic message (without file URL initially)
       const optimisticMsg = {
           id: tempId,
           order_id: Number(orderId),
@@ -263,6 +328,8 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
           message: msgText,
           item_name: selectedItemName,
+          file_url: file ? URL.createObjectURL(file) : undefined, // Preview
+          file_type: file ? (file.type.startsWith('image/') ? 'image' : 'file') : undefined,
           created_at: new Date().toISOString(),
           is_read: false
       };
@@ -272,6 +339,14 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
 
       setLoading(true);
       try {
+          let fileUrl = '';
+          let fileType = '';
+
+          if (file) {
+              fileUrl = await SupabaseService.uploadFile(file, 'chat');
+              fileType = file.type.startsWith('image/') ? 'image' : 'file';
+          }
+
           const realMsg = await SupabaseService.sendChatMessage({
               order_id: orderId,
               offer_id: offerId || null,
@@ -279,7 +354,9 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               sender_name: senderName,
               recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
               message: msgText,
-              item_name: selectedItemName
+              item_name: selectedItemName,
+              file_url: fileUrl || undefined,
+              file_type: fileType || undefined
           });
           
           setMessages(prev => {
