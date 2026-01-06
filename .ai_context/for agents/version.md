@@ -1,5 +1,23 @@
 # Version History
 
+## 1.9.0 - Buyer KPI & Gamification
+- **Database & Stats:**
+  - Implemented `monthly_buyer_stats` table for tracking KPI metrics.
+  - Added triggers `tr_kp_sent` and `tr_offer_win` for real-time statistics calculation.
+  - Created RPC function `get_buyer_dashboard_stats` to provide aggregated JSON for the UI.
+  - Added `created_by` field to `offers` table to link authorship.
+- **Service Layer:**
+  - Updated `SupabaseService.createOffer` to record the `userId`.
+  - Added `SupabaseService.getBuyerDashboardStats` for frontend integration.
+- **Buyer Interface:**
+  - Replaced legacy market stats with a new, unified **KPI Dashboard**.
+  - New components: `TotalKpiCard` (Department Turnover), `KpiCard` (Personal Stats), and `LeaderBoard` (Competition & Progress).
+  - Implemented `useBuyerStats` hook for efficient data fetching.
+  - Optimized dashboard UI: compact layout, unified container, and clear dividers.
+
+## 1.8.1 - Reference Assets
+- **Project Structure:** Added `temp_sup` folder containing reference components and guidelines for the new dashboard implementation.
+
 ## 1.8.0 - Listing Uniformity
 - **Admin Interface:**
   - Aligned all columns and data rows in the main order listing to the **left** for improved readability and visual consistency.

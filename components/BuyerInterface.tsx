@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { SupabaseService } from '../services/supabaseService';
 import { Order, AppUser } from '../types';
 import { Toast } from './shared/Toast';
 import { BuyerAuthModal } from './buyer/BuyerAuthModal';
 import { BuyerHeader } from './buyer/BuyerHeader';
-import { BuyerStats } from './buyer/BuyerStats';
+import { BuyerDashboard } from './buyer/BuyerDashboard';
 import { BuyerToolbar } from './buyer/BuyerToolbar';
 import { BuyerOrdersList } from './buyer/BuyerOrdersList';
 import { BuyerGlobalChat } from './buyer/BuyerGlobalChat';
 import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
 
 export const BuyerInterface: React.FC = () => {
+  const queryClient = useQueryClient();
+
   // --- Auth ---
   const [buyerAuth, setBuyerAuth] = useState<AppUser | null>(() => {
       try { return JSON.parse(localStorage.getItem('buyer_auth_token') || 'null'); } catch { return null; }
@@ -32,8 +35,8 @@ export const BuyerInterface: React.FC = () => {
   const [availableBrands, setAvailableBrands] = useState<string[]>([]); // Все бренды
   const [historyBrands, setHistoryBrands] = useState<string[]>([]); // Бренды поставщика
   
-  const [marketStats, setMarketStats] = useState({ today: 0, week: 0, month: 0, total: 0, leader: 'N/A' });
-  const [statsLoading, setStatsLoading] = useState(false);
+  // const [marketStats, setMarketStats] = useState({ today: 0, week: 0, month: 0, total: 0, leader: 'N/A' });
+  // const [statsLoading, setStatsLoading] = useState(false);
 
   // --- Editing Drafts ---
   const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
@@ -109,18 +112,18 @@ export const BuyerInterface: React.FC = () => {
   useEffect(() => {
       if (!buyerAuth) return;
       const loadInitialData = async () => {
-          setStatsLoading(true);
+          // setStatsLoading(true);
           try {
-              const [brands, histBrands, stats] = await Promise.all([
+              const [brands, histBrands] = await Promise.all([
                   SupabaseService.getBrandsList(),
                   SupabaseService.getSupplierUsedBrands(buyerAuth.name), // Ваши бренды
-                  SupabaseService.getMarketStats()
+                  // SupabaseService.getMarketStats()
               ]);
               setAvailableBrands(brands);
               setHistoryBrands(histBrands);
-              setMarketStats(stats);
+              // setMarketStats(stats);
           } catch (e) { console.error(e); }
-          finally { setStatsLoading(false); }
+          // finally { setStatsLoading(false); }
       };
       loadInitialData();
   }, [buyerAuth]);
@@ -130,7 +133,7 @@ export const BuyerInterface: React.FC = () => {
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
-          await SupabaseService.createOffer(orderId, buyerAuth.name, items, '', buyerAuth.phone);
+          await SupabaseService.createOffer(orderId, buyerAuth.name, items, '', buyerAuth.phone, buyerAuth.id);
           setExpandedId(null);
           setSuccessToast({ message: 'Предложение отправлено!', id: Date.now().toString() });
           refetch();
@@ -176,7 +179,10 @@ export const BuyerInterface: React.FC = () => {
                     onOpenChat={() => setIsGlobalChatOpen(true)}
                     unreadCount={unreadChatCount}
                 />
-                <BuyerStats stats={marketStats} loading={statsLoading} />
+                
+                {/* Новый Дашборд KPI */}
+                <BuyerDashboard userId={buyerAuth.id} />
+
                 <BuyerToolbar 
                     activeTab={activeTab} setActiveTab={setActiveTab}
                     searchQuery={searchQuery} setSearchQuery={setSearchQuery}
@@ -184,7 +190,11 @@ export const BuyerInterface: React.FC = () => {
                     availableBrands={availableBrands} // Все
                     historyBrands={historyBrands}     // Персональные
                     counts={{ new: 0, history: 0 }} 
-                    onRefresh={() => refetch()} isSyncing={isLoading || isFetchingNextPage}
+                    onRefresh={() => {
+                        refetch();
+                        queryClient.invalidateQueries({ queryKey: ['buyerStats'] });
+                    }} 
+                    isSyncing={isLoading || isFetchingNextPage}
                 />
                 <BuyerOrdersList 
                     orders={orders}

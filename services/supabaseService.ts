@@ -529,7 +529,24 @@ export class SupabaseService {
     return String(orderData.id);
   }
 
-  static async createOffer(orderId: string, sellerName: string, items: any[], vin: string, sellerPhone?: string): Promise<void> {
+  static async getBuyerDashboardStats(userId: string): Promise<any> {
+    const { data, error } = await supabase.rpc('get_buyer_dashboard_stats', { 
+        p_user_id: userId
+    });
+    
+    if (error) {
+        console.error('getBuyerDashboardStats ERROR:', error);
+        // Возвращаем заглушку при ошибке, чтобы фронт не падал
+        return {
+            department: { turnover: 0 },
+            personal: { kp_count: 0, kp_sum: 0, won_count: 0, won_sum: 0 },
+            leaders: { quantity_leader: '-', quantity_val: 0, sum_leader: '-', sum_val: 0 }
+        };
+    }
+    return data;
+  }
+
+  static async createOffer(orderId: string, sellerName: string, items: any[], vin: string, sellerPhone?: string, userId?: string): Promise<void> {
     const { data: existing } = await supabase
         .from('offers')
         .select('id')
@@ -543,7 +560,12 @@ export class SupabaseService {
 
     const { data: offerData, error: offerError } = await supabase
       .from('offers')
-      .insert({ order_id: orderId, supplier_name: sellerName, supplier_phone: sellerPhone })
+      .insert({ 
+          order_id: orderId, 
+          supplier_name: sellerName, 
+          supplier_phone: sellerPhone,
+          created_by: userId // Привязка к пользователю для статистики
+      })
       .select().single();
 
     if (offerError) throw offerError;
