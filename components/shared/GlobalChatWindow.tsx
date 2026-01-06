@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MessageCircle, ChevronRight, User, Hash } from 'lucide-react';
+import { X, MessageCircle, ChevronRight, User, Hash, Archive } from 'lucide-react';
 import { ChatWindow } from './ChatWindow';
 import { SupabaseService } from '../../services/supabaseService';
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
-import { Send, Link, Package, X, Archive, Paperclip, FileText } from 'lucide-react';
+import { Send, Link, Package, X, Archive, Paperclip, FileText, Loader2 } from 'lucide-react';
 import { SupabaseService } from '../../services/supabaseService';
 import { ConfirmationModal } from './ConfirmationModal';
 import { Toast } from './Toast';

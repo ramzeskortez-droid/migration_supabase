@@ -1,5 +1,9 @@
 # Version History
 
+## 1.10.1 - Чат: Hotfix импортов
+- Исправлена ошибка `ReferenceError: Archive is not defined` в компонентах `GlobalChatWindow.tsx` и `BuyerGlobalChat.tsx`.
+- Исправлена ошибка `ReferenceError: Loader2 is not defined` в компоненте `ChatWindow.tsx`.
+
 ## 1.10.0 - Вложения в чате и Архивация
 - **Chat Engine:**
   - Реализована отправка файлов (изображений и документов) через иконку "Скрепка".
