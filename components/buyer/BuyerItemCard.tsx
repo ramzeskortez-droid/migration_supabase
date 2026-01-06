@@ -151,7 +151,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             <div className="space-y-1">
                 <div className="flex justify-between items-end">
                     <label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label>
-                    {bestStats?.bestPrice !== null && (
+                    {bestStats?.bestPrice != null && (
                          <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100" title="Лучшая цена конкурентов">ЛУЧШАЯ: {bestStats.bestPrice}</span>
                     )}
                 </div>
@@ -163,7 +163,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             <div className="space-y-1">
                 <div className="flex justify-between items-end">
                     <label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label>
-                    {bestStats?.bestWeeks !== null && (
+                    {bestStats?.bestWeeks != null && (
                          <span className="text-[7px] font-black text-blue-600 bg-blue-50 px-1 rounded border border-blue-100" title="Лучший срок конкурентов">ЛУЧШИЙ: {bestStats.bestWeeks}</span>
                     )}
                 </div>
