@@ -815,20 +815,36 @@ export class SupabaseService {
     const { data: items } = await supabase.from('order_items').select('*').eq('order_id', orderId);
     if (!items || items.length === 0) return;
 
-    // 2. Define test users (Ensure these match what's in your DB or generic names)
-    // We try to use the names that match the demo tokens if possible, or generic ones.
-    const testUsers = [
-        { name: 'Демо Поставщик 1', phone: '+7 (999) 000-00-01' },
-        { name: 'Демо Поставщик 2', phone: '+7 (999) 000-00-02' }
-    ];
+    // 2. Fetch REAL Buyers
+    const { data: buyers } = await supabase.from('app_users').select('*').eq('role', 'buyer').eq('status', 'approved');
+    
+    if (!buyers || buyers.length === 0) {
+        throw new Error('Нет доступных закупщиков в базе');
+    }
 
-    // 3. Create offers
-    for (const user of testUsers) {
+    // 3. Get existing offers to avoid duplicates
+    const { data: existingOffers } = await supabase.from('offers').select('supplier_name').eq('order_id', orderId);
+    const existingNames = new Set(existingOffers?.map(o => o.supplier_name) || []);
+
+    // Filter available buyers
+    const availableBuyers = buyers.filter(b => !existingNames.has(b.name));
+
+    if (availableBuyers.length === 0) {
+        throw new Error('Все закупщики уже оставили предложения');
+    }
+
+    // Pick up to 2 random buyers
+    const shuffled = availableBuyers.sort(() => 0.5 - Math.random());
+    const selectedBuyers = shuffled.slice(0, 2);
+
+    // 4. Create offers
+    for (const user of selectedBuyers) {
         // Create Offer
         const { data: offer } = await supabase.from('offers').insert({
             order_id: orderId,
             supplier_name: user.name,
-            supplier_phone: user.phone
+            supplier_phone: user.phone,
+            created_by: user.id // Link to real user ID
         }).select().single();
 
         if (!offer) continue;
@@ -843,7 +859,7 @@ export class SupabaseService {
             currency: 'CNY',
             delivery_days: (Math.floor(Math.random() * 4) + 4) * 7, // 4-8 weeks
             weight: Number((Math.random() * 5).toFixed(1)),
-            comment: 'Тестовое предложение'
+            comment: 'Тестовое предложение (Auto)'
         }));
 
         await supabase.from('offer_items').insert(offerItems);
