@@ -52,15 +52,16 @@ const AdminOrderRow = memo(({
     const fullOrder = { ...order, items: details?.items || order.items || [], offers: details?.offers || order.offers || [] };
     const offersCount = order.offers?.length || 0; 
 
-    // Stats: Total Items / Covered
+    // Stats: Total Items / Covered (Has at least one offer)
     const totalItems = order.items?.length || 0;
-    const itemsWithWinners = new Set();
+    const itemsWithOffers = new Set();
     order.offers?.forEach((o: any) => {
         o.items?.forEach((i: any) => {
-            if (i.rank === 'ЛИДЕР') itemsWithWinners.add(i.name);
+            // Count item if it has a price (valid offer)
+            if (i.name && (i.price > 0 || i.sellerPrice > 0)) itemsWithOffers.add(i.name);
         });
     });
-    const coveredItems = itemsWithWinners.size;
+    const coveredItems = itemsWithOffers.size;
 
     // Subject & First Item
     const firstItem = order.items?.[0];
