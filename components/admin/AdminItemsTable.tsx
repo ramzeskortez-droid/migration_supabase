@@ -18,12 +18,15 @@ interface AdminItemsTableProps {
   exchangeRates: ExchangeRates | null;
 }
 
+import { SupabaseService } from '../../services/supabaseService';
+
 export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   order, isEditing, editForm, setEditForm, handleItemChange, handleLocalUpdateRank, 
   currentStatus, openRegistry, toggleRegistry, exchangeRates
 }) => {
   const [manualPriceIds, setManualPriceIds] = useState<Set<string>>(new Set());
   const [localPrices, setLocalPrices] = useState<Record<string, number>>({});
+  const [generating, setGenerating] = useState(false);
 
   const calculatePrice = (sellerPrice: number, sellerCurrency: Currency, weight: number) => {
     if (!exchangeRates) return 0;
@@ -147,7 +150,27 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                             </div>
 
                             {itemOffers.length === 0 ? (
-                                <div className="p-10 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest bg-slate-50/50">Нет предложений</div>
+                                <div className="p-10 text-center">
+                                    <div className="text-[10px] font-black text-slate-300 uppercase italic tracking-widest mb-3">Нет предложений</div>
+                                    <button 
+                                        onClick={async () => {
+                                            if (generating) return;
+                                            setGenerating(true);
+                                            try {
+                                                await SupabaseService.generateTestOffers(order.id);
+                                            } catch (e) {
+                                                alert('Ошибка: ' + e);
+                                            } finally {
+                                                setGenerating(false);
+                                            }
+                                        }}
+                                        disabled={generating}
+                                        className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors border border-indigo-200 flex items-center gap-2 mx-auto disabled:opacity-50"
+                                    >
+                                        {generating && <Loader2 className="animate-spin w-3 h-3" />}
+                                        Создать Тестовые Офферы
+                                    </button>
+                                </div>
                             ) : (
                                 <div className="min-w-[1000px] divide-y divide-gray-100">
                                     {itemOffers.map((off, oIdx) => {

@@ -10,7 +10,8 @@ export class SupabaseService {
       .from('app_users')
       .select('*')
       .eq('token', token)
-      .single();
+      .eq('status', 'approved') // Вход разрешен только одобренным
+      .maybeSingle(); // Используем maybeSingle, так как токенов может быть несколько (но мы возьмем первый подошедший)
     
     if (error || !data) return null;
     return {
@@ -18,14 +19,15 @@ export class SupabaseService {
       name: data.name,
       token: data.token,
       role: data.role,
-      phone: data.phone
+      phone: data.phone,
+      status: data.status
     };
   }
 
   static async registerUser(name: string, token: string, phone: string, role: 'operator' | 'buyer' = 'operator'): Promise<AppUser> {
       const { data, error } = await supabase
           .from('app_users')
-          .insert({ name, token, role, phone })
+          .insert({ name, token, role, phone, status: 'pending' }) // Новые пользователи всегда в ожидании
           .select()
           .single();
       
@@ -35,8 +37,40 @@ export class SupabaseService {
           name: data.name,
           token: data.token,
           role: data.role,
-          phone: data.phone
+          phone: data.phone,
+          status: data.status
       };
+  }
+
+  static async getAppUsers(status: 'pending' | 'approved'): Promise<AppUser[]> {
+      const { data, error } = await supabase
+          .from('app_users')
+          .select('*')
+          .eq('status', status)
+          .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          token: u.token,
+          role: u.role,
+          phone: u.phone,
+          status: u.status,
+          createdAt: u.created_at
+      }));
+  }
+
+  static async updateUserStatus(userId: string, status: 'approved' | 'rejected'): Promise<void> {
+      if (status === 'rejected') {
+          // Если отклоняем, просто удаляем или можно завести статус rejected. 
+          // Для простоты — удаляем, чтобы человек мог подать заявку снова с корректными данными.
+          const { error } = await supabase.from('app_users').delete().eq('id', userId);
+          if (error) throw error;
+      } else {
+          const { error } = await supabase.from('app_users').update({ status }).eq('id', userId);
+          if (error) throw error;
+      }
   }
 
   // --- FINANCE (Exchange Rates) ---
@@ -759,6 +793,52 @@ export class SupabaseService {
 
       onProgress(Math.min((i + 1) * BATCH_SIZE, count));
     }
+  }
+
+  static async generateTestOffers(orderId: string): Promise<void> {
+    // 1. Get items
+    const { data: items } = await supabase.from('order_items').select('*').eq('order_id', orderId);
+    if (!items || items.length === 0) return;
+
+    // 2. Define test users (Ensure these match what's in your DB or generic names)
+    // We try to use the names that match the demo tokens if possible, or generic ones.
+    const testUsers = [
+        { name: 'Демо Поставщик 1', phone: '+7 (999) 000-00-01' },
+        { name: 'Демо Поставщик 2', phone: '+7 (999) 000-00-02' }
+    ];
+
+    // 3. Create offers
+    for (const user of testUsers) {
+        // Create Offer
+        const { data: offer } = await supabase.from('offers').insert({
+            order_id: orderId,
+            supplier_name: user.name,
+            supplier_phone: user.phone
+        }).select().single();
+
+        if (!offer) continue;
+
+        // Create Items
+        const offerItems = items.map((item: any) => ({
+            offer_id: offer.id,
+            order_item_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: Math.floor(Math.random() * 500) + 100, // Random price 100-600
+            currency: 'CNY',
+            delivery_days: (Math.floor(Math.random() * 4) + 4) * 7, // 4-8 weeks
+            weight: Number((Math.random() * 5).toFixed(1)),
+            comment: 'Тестовое предложение'
+        }));
+
+        await supabase.from('offer_items').insert(offerItems);
+    }
+    
+    // Update status
+    await supabase.from('orders').update({ 
+        status_supplier: 'Идут торги',
+        status_updated_at: new Date().toISOString()
+    }).eq('id', orderId);
   }
 
   static async getChatMessages(orderId: string, offerId?: string, supplierName?: string): Promise<any[]> {
