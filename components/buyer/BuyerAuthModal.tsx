@@ -22,14 +22,16 @@ export const BuyerAuthModal: React.FC<BuyerAuthModalProps> = ({ isOpen, onLogin 
 
   if (!isOpen) return null;
 
-  const handleLogin = async (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent, overrideToken?: string) => {
       e?.preventDefault();
-      if (!token) return;
+      const loginToken = overrideToken || token;
+      if (!loginToken) return;
+      
       setLoading(true);
       setError(null);
       
       try {
-          const user = await SupabaseService.loginWithToken(token);
+          const user = await SupabaseService.loginWithToken(loginToken);
           if (user && user.role === 'buyer') {
               onLogin(user);
           } else {
@@ -104,10 +106,10 @@ export const BuyerAuthModal: React.FC<BuyerAuthModalProps> = ({ isOpen, onLogin 
          {mode === 'login' ? (
              <div className="w-full space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setToken('buy1')} className="py-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1 group">
+                    <button onClick={() => handleLogin(undefined, 'buy1')} className="py-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1 group">
                         <UserCircle2 size={16} className="text-slate-400 group-hover:text-indigo-500"/> Демо 1
                     </button>
-                    <button onClick={() => setToken('buy2')} className="py-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1 group">
+                    <button onClick={() => handleLogin(undefined, 'buy2')} className="py-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex flex-col items-center gap-1 group">
                         <UserCircle2 size={16} className="text-slate-400 group-hover:text-indigo-500"/> Демо 2
                     </button>
                  </div>

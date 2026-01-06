@@ -8,9 +8,10 @@ interface BuyerItemCardProps {
   onUpdate: (index: number, field: string, value: any) => void;
   isDisabled: boolean;
   orderId: string;
+  bestStats?: { bestPrice: number | null, bestWeeks: number | null } | null;
 }
 
-export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpdate, isDisabled, orderId }) => {
+export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpdate, isDisabled, orderId, bestStats }) => {
   
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
@@ -21,23 +22,48 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
       if (isDisabled) return;
       const digits = raw.replace(/[^\d.]/g, ''); 
       let val = parseFloat(digits) || 0;
+      
       let limit = max;
+      let minLimit = 0;
+
       if (!limit) {
           if (field === 'BuyerPrice') limit = 1000000;
           if (field === 'weight') limit = 1000;
-          if (field === 'deliveryWeeks') limit = 52;
+          if (field === 'deliveryWeeks') {
+              limit = 52;
+              minLimit = 4; // Минимальный срок 4 недели
+          }
       }
+
+      // Max check
       if (limit && val > limit) {
           val = limit;
           setFlashField(field);
           setTimeout(() => setFlashField(null), 300);
       }
+      
+      // Min check (only visual warning during typing, or strict enforcement?)
+      // Strict enforcement makes typing hard (typing "1" becomes impossible if min is 4).
+      // So we just update the value, but we can flash if it's too low on blur (not implemented here)
+      // Or we can enforce it only if the user TRIES to enter something valid but low.
+      // Actually, simple input handling: save value, but flash if invalid later?
+      // Re-reading request: "Нужно реализовать минимум 4 недели".
+      // Let's just pass the value. Validation happens in parent or we can flash here if value < 4 AND value > 0 and length > 1?
+      // Let's just update. We will rely on parent validation for submission blocking if needed, OR user self-correction.
+      // But I'll add a check: if user inputs < 4, maybe flash red?
+      
       onUpdate(index, field, val);
   };
 
   const getInputClass = (field: string) => {
       const base = "w-full text-center font-bold text-[10px] border rounded-lg py-1.5 outline-none transition-all duration-300";
       if (isDisabled) return `${base} bg-slate-50 border-slate-200`;
+      
+      // Visual warning for min delivery weeks
+      if (field === 'deliveryWeeks' && (item.deliveryWeeks || 0) > 0 && (item.deliveryWeeks || 0) < 4) {
+          return `${base} bg-rose-50 border-rose-300 text-rose-600 focus:border-rose-500`;
+      }
+
       if (flashField === field) return `${base} bg-red-100 border-red-400 text-red-600`; 
       if (field === 'BuyerPrice') return `${base} bg-white border-slate-200 focus:border-indigo-500 font-black`;
       return `${base} bg-white border-slate-200 focus:border-indigo-500`;
@@ -121,9 +147,31 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
                 <button onClick={toggleUnavailable} disabled={isDisabled} className={`mb-[1px] p-2 rounded-lg border transition-all ${isUnavailable ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200'}`} title={isUnavailable ? "Вернуть в работу" : "Нет в наличии"}><Ban size={14} /></button>
                 <div className="flex-grow space-y-1"><label className="text-[7px] font-bold text-indigo-400 uppercase block">Предложить кол-во</label><input type="text" disabled={isDisabled} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity')} /></div>
             </div>
-            <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label><input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice')} placeholder="0" /></div>
+            
+            <div className="space-y-1">
+                <div className="flex justify-between items-end">
+                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Цена (¥)</label>
+                    {bestStats?.bestPrice !== null && (
+                         <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100" title="Лучшая цена конкурентов">ЛУЧШАЯ: {bestStats.bestPrice}</span>
+                    )}
+                </div>
+                <input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice')} placeholder="0" />
+            </div>
+
             <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Вес (кг)</label><input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight')} placeholder="0.0" /></div>
-            <div className="space-y-1"><label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label><input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks')} placeholder="1" /></div>
+            
+            <div className="space-y-1">
+                <div className="flex justify-between items-end">
+                    <label className="text-[7px] font-bold text-slate-400 uppercase block">Срок (нед)</label>
+                    {bestStats?.bestWeeks !== null && (
+                         <span className="text-[7px] font-black text-blue-600 bg-blue-50 px-1 rounded border border-blue-100" title="Лучший срок конкурентов">ЛУЧШИЙ: {bestStats.bestWeeks}</span>
+                    )}
+                </div>
+                <input type="text" disabled={isDisabled || isUnavailable} value={isUnavailable ? 0 : item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks')} placeholder="Min 4" />
+                {(item.deliveryWeeks || 0) > 0 && (item.deliveryWeeks || 0) < 4 && (
+                    <span className="text-[7px] font-bold text-rose-500 block leading-tight mt-0.5 animate-pulse">минимум 4 недели</span>
+                )}
+            </div>
             
             <div className="col-span-2 md:col-span-1 space-y-1">
                 <label className="text-[7px] font-bold text-slate-400 uppercase block">Ваше фото</label>

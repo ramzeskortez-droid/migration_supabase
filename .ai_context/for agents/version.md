@@ -1,5 +1,15 @@
 # Version History
 
+## 1.9.1 - Buyer UX & Operator Identity
+- **Buyer Interface:**
+  - **Best Price & Best Time:** Stats are now displayed directly above the input fields ("ЛУЧШАЯ: ...") for immediate comparison.
+  - **Validation:** Enforced a minimum delivery time of 4 weeks with explicit red warning text ("минимум 4 недели").
+  - **Notifications:** Updated the success toast to include the specific Order ID.
+  - **Security:** Strict state reset (editing drafts, expanded views) and cache cleanup on logout.
+  - **Auth:** Instant login for Demo accounts without extra clicks.
+- **Operator Identity:**
+  - Prepared SQL migration to rename demo accounts (`op1` -> Женя, `op2` -> Ваня) for correct display in Chat.
+
 ## 1.9.0 - Buyer KPI & Gamification
 - **Database & Stats:**
   - Implemented `monthly_buyer_stats` table for tracking KPI metrics.

@@ -33,7 +33,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   // Валидация
   const isValid = editingItems.every(item => {
       if (item.offeredQuantity === 0) return true;
-      return (item.BuyerPrice > 0) && (item.weight > 0) && (item.deliveryWeeks > 0);
+      return (item.BuyerPrice > 0) && (item.weight > 0) && (item.deliveryWeeks >= 4);
   });
 
   const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
@@ -51,6 +51,32 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       setTimeout(() => setShowCopiedToast(false), 2000);
   };
 
+  const getBestStats = (itemName: string) => {
+      let minPrice = Infinity;
+      let minWeeks = Infinity;
+
+      // Если оферов нет или только мой
+      if (!order.offers || order.offers.length === 0) return null;
+      
+      const otherOffers = order.offers.filter(o => !myOffer || o.id !== myOffer.id);
+      if (otherOffers.length === 0) return null;
+
+      otherOffers.forEach(offer => {
+          const item = offer.items?.find((i: any) => i.name === itemName);
+          if (item) {
+              // Ищем минимальную цену (упрощенно: числовое сравнение, предполагаем одну валюту или игнорируем разницу)
+              if (item.sellerPrice && item.sellerPrice < minPrice) minPrice = item.sellerPrice;
+              // Ищем минимальный срок
+              if (item.deliveryWeeks && item.deliveryWeeks < minWeeks) minWeeks = item.deliveryWeeks;
+          }
+      });
+
+      return {
+          bestPrice: minPrice === Infinity ? null : minPrice,
+          bestWeeks: minWeeks === Infinity ? null : minWeeks
+      };
+  };
+
   return (
     <div className="p-4 bg-white border-t border-slate-100 animate-in fade-in duration-200 relative">
         {showCopiedToast && <div className="absolute top-4 right-4 z-50"><Toast message="VIN скопирован" duration={1500} onClose={() => setShowCopiedToast(false)}/></div>}
@@ -64,6 +90,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     onUpdate={handleUpdateItem}
                     isDisabled={isDisabled}
                     orderId={order.id}
+                    bestStats={!myOffer ? getBestStats(item.name) : null} // Показываем статистику только если мы еще не отправили офер
                 />
             ))}
             

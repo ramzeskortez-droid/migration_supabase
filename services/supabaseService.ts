@@ -672,6 +672,7 @@ export class SupabaseService {
     if (error) {
         console.warn('reset_db RPC failed, performing manual cascade delete:', error);
         // Manual cleanup if RPC fails
+        await supabase.from('monthly_buyer_stats').delete().neq('kp_count', -1);
         await supabase.from('chat_messages').delete().neq('id', 0);
         await supabase.from('buyer_order_labels').delete().neq('id', 0);
         await supabase.from('offer_items').delete().neq('id', 0);

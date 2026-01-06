@@ -50,7 +50,10 @@ export const BuyerInterface: React.FC = () => {
 
   const handleLogout = () => {
       setBuyerAuth(null);
+      setExpandedId(null);
+      setEditingItemsMap({});
       localStorage.removeItem('buyer_auth_token');
+      queryClient.removeQueries(); // Очистка кеша при выходе
       setShowAuthModal(true);
   };
 
@@ -135,7 +138,7 @@ export const BuyerInterface: React.FC = () => {
       try {
           await SupabaseService.createOffer(orderId, buyerAuth.name, items, '', buyerAuth.phone, buyerAuth.id);
           setExpandedId(null);
-          setSuccessToast({ message: 'Предложение отправлено!', id: Date.now().toString() });
+          setSuccessToast({ message: `Предложение к заказу № ${orderId} отправлено!`, id: Date.now().toString() });
           refetch();
           // Обновляем список "моих" брендов, если добавился новый
           SupabaseService.getSupplierUsedBrands(buyerAuth.name).then(setHistoryBrands);
