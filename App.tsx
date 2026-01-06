@@ -39,21 +39,6 @@ const App: React.FC = () => {
              </span>
           </div>
 
-          {rates && (
-              <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-slate-50/50 border border-slate-100 rounded-lg text-[9px] font-bold text-slate-500 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5 text-indigo-400">
-                      <TrendingUp size={10} />
-                      <span>{new Date(rates.date).toLocaleDateString('ru-RU')}</span>
-                  </div>
-                  <div className="w-px h-2.5 bg-slate-200"></div>
-                  <div>¥/₽: <span className="text-slate-800">{rates.cny_rub}</span></div>
-                  <div className="w-px h-2.5 bg-slate-200"></div>
-                  <div>$/₽: <span className="text-slate-800">{rates.usd_rub}</span></div>
-                  <div className="w-px h-2.5 bg-slate-200"></div>
-                  <div>$/¥: <span className="text-slate-800">{rates.cny_usd}</span></div>
-              </div>
-          )}
-
           <div className="flex-grow flex justify-center overflow-x-auto no-scrollbar">
              <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
                 <button 
@@ -83,16 +68,20 @@ const App: React.FC = () => {
              </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-500">
-             <div className="flex items-center gap-1.5 hover:text-indigo-600 cursor-pointer transition-colors">
-                <Phone size={12} className="text-indigo-500"/>
-                <span>+7 (999) 000-00-00</span>
-             </div>
-             <div className="flex items-center gap-1.5 hover:text-blue-500 cursor-pointer transition-colors">
-                <Send size={12} className="text-blue-400"/>
-                <span>Telegram Support</span>
-             </div>
-          </div>
+          {rates && (
+              <div className="hidden md:flex items-center gap-3 px-3 py-1 bg-slate-50/50 border border-slate-100 rounded-lg text-[9px] font-bold text-slate-500 whitespace-nowrap shrink-0">
+                  <div className="flex items-center gap-1.5 text-indigo-400">
+                      <TrendingUp size={10} />
+                      <span>{new Date(rates.date).toLocaleDateString('ru-RU')}</span>
+                  </div>
+                  <div className="w-px h-2.5 bg-slate-200"></div>
+                  <div>¥/₽: <span className="text-slate-800">{rates.cny_rub}</span></div>
+                  <div className="w-px h-2.5 bg-slate-200"></div>
+                  <div>$/₽: <span className="text-slate-800">{rates.usd_rub}</span></div>
+                  <div className="w-px h-2.5 bg-slate-200"></div>
+                  <div>$/¥: <span className="text-slate-800">{rates.cny_usd}</span></div>
+              </div>
+          )}
         </div>
       </header>
 

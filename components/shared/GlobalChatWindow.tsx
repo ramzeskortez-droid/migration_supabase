@@ -10,14 +10,16 @@ interface GlobalChatWindowProps {
   onNavigateToOrder?: (orderId: string) => void;
   currentUserRole: 'ADMIN' | 'SUPPLIER' | 'OPERATOR';
   currentUserName?: string;
+  onMessageRead?: (count: number) => void;
 }
 
-export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName }) => {
+export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, onMessageRead }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
+  const processedIds = React.useRef(new Set<number>());
 
   const fetchThreads = async () => {
       setLoading(true);
@@ -35,8 +37,44 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
   useEffect(() => {
       if (isOpen) {
           fetchThreads();
-          const interval = setInterval(fetchThreads, 10000); 
-          return () => clearInterval(interval);
+          
+          // Realtime updates for threads list
+          const channel = SupabaseService.subscribeToUserChats((payload) => {
+              const msg = payload.new;
+              if (processedIds.current.has(msg.id)) return;
+              processedIds.current.add(msg.id);
+
+              // Check if we should update threads
+              // For Operator (Global): we care about ALL messages to/from ADMIN
+              // But we group by [orderId][supplier]
+              
+              const orderId = String(msg.order_id);
+              let supplier = '';
+              
+              if (msg.sender_role === 'SUPPLIER') supplier = msg.sender_name;
+              else if (msg.sender_role === 'ADMIN') supplier = msg.recipient_name;
+              
+              if (!supplier || supplier === 'ADMIN') return; // Should not happen
+
+              setThreads(prev => {
+                  const newThreads = { ...prev };
+                  if (!newThreads[orderId]) newThreads[orderId] = {};
+                  
+                  const prevThread = newThreads[orderId][supplier] || { unread: 0 };
+                  
+                  newThreads[orderId][supplier] = {
+                      lastMessage: msg.message,
+                      lastAuthorName: msg.sender_name,
+                      time: msg.created_at,
+                      unread: (msg.sender_role === 'SUPPLIER') ? prevThread.unread + 1 : prevThread.unread
+                  };
+                  return newThreads;
+              });
+          }, 'operator-global-chat-list');
+
+          return () => {
+              SupabaseService.unsubscribeFromChat(channel);
+          };
       }
   }, [isOpen, activeTab]);
 
@@ -74,6 +112,11 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
       setThreads(prev => {
           const newThreads = { ...prev };
           if (newThreads[orderId] && newThreads[orderId][supplierName]) {
+              const currentUnread = newThreads[orderId][supplierName].unread;
+              if (currentUnread > 0 && onMessageRead) {
+                  onMessageRead(currentUnread);
+              }
+
               newThreads[orderId][supplierName] = {
                   ...newThreads[orderId][supplierName],
                   unread: 0

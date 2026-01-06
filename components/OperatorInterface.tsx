@@ -10,6 +10,7 @@ import { GlobalChatWindow } from './shared/GlobalChatWindow';
 import { OrderInfo, Part, LogHistory, DisplayStats } from './operator/types';
 import { SupabaseService } from '../services/supabaseService';
 import { Toast } from './shared/Toast';
+import { ChatNotification } from './shared/ChatNotification';
 import { AppUser } from '../types';
 
 export const OperatorInterface: React.FC = () => {
@@ -43,10 +44,33 @@ export const OperatorInterface: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
+  const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  const handleMessageRead = useCallback((count: number) => {
+      setUnreadChatCount(prev => Math.max(0, prev - count));
+  }, []);
+
+  // Realtime Notifications
+  useEffect(() => {
+      if (!currentUser) return;
+
+      const channel = SupabaseService.subscribeToUserChats((payload) => {
+          const msg = payload.new;
+          
+          if (msg.recipient_name === 'ADMIN' && msg.sender_role === 'SUPPLIER') {
+              setUnreadChatCount(prev => prev + 1);
+              if (!isGlobalChatOpen) {
+                  setChatNotifications(prev => [...prev, msg].slice(-3));
+              }
+          }
+      }, `operator-notifications-${currentUser.id}`);
+
+      return () => { SupabaseService.unsubscribeFromChat(channel); };
+  }, [currentUser, isGlobalChatOpen]);
 
   // Load User from LocalStorage
   useEffect(() => {
@@ -244,6 +268,19 @@ export const OperatorInterface: React.FC = () => {
               <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type as any} duration={2000} />
           </div>
       )}
+
+      {chatNotifications.map((msg, idx) => (
+            <ChatNotification 
+                key={msg.id}
+                index={idx}
+                message={msg} 
+                onClose={() => setChatNotifications(prev => prev.filter(m => m.id !== msg.id))}
+                onClick={() => {
+                    setIsGlobalChatOpen(true);
+                    setChatNotifications(prev => prev.filter(m => m.id !== msg.id));
+                }}
+            />
+      ))}
       
       <OperatorHeader 
         operatorName={currentUser?.name || null} 
@@ -307,6 +344,7 @@ export const OperatorInterface: React.FC = () => {
         currentUserRole="OPERATOR"
         currentUserName={currentUser?.name}
         onNavigateToOrder={handleNavigateToOrder}
+        onMessageRead={handleMessageRead}
       />
     </div>
   );

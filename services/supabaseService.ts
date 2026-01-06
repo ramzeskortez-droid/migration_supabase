@@ -856,6 +856,35 @@ export class SupabaseService {
     }).eq('id', orderId);
   }
 
+  static subscribeToUserChats(
+      callback: (payload: { new: any, eventType: 'INSERT' | 'UPDATE' }) => void,
+      channelId: string = 'global-user-chats'
+  ) {
+      const channel = supabase.channel(channelId)
+          .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+              (payload) => callback({ new: payload.new, eventType: 'INSERT' })
+          )
+          .subscribe();
+      return channel;
+  }
+
+  static subscribeToChatMessages(orderId: string, callback: (payload: any) => void) {
+      const channel = supabase.channel(`chat:${orderId}`)
+          .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `order_id=eq.${orderId}` },
+              (payload) => callback(payload.new)
+          )
+          .subscribe();
+      return channel;
+  }
+
+  static unsubscribeFromChat(channel: any) {
+      supabase.removeChannel(channel);
+  }
+
   static async getChatMessages(orderId: string, offerId?: string, supplierName?: string): Promise<any[]> {
       let query = supabase.from('chat_messages').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
       if (supplierName) {

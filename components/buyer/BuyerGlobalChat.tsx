@@ -10,16 +10,37 @@ interface BuyerGlobalChatProps {
   currentUserRole: 'ADMIN' | 'SUPPLIER';
   currentSupplierName?: string; // Для фильтрации чатов поставщика
   onNavigateToOrder?: (orderId: string) => void;
+  initialOrderId?: string | null;
+  onMessageRead?: (count: number) => void;
 }
 
 export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({ 
-  isOpen, onClose, currentUserRole, currentSupplierName, onNavigateToOrder 
+  isOpen, onClose, currentUserRole, currentSupplierName, onNavigateToOrder, initialOrderId, onMessageRead 
 }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(initialOrderId || null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
+  const processedIds = React.useRef(new Set<number>());
+
+  // Effect to select order when opened with initialOrderId
+  useEffect(() => {
+      if (isOpen && initialOrderId) {
+          setSelectedOrder(initialOrderId);
+          // If user is supplier, auto-select the manager chat (or self)
+          // If user is admin... wait, this is BuyerGlobalChat, so user is Supplier.
+          // We need to auto-select the supplier key.
+          // Since Buyer only sees THEIR chat with Manager, there is usually only 1 supplier key (themselves) per order in the thread list?
+          // Let's see fetchThreads logic.
+          // It calls `getGlobalChatThreads(currentSupplierName)`.
+          // So `threads` contains `[orderId][currentSupplierName]`.
+          // So we can auto-select `currentSupplierName`.
+          if (currentUserRole === 'SUPPLIER' && currentSupplierName) {
+              setSelectedSupplier(currentSupplierName);
+          }
+      }
+  }, [isOpen, initialOrderId, currentUserRole, currentSupplierName]);
 
   const fetchThreads = async () => {
       setLoading(true);
@@ -38,8 +59,61 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
 
   useEffect(() => {
       fetchThreads();
-      const interval = setInterval(fetchThreads, 10000); 
-      return () => clearInterval(interval);
+      
+      const channel = SupabaseService.subscribeToUserChats((payload) => {
+          const msg = payload.new;
+          if (processedIds.current.has(msg.id)) return;
+          processedIds.current.add(msg.id);
+
+          const orderId = String(msg.order_id);
+          
+          // Buyer cares if message is FOR him or FROM him
+          // Logic: Update thread [orderId][SupplierName]
+          
+          let relevantSupplier = '';
+          if (currentUserRole === 'SUPPLIER') {
+              // I am the supplier. Messages are either from me or to me.
+              // If from me: sender_name = Me.
+              // If to me: recipient_name = Me.
+              // Key in threads is "Me" (currentSupplierName)
+              if (msg.sender_name === currentSupplierName || msg.recipient_name === currentSupplierName) {
+                  relevantSupplier = currentSupplierName || '';
+              }
+          } else {
+              // Admin view? BuyerGlobalChat usually for Buyer. 
+              // But just in case generic logic:
+              if (msg.sender_role === 'SUPPLIER') relevantSupplier = msg.sender_name;
+              else relevantSupplier = msg.recipient_name;
+          }
+
+          if (!relevantSupplier) return;
+
+          setThreads(prev => {
+              const newThreads = { ...prev };
+              if (!newThreads[orderId]) newThreads[orderId] = {};
+              
+              const prevThread = newThreads[orderId][relevantSupplier] || { unread: 0 };
+              
+              // Increment unread if message is NOT from me
+              let isUnread = false;
+              if (currentUserRole === 'SUPPLIER') {
+                  isUnread = msg.sender_role === 'ADMIN'; // Incoming from Admin
+              }
+              // If I sent it, unread doesn't change (or resets? No, keep as is)
+              
+              newThreads[orderId][relevantSupplier] = {
+                  lastMessage: msg.message,
+                  lastAuthorName: msg.sender_name,
+                  time: msg.created_at,
+                  unread: isUnread ? prevThread.unread + 1 : prevThread.unread
+              };
+              return newThreads;
+          });
+      }, 'buyer-global-chat-list');
+
+      return () => {
+          SupabaseService.unsubscribeFromChat(channel);
+      };
   }, [isOpen, currentUserRole, currentSupplierName, activeTab]); // Added activeTab dependency
 
   const handleNavigate = React.useCallback((oid: string) => {
@@ -53,6 +127,11 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
       setThreads(prev => {
           const newThreads = { ...prev };
           if (newThreads[orderId] && newThreads[orderId][supplierName]) {
+              const currentUnread = newThreads[orderId][supplierName].unread;
+              if (currentUnread > 0 && onMessageRead) {
+                  onMessageRead(currentUnread);
+              }
+              
               newThreads[orderId][supplierName] = {
                   ...newThreads[orderId][supplierName],
                   unread: 0
@@ -137,7 +216,9 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                                                         <span className="flex items-center gap-1">
                                                             <User size={10}/> 
                                                             {currentUserRole === 'SUPPLIER' 
-                                                                ? (info.lastAuthorName === 'ADMIN' ? 'Чат с менеджером' : `Чат с ${info.lastAuthorName}`) 
+                                                                ? ((info.lastAuthorName === currentSupplierName || !info.lastAuthorName) 
+                                                                    ? 'Чат с менеджером' 
+                                                                    : `Оператор: ${info.lastAuthorName.replace('Оператор - ', '')}`) 
                                                                 : supplier}
                                                         </span>
                                                         {info.unread > 0 && (

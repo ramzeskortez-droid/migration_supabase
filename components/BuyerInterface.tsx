@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SupabaseService } from '../services/supabaseService';
 import { Order, AppUser } from '../types';
 import { Toast } from './shared/Toast';
+import { ChatNotification } from './shared/ChatNotification';
 import { BuyerAuthModal } from './buyer/BuyerAuthModal';
 import { BuyerHeader } from './buyer/BuyerHeader';
 import { BuyerDashboard } from './buyer/BuyerDashboard';
@@ -28,6 +29,7 @@ export const BuyerInterface: React.FC = () => {
   const [activeBrands, setActiveBrands] = useState<string[]>([]);
   
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
+  const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
@@ -40,6 +42,24 @@ export const BuyerInterface: React.FC = () => {
 
   // --- Editing Drafts ---
   const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
+
+  // --- Realtime Notifications ---
+  useEffect(() => {
+      if (!buyerAuth) return;
+
+      const channel = SupabaseService.subscribeToUserChats((payload) => {
+          const msg = payload.new;
+          
+          if (msg.recipient_name === buyerAuth.name) {
+              setUnreadChatCount(prev => prev + 1);
+              if (!isGlobalChatOpen) {
+                  setChatNotifications(prev => [...prev, msg].slice(-3));
+              }
+          }
+      }, `buyer-notifications-${buyerAuth.id}`);
+
+      return () => { SupabaseService.unsubscribeFromChat(channel); };
+  }, [buyerAuth, isGlobalChatOpen]);
 
   // --- Handlers Pre-definition ---
   const handleLogin = (user: AppUser) => {
@@ -149,6 +169,17 @@ export const BuyerInterface: React.FC = () => {
       }
   };
 
+  const [initialChatOrder, setInitialChatOrder] = useState<string | null>(null);
+
+  const handleOpenChat = useCallback((orderId?: string) => {
+      setInitialChatOrder(orderId || null);
+      setIsGlobalChatOpen(true);
+  }, []);
+
+  const handleMessageRead = useCallback((count: number) => {
+      setUnreadChatCount(prev => Math.max(0, prev - count));
+  }, []);
+
   const handleNavigateToOrder = (orderId: string) => {
       setSearchQuery(orderId);
       setExpandedId(orderId);
@@ -172,6 +203,18 @@ export const BuyerInterface: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
         {successToast && <Toast message={successToast.message} onClose={() => setSuccessToast(null)} />}
+        {chatNotifications.map((msg, idx) => (
+            <ChatNotification 
+                key={msg.id}
+                index={idx}
+                message={msg} 
+                onClose={() => setChatNotifications(prev => prev.filter(m => m.id !== msg.id))}
+                onClick={() => {
+                    handleOpenChat(String(msg.order_id));
+                    setChatNotifications(prev => prev.filter(m => m.id !== msg.id));
+                }}
+            />
+        ))}
         <BuyerAuthModal isOpen={showAuthModal} onLogin={handleLogin} />
         {buyerAuth && (
             <>
@@ -210,6 +253,7 @@ export const BuyerInterface: React.FC = () => {
                     sortConfig={sortConfig} onSort={() => {}}
                     getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
                     buyerToken={buyerAuth?.token}
+                    onOpenChat={handleOpenChat}
                 />
                 <BuyerGlobalChat 
                     isOpen={isGlobalChatOpen}
@@ -217,6 +261,8 @@ export const BuyerInterface: React.FC = () => {
                     currentUserRole="SUPPLIER"
                     currentSupplierName={buyerAuth.name}
                     onNavigateToOrder={handleNavigateToOrder}
+                    initialOrderId={initialChatOrder}
+                    onMessageRead={handleMessageRead}
                 />
             </>
         )}

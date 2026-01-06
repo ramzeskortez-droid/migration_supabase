@@ -20,6 +20,7 @@ interface BuyerOrdersListProps {
   getOfferStatus: (order: Order) => { label: string, color: string, icon: React.ReactNode };
   getMyOffer: (order: Order) => any;
   buyerToken?: string;
+  onOpenChat: (orderId: string) => void;
 }
 
 // Columns: ID+Sticker (80), Deadline (90), Subject (1.5fr), Item (1fr), Status (110), Date (80), Arrow (30)
@@ -28,7 +29,7 @@ const GRID_COLS = "grid-cols-[80px_90px_1.5fr_1fr_110px_80px_30px]";
 const MemoizedBuyerOrderRow = memo(({
     order, isExpanded, onToggle,
     editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
-    statusInfo, myOffer, buyerToken
+    statusInfo, myOffer, buyerToken, onOpenChat
 }: any) => {
     
     // Инициализация пустых полей для нового оффера
@@ -58,13 +59,14 @@ const MemoizedBuyerOrderRow = memo(({
             myOffer={myOffer}
             buyerToken={buyerToken}
             gridCols={GRID_COLS} 
+            onOpenChat={onOpenChat}
         />
     );
 });
 export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 
   editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
-  sortConfig, onSort, getOfferStatus, getMyOffer, buyerToken
+  sortConfig, onSort, getOfferStatus, getMyOffer, buyerToken, onOpenChat
 }) => {
   
   const SortIcon = ({ column }: { column: string }) => {
@@ -105,6 +107,7 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
                         statusInfo={getOfferStatus(order)}
                         myOffer={getMyOffer(order)}
                         buyerToken={buyerToken}
+                        onOpenChat={onOpenChat}
                     />
                 )}
                 components={{

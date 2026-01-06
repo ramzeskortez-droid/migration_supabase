@@ -200,9 +200,39 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
 
   useEffect(() => {
       fetchMessages();
-      const interval = setInterval(fetchMessages, 3000); 
-      return () => clearInterval(interval);
-  }, [orderId, offerId, supplierName]);
+      
+      const channel = SupabaseService.subscribeToChatMessages(orderId, (newMsg) => {
+          // Проверяем, относится ли сообщение к этому диалогу (поставщик)
+          const isRelevant = newMsg.sender_name === supplierName || newMsg.recipient_name === supplierName;
+          
+          if (isRelevant) {
+              setMessages(prev => {
+                  // 1. Проверяем, есть ли уже сообщение с таким ID (защита от дублей)
+                  if (prev.find(m => m.id === newMsg.id)) return prev;
+
+                  // 2. Проверяем, есть ли "оптимистичное" сообщение с таким же текстом
+                  // (от меня, недавнее, временный ID)
+                  const optimisticMatch = prev.find(m => 
+                      m.message === newMsg.message && 
+                      m.sender_name === newMsg.sender_name && 
+                      typeof m.id === 'number' && m.id > 1000000000000
+                  );
+
+                  if (optimisticMatch) {
+                      // Заменяем временное на реальное (без дублирования)
+                      return prev.map(m => m.id === optimisticMatch.id ? newMsg : m);
+                  }
+
+                  // 3. Если совпадений нет — просто добавляем
+                  return [...prev, newMsg];
+              });
+          }
+      });
+
+      return () => {
+          SupabaseService.unsubscribeFromChat(channel);
+      };
+  }, [orderId, supplierName]);
 
   useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -252,7 +282,14 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               item_name: selectedItemName
           });
           
-          setMessages(prev => prev.map(m => m.id === tempId ? realMsg : m));
+          setMessages(prev => {
+              // Если Realtime уже добавил это сообщение (по ID), то просто удаляем оптимистичное
+              if (prev.find(m => m.id === realMsg.id)) {
+                  return prev.filter(m => m.id !== tempId);
+              }
+              // Иначе обновляем оптимистичное на реальное
+              return prev.map(m => m.id === tempId ? realMsg : m);
+          });
           
       } catch (e: any) {
           console.error('Send error:', e);

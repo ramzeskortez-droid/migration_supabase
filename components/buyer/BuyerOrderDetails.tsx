@@ -3,7 +3,6 @@ import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle 
 import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
-import { ChatModal } from '../shared/ChatModal';
 
 interface BuyerOrderDetailsProps {
   order: Order;
@@ -13,13 +12,13 @@ interface BuyerOrderDetailsProps {
   isSubmitting: boolean;
   myOffer: any;
   statusInfo: any;
+  onOpenChat: (orderId: string) => void;
 }
 
 export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({ 
-  order, editingItems, setEditingItems, onSubmit, isSubmitting, myOffer, statusInfo 
+  order, editingItems, setEditingItems, onSubmit, isSubmitting, myOffer, statusInfo, onOpenChat 
 }) => {
   const [showCopiedToast, setShowCopiedToast] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const BuyerAuth = useMemo(() => {
       try { return JSON.parse(localStorage.getItem('Buyer_auth') || 'null'); } catch { return null; }
@@ -96,7 +95,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             
             <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                 <button 
-                    onClick={() => setIsChatOpen(true)}
+                    onClick={() => onOpenChat(order.id)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all text-[10px] font-black uppercase border border-indigo-100 shadow-sm"
                 >
                     <MessageCircle size={16} /> Чат с менеджером
@@ -126,17 +125,6 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 </div>
             )}
         </div>
-
-        {isChatOpen && (
-            <ChatModal 
-                isOpen={isChatOpen} 
-                onClose={() => setIsChatOpen(false)} 
-                orderId={order.id} 
-                offerId={myOffer?.id} 
-                supplierName={BuyerAuth?.name || 'Поставщик'}
-                currentUserRole="SUPPLIER"
-            />
-        )}
     </div>
   );
 };

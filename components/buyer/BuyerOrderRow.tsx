@@ -18,6 +18,7 @@ interface BuyerOrderRowProps {
   isSubmitting: boolean;
   buyerToken?: string;
   gridCols?: string;
+  onOpenChat: (orderId: string) => void;
 }
 
 const STICKER_COLORS = [
@@ -38,7 +39,7 @@ const COLOR_MAP: Record<string, string> = {
 
 export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({ 
   order, isExpanded, onToggle, statusInfo, myOffer,
-  editingItems, setEditingItems, onSubmit, isSubmitting, buyerToken, gridCols
+  editingItems, setEditingItems, onSubmit, isSubmitting, buyerToken, gridCols, onOpenChat
 }) => {
   const queryClient = useQueryClient();
   const [showStickerPicker, setShowStickerPicker] = useState(false);
@@ -163,6 +164,7 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
                     isSubmitting={isSubmitting}
                     myOffer={myOffer}
                     statusInfo={statusInfo}
+                    onOpenChat={onOpenChat}
                 />
             )}
         </div>
