@@ -126,10 +126,10 @@ export const AdminInterface: React.FC = () => {
       }); 
   };
 
-  const handleLocalUpdateRank = async (orderId: string, offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number) => {
+  const handleLocalUpdateRank = async (orderId: string, offerId: string, offerItemId: string, orderItemId: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number) => {
       try {
           const actionType = (currentRank === 'ЛИДЕР' || currentRank === 'LEADER') ? 'RESET' : undefined;
-          await SupabaseService.updateRank(vin, itemName, offerId, adminPrice, adminCurrency, actionType, adminComment, deliveryRate, adminPriceRub);
+          await SupabaseService.updateRank(offerItemId, orderItemId, offerId, adminPrice, adminCurrency, actionType, adminComment, deliveryRate, adminPriceRub);
           // Инвалидируем детали конкретного заказа, чтобы обновить UI
           queryClient.invalidateQueries({ queryKey: ['order-details', orderId] });
       } catch (e) {

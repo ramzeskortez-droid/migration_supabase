@@ -11,7 +11,7 @@ interface AdminItemsTableProps {
   editForm: { [key: string]: string };
   setEditForm: (form: any) => void;
   handleItemChange: (orderId: string, offerId: string, itemName: string, field: string, value: any) => void;
-  handleLocalUpdateRank: (orderId: string, offerId: string, itemName: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number) => void;
+  handleLocalUpdateRank: (orderId: string, offerId: string, offerItemId: string, orderItemId: string, currentRank: RankType, vin: string, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number) => void;
   currentStatus: string;
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
@@ -92,8 +92,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
             if (order.offers) { 
                 for (const off of order.offers) { 
                     const matching = off.items.find(i => 
-                        (i.order_item_id && i.order_item_id === item.id) || 
-                        (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
+                        (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
+                        (!i.order_item_id && i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
                     ); 
                     if (matching) {
                         itemOffers.push({ offerId: off.id, clientName: off.clientName, item: matching }); 
@@ -249,7 +249,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                     <div className="flex justify-end pr-2">
                                                         {['В обработке', 'Идут торги'].includes(currentStatus) || isLeader ? (
                                                             <button
-                                                                onClick={() => handleLocalUpdateRank(order.id, off.offerId, item.name, off.item.rank || '', order.vin, off.item.sellerPrice, off.item.sellerCurrency, off.item.adminComment, off.item.deliveryRate, currentPriceRub)}
+                                                                onClick={() => handleLocalUpdateRank(order.id, off.offerId, off.item.id, item.id, off.item.rank || '', order.vin, off.item.sellerPrice, off.item.sellerCurrency, off.item.adminComment, off.item.deliveryRate, currentPriceRub)}
                                                                 className={`w-full py-2 px-3 rounded-xl font-black uppercase text-[9px] transition-all shadow-md ${isLeader ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                                                             >
                                                                 {isLeader ? ( <span className="flex items-center justify-center gap-1"><Check size={12} strokeWidth={3} /> Лидер</span> ) : ( "Выбрать" )}

@@ -24,8 +24,6 @@ export class SupabaseService {
     }
 
     if (data.status !== 'approved') {
-         // Fallback for any other status (e.g. null if migration didn't run properly on some rows)
-         // But we assume 'approved' is required.
          throw new Error('Статус аккаунта не подтвержден.');
     }
 
@@ -42,7 +40,7 @@ export class SupabaseService {
   static async registerUser(name: string, token: string, phone: string, role: 'operator' | 'buyer' = 'operator'): Promise<AppUser> {
       const { data, error } = await supabase
           .from('app_users')
-          .insert({ name, token, role, phone, status: 'pending' }) // Новые пользователи всегда в ожидании
+          .insert({ name, token, role, phone, status: 'pending' }) 
           .select()
           .single();
       
@@ -78,8 +76,6 @@ export class SupabaseService {
 
   static async updateUserStatus(userId: string, status: 'approved' | 'rejected'): Promise<void> {
       if (status === 'rejected') {
-          // Если отклоняем, просто удаляем или можно завести статус rejected. 
-          // Для простоты — удаляем, чтобы человек мог подать заявку снова с корректными данными.
           const { error } = await supabase.from('app_users').delete().eq('id', userId);
           if (error) throw error;
       } else {
@@ -175,9 +171,6 @@ export class SupabaseService {
     }));
   }
 
-  /**
-   * Получение списка заказов
-   */
   static async getOrders(
     cursor?: number, 
     limit: number = 50, 
@@ -205,9 +198,6 @@ export class SupabaseService {
         matchingBrandIds = items?.map(i => i.order_id) || [];
     }
 
-    // 2. Основной запрос (Облегченный для стабильности)
-    // ВРЕМЕННО: убрал brand, article, uom, photo_url, чтобы восстановить работу, если миграция не прошла.
-    // После миграции можно вернуть: order_items (id, name, comment, quantity, brand, article, uom, photo_url)
     let query = supabase.from('orders').select(`
         id, created_at, vin, client_name, client_phone, 
         car_brand, car_model, car_year,
@@ -235,7 +225,6 @@ export class SupabaseService {
     }
 
     if (statusFilter) {
-        // Если есть поисковый запрос по ID (число), игнорируем фильтр статуса для глобального поиска
         const isIdSearch = searchQuery && !isNaN(Number(searchQuery.trim()));
         if (!isIdSearch) {
             if (statusFilter.includes(',')) {
@@ -277,8 +266,6 @@ export class SupabaseService {
         count: data?.length,
         filters: { statusFilter, ownerToken, buyerToken, excludeOffersFrom }
     });
-
-    // 3. Подгрузка стикеров (отдельно для стабильности)
 
     let labelsMap: Record<string, BuyerLabel> = {};
     if (buyerToken && data.length > 0) {
@@ -351,7 +338,10 @@ export class SupabaseService {
 
       if (error) throw error;
 
-      const items: OrderItem[] = data.order_items.map((item: any) => ({
+      // Сортировка позиций заказа по ID, чтобы порядок не скакал при обновлении
+      const sortedOrderItems = data.order_items.sort((a: any, b: any) => a.id - b.id);
+
+      const items: OrderItem[] = sortedOrderItems.map((item: any) => ({
         id: item.id,
         name: item.name,
         quantity: item.quantity,
@@ -373,6 +363,7 @@ export class SupabaseService {
         createdAt: new Date(offer.created_at).toLocaleString('ru-RU'),
         items: offer.offer_items.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
           id: oi.id,
+          order_item_id: oi.order_item_id, // ВАЖНО: Добавлено для точной привязки оффера к позиции заказа
           name: oi.name,
           quantity: oi.quantity,
           offeredQuantity: oi.quantity,
@@ -483,7 +474,7 @@ export class SupabaseService {
       const { data, error } = await supabase
           .from('brands')
           .select('name')
-          .ilike('name', name) // Ищем без учета регистра
+          .ilike('name', name) 
           .maybeSingle();
       if (error) return null;
       return data ? data.name : null;
@@ -514,7 +505,6 @@ export class SupabaseService {
   }
 
   static async getSupplierUsedBrands(supplierName: string): Promise<string[]> {
-      // Получаем бренды через связь офферов и позиций заказа
       const { data, error } = await supabase
         .from('offers')
         .select(`
@@ -524,7 +514,7 @@ export class SupabaseService {
             )
         `)
         .ilike('supplier_name', supplierName)
-        .limit(100); // Берем последние 100 заказов для статистики
+        .limit(100);
         
       if (error || !data) return [];
       
@@ -561,7 +551,7 @@ export class SupabaseService {
         car_brand: car.brand, car_model: car.AdminModel || car.model,
         car_year: car.AdminYear || car.year, location: 'РФ',
         owner_token: ownerToken,
-        deadline: deadline || null // Пустая строка вызовет ошибку, нужен null
+        deadline: deadline || null
       })
       .select().single();
 
@@ -591,7 +581,6 @@ export class SupabaseService {
     
     if (error) {
         console.error('getBuyerDashboardStats ERROR:', error);
-        // Возвращаем заглушку при ошибке, чтобы фронт не падал
         return {
             department: { turnover: 0 },
             personal: { kp_count: 0, kp_sum: 0, won_count: 0, won_sum: 0 },
@@ -619,7 +608,7 @@ export class SupabaseService {
           order_id: orderId, 
           supplier_name: sellerName, 
           supplier_phone: sellerPhone,
-          created_by: userId // Привязка к пользователю для статистики
+          created_by: userId
       })
       .select().single();
 
@@ -629,13 +618,13 @@ export class SupabaseService {
       offer_id: offerData.id, 
       name: item.name, 
       quantity: item.offeredQuantity || item.quantity || 1,
-      price: item.sellerPrice || item.BuyerPrice || 0, // Поддержка обоих имен полей
+      price: item.sellerPrice || item.BuyerPrice || 0,
       currency: item.sellerCurrency || item.BuyerCurrency || 'RUB',
       delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
       weight: item.weight || 0, 
       photo_url: item.photoUrl || '', 
       comment: item.comment || '',
-      order_item_id: item.id // Важно для точной привязки
+      order_item_id: item.id
     }));
 
     const { error: oiError } = await supabase.from('offer_items').insert(offerItemsToInsert);
@@ -649,21 +638,25 @@ export class SupabaseService {
         .eq('id', orderId);
   }
 
-  static async updateRank(vin: string, itemName: string, offerId: string, adminPrice?: number, adminCurrency?: Currency, actionType?: 'RESET', adminComment?: string, deliveryRate?: number, adminPriceRub?: number): Promise<void> {
+  // ОБНОВЛЕННЫЙ МЕТОД: Теперь работает по offerItemId и orderItemId (для уникальности)
+  static async updateRank(offerItemId: string, orderItemId: string, offerId: string, adminPrice?: number, adminCurrency?: Currency, actionType?: 'RESET', adminComment?: string, deliveryRate?: number, adminPriceRub?: number): Promise<void> {
     const { data: offer } = await supabase.from('offers').select('order_id').eq('id', offerId).single();
     if (!offer) return;
 
     if (actionType === 'RESET') {
+      // Сброс флага победителя у конкретной позиции оффера
       await supabase.from('offer_items')
         .update({ is_winner: false, admin_price_rub: null })
-        .eq('offer_id', offerId).eq('name', itemName);
+        .eq('id', offerItemId); // По ID
       
-      // Также сбрасываем в основном заказе (для упрощения отображения лидеров)
+      // Сброс цены у родительской позиции заказа
       await supabase.from('order_items')
         .update({ admin_price_rub: null })
-        .eq('order_id', offer.order_id)
-        .eq('name', itemName);
+        .eq('id', orderItemId); // По ID
     } else {
+      // 1. (Убрано) Сброс победителя у всех остальных офферов - теперь разрешаем несколько лидеров
+      
+      // 2. Установка победителя для выбранного оффера
       await supabase.from('offer_items')
         .update({
             is_winner: true, 
@@ -673,14 +666,14 @@ export class SupabaseService {
             admin_comment: adminComment || '',
             admin_price_rub: isNaN(Number(adminPriceRub)) ? (adminPrice || 0) : adminPriceRub 
         })
-        .eq('offer_id', offerId).eq('name', itemName);
+        .eq('id', offerItemId); // По ID
 
+      // 3. Обновление цены в заказе
       await supabase.from('order_items')
         .update({
             admin_price_rub: isNaN(Number(adminPriceRub)) ? (adminPrice || 0) : adminPriceRub 
         })
-        .eq('order_id', offer.order_id)
-        .eq('name', itemName);
+        .eq('id', orderItemId); // По ID
     }
   }
 
