@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Order } from '../../types';
-import { ChevronDown, ChevronUp, Check, FileText, Camera, ChevronRight, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, FileText, Camera, ChevronRight, Pencil, Copy } from 'lucide-react';
+import { DebugCopyModal } from '../shared/DebugCopyModal';
 
 interface OperatorOrderRowProps {
   order: Order;
@@ -9,12 +10,17 @@ interface OperatorOrderRowProps {
   onStatusChange?: (orderId: string, status: string) => void;
 }
 
-const PRODUCT_GRID = "grid-cols-[50px_1fr_100px_100px_80px_80px_80px]";
+const PRODUCT_GRID = "grid-cols-[90px_1fr_100px_100px_80px_80px_80px]";
 const OFFER_GRID = "grid-cols-[1.2fr_1fr_70px_80px_1.8fr_80px]";
 
 export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange }) => {
   const [datePart, timePart] = order.createdAt.split(', ');
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  
+  // Состояние для копирования
+  const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
+      isOpen: false, title: '', content: ''
+  });
 
   const toggleItem = (itemName: string) => {
       setOpenItems(prev => {
@@ -23,6 +29,57 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
           else next.add(itemName);
           return next;
       });
+  };
+
+  const formatPrice = (val?: number) => {
+    if (!val) return '0';
+    return new Intl.NumberFormat('ru-RU').format(val);
+  };
+
+  const getWinnersForItem = (item: any) => {
+      const winners: any[] = [];
+      // Оператор видит варианты ТОЛЬКО если менеджер утвердил КП
+      if (order.offers && order.statusAdmin === 'КП готово') {
+          order.offers.forEach((off: any) => {
+              if (!off.items) return;
+              const matching = off.items.find((i: any) => 
+                  (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
+                  (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
+              );
+              if (matching && (matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER')) {
+                  winners.push(matching);
+              }
+          });
+      }
+      return winners;
+  };
+
+  const formatItemText = (item: any, idx: number) => {
+      const winners = getWinnersForItem(item);
+      const priceText = item.adminPriceRub ? `${formatPrice(item.adminPriceRub)} ₽` : 'Цена не указана';
+      
+      let text = `${idx + 1}. Позиция: ${item.AdminName || item.name} | ${item.brand || '-'} | ${item.quantity} шт | ${priceText}\n`;
+      
+      winners.forEach((win, wIdx) => {
+          const winPrice = formatPrice(win.adminPriceRub || win.sellerPrice);
+          text += `Вариант ${wIdx + 1}: ${winPrice} ₽, ${win.deliveryWeeks || '-'} нед.\n`;
+      });
+      
+      return text;
+  };
+
+  const handleCopyItem = (e: React.MouseEvent, item: any, idx: number) => {
+      e.stopPropagation();
+      const content = formatItemText(item, idx);
+      setCopyModal({ isOpen: true, title: 'Копирование позиции', content });
+  };
+
+  const handleCopyAll = () => {
+      let fullText = '';
+      order.items?.forEach((item, idx) => {
+          fullText += formatItemText(item, idx) + '\n';
+      });
+      setCopyModal({ isOpen: true, title: 'Копирование всего заказа', content: fullText.trim() });
   };
 
   const handleProcessed = () => {
@@ -35,13 +92,17 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
   const subjectMatch = comment.match(/\[Тема: (.*?)\]/);
   const subject = subjectMatch ? subjectMatch[1] : '-';
 
-  const formatPrice = (val?: number) => {
-    if (!val) return '0';
-    return new Intl.NumberFormat('ru-RU').format(val);
-  };
-
   return (
     <div className={`border-b border-slate-50 transition-all ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50/30'}`}>
+      {/* Debug Modal */}
+      <DebugCopyModal 
+        isOpen={copyModal.isOpen}
+        title={copyModal.title}
+        content={copyModal.content}
+        onClose={() => setCopyModal({...copyModal, isOpen: false})}
+        onConfirm={() => setCopyModal({...copyModal, isOpen: false})}
+      />
+
       <div 
         onClick={onToggle}
         className={`p-3 grid grid-cols-[70px_1fr_1fr_90px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
@@ -84,9 +145,11 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
         <div className="p-6 bg-slate-50 border-t border-slate-100 animate-in slide-in-from-top-1 duration-200">
             {/* 1. Информация о клиенте (1в1 как у менеджера) */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                    <FileText size={14} className="text-slate-400"/>
-                    <span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span>
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-slate-400"/>
+                        <span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span>
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
                     <div>
@@ -126,24 +189,11 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                     {order.items && order.items.length > 0 ? (
                         order.items.map((item, idx) => {
                             const isItemExpanded = openItems.has(item.name);
-                            const winners: any[] = [];
-                            
-                            if (order.offers) {
-                                order.offers.forEach((off: any) => {
-                                    if (!off.items) return;
-                                    const matching = off.items.find((i: any) => 
-                                        (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
-                                        (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
-                                    );
-                                    if (matching && (matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER')) {
-                                        winners.push({ ...matching, brand: item.brand });
-                                    }
-                                });
-                            }
+                            const winners = getWinnersForItem(item);
 
                             return (
                                 <div key={idx} className="border-b border-gray-100 last:border-b-0">
-                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors">
+                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors group/row">
                                         <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                                             <div className="flex items-center gap-2">
                                                 {winners.length > 0 && (
@@ -152,6 +202,15 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                                     </button>
                                                 )}
                                                 <div className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</div>
+                                                {order.statusAdmin === 'КП готово' && (
+                                                    <button 
+                                                        onClick={(e) => handleCopyItem(e, item, idx)}
+                                                        className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm border border-indigo-100 group/copy ml-1"
+                                                        title="Скопировать позицию"
+                                                    >
+                                                        <Copy size={12} className="group-hover/copy:scale-110 transition-transform" />
+                                                    </button>
+                                                )}
                                             </div>
                                             <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">
                                                 {item.AdminName || item.name}
@@ -220,16 +279,24 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                 </div>
             </div>
 
-            {order.statusAdmin === 'КП готово' && (
-                <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex justify-end gap-3">
+                {order.statusAdmin === 'КП готово' && (
+                    <button 
+                        onClick={handleCopyAll}
+                        className="px-6 py-3 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all flex items-center gap-2"
+                    >
+                        <Copy size={14} /> Копировать всё
+                    </button>
+                )}
+                {order.statusAdmin === 'КП готово' && (
                     <button 
                         onClick={handleProcessed}
                         className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-xl transition-all flex items-center gap-2 active:scale-95"
                     >
                         <Check size={14} /> Отправлено клиенту
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
       )}
     </div>

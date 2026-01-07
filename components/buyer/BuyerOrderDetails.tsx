@@ -3,6 +3,7 @@ import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle 
 import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
+import { DebugCopyModal } from '../shared/DebugCopyModal';
 
 interface BuyerOrderDetailsProps {
   order: Order;
@@ -19,6 +20,9 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   order, editingItems, setEditingItems, onSubmit, isSubmitting, myOffer, statusInfo, onOpenChat 
 }) => {
   const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
+      isOpen: false, title: '', content: ''
+  });
 
   const BuyerAuth = useMemo(() => {
       try { return JSON.parse(localStorage.getItem('Buyer_auth') || 'null'); } catch { return null; }
@@ -48,6 +52,28 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       navigator.clipboard.writeText(text);
       setShowCopiedToast(true);
       setTimeout(() => setShowCopiedToast(false), 2000);
+  };
+
+  const formatPrice = (val?: number) => {
+    if (!val) return '0';
+    return new Intl.NumberFormat('ru-RU').format(val);
+  };
+
+  const formatItemText = (item: any, idx: number) => {
+      return `${idx + 1}. Позиция: ${item.AdminName || item.name} | ${item.brand || '-'} | ${item.quantity} шт\n`;
+  };
+
+  const handleCopyItem = (item: any, idx: number) => {
+      const content = formatItemText(item, idx);
+      setCopyModal({ isOpen: true, title: 'Копирование позиции', content });
+  };
+
+  const handleCopyAll = () => {
+      let fullText = '';
+      editingItems.forEach((item, idx) => {
+          fullText += formatItemText(item, idx);
+      });
+      setCopyModal({ isOpen: true, title: 'Копирование всего заказа', content: fullText.trim() });
   };
 
   const getBestStats = (itemName: string) => {
@@ -80,6 +106,14 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
     <div className="p-4 bg-white border-t border-slate-100 animate-in fade-in duration-200 relative">
         {showCopiedToast && <div className="absolute top-4 right-4 z-50"><Toast message="VIN скопирован" duration={1500} onClose={() => setShowCopiedToast(false)}/></div>}
         
+        <DebugCopyModal 
+            isOpen={copyModal.isOpen}
+            title={copyModal.title}
+            content={copyModal.content}
+            onClose={() => setCopyModal({...copyModal, isOpen: false})}
+            onConfirm={() => setCopyModal({...copyModal, isOpen: false})}
+        />
+
         <div className="space-y-3">
             {editingItems.map((item, idx) => (
                 <BuyerItemCard 
@@ -90,16 +124,27 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     isDisabled={isDisabled}
                     orderId={order.id}
                     bestStats={!myOffer ? getBestStats(item.name) : null} // Показываем статистику только если мы еще не отправили офер
+                    onCopy={handleCopyItem}
                 />
             ))}
             
             <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                <button 
-                    onClick={() => onOpenChat(order.id)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all text-[10px] font-black uppercase border border-indigo-100 shadow-sm"
-                >
-                    <MessageCircle size={16} /> Чат с менеджером
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => onOpenChat(order.id)}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all text-[10px] font-black uppercase border border-indigo-100 shadow-sm"
+                    >
+                        <MessageCircle size={16} /> Чат с менеджером
+                    </button>
+                    {!order.isProcessed && (
+                        <button 
+                            onClick={handleCopyAll}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all text-[10px] font-black uppercase border border-slate-200 shadow-sm"
+                        >
+                            <Copy size={16} /> Копировать всё
+                        </button>
+                    )}
+                </div>
 
                 {!myOffer && !order.isProcessed && (
                     <button 

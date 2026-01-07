@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ban, AlertCircle } from 'lucide-react';
+import { Ban, AlertCircle, Copy } from 'lucide-react';
 import { ImageUploader } from '../shared/ImageUploader';
 
 interface BuyerItemCardProps {
@@ -9,9 +9,10 @@ interface BuyerItemCardProps {
   isDisabled: boolean;
   orderId: string;
   bestStats?: { bestPrice: number | null, bestWeeks: number | null } | null;
+  onCopy?: (item: any, index: number) => void;
 }
 
-export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpdate, isDisabled, orderId, bestStats }) => {
+export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpdate, isDisabled, orderId, bestStats, onCopy }) => {
   
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
@@ -88,7 +89,18 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
         
         {/* БЛОК ЗАЯВКИ (READONLY) */}
         <div className="grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 items-center pb-3 border-b border-slate-200/50">
-            <div className="text-center text-slate-400 text-xs font-medium">#{index + 1}</div>
+            <div className="flex flex-col items-center gap-1.5">
+                <div className="text-center text-slate-400 text-[10px] font-black">#{index + 1}</div>
+                {onCopy && !isDisabled && (
+                    <button 
+                        onClick={() => onCopy(item, index)}
+                        className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm border border-indigo-100 group/copy"
+                        title="Скопировать позицию"
+                    >
+                        <Copy size={14} className="group-hover/copy:scale-110 transition-transform" />
+                    </button>
+                )}
+            </div>
             
             <div>
                 <span className="block text-[7px] font-bold text-slate-400 uppercase mb-0.5">Наименование</span>
