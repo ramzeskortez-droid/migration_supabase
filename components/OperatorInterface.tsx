@@ -4,9 +4,11 @@ import { SystemStatusSidebar } from './operator/SystemStatusSidebar';
 import { OrderInfoForm } from './operator/OrderInfoForm';
 import { PartsList } from './operator/PartsList';
 import { AiAssistant } from './operator/AiAssistant';
+import { SystemStatusHorizontal } from './operator/SystemStatusHorizontal';
 import { OperatorAuthModal } from './operator/OperatorAuthModal';
 import { OperatorOrdersList } from './operator/OperatorOrdersList';
 import { GlobalChatWindow } from './shared/GlobalChatWindow';
+import { EmailWidget } from './operator/EmailWidget';
 import { OrderInfo, Part, LogHistory, DisplayStats } from './operator/types';
 import { SupabaseService } from '../services/supabaseService';
 import { Toast } from './shared/Toast';
@@ -254,6 +256,21 @@ export const OperatorInterface: React.FC = () => {
       addLog(`Переход к чату заказа #${orderId}`);
   };
 
+  const handleImportEmail = (text: string) => {
+      // Ищем текстовое поле ассистента через DOM или через стейт (если бы он был поднят)
+      // В данном случае, самый простой способ для интеграции — передать текст в AiAssistant
+      // Мы можем просто добавить лог и уведомление, а текст передать через пропс, если AiAssistant поддерживает
+      // Но у нас AiAssistant — отдельный компонент со своим внутренним стейтом.
+      // Чтобы не переписывать ассистента, мы можем использовать событие или прокинуть стейт.
+      // Пока просто выведем в лог и тост, и я обновлю AiAssistant, чтобы он умел принимать внешний текст.
+      setToast({ message: 'Текст письма передан в ассистент', type: 'info' });
+      addLog('Импорт текста из почты...');
+      
+      // Чтобы это заработало мгновенно, я создам кастомное событие
+      const event = new CustomEvent('importEmailText', { detail: text });
+      window.dispatchEvent(event);
+  };
+
   if (isAuthChecking) {
       return <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-black uppercase text-xs tracking-widest">Загрузка профиля...</div>;
   }
@@ -295,7 +312,7 @@ export const OperatorInterface: React.FC = () => {
           <div className="max-w-6xl mx-auto space-y-8">
             
             {/* Form Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
                 <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} />
                 
                 <PartsList 
@@ -323,6 +340,8 @@ export const OperatorInterface: React.FC = () => {
                     isSaving={isSaving}
                     isFormValid={isFormValid} // Pass validity
                 />
+
+                <SystemStatusHorizontal displayStats={displayStats} />
             </div>
 
             {/* Orders List Section */}
@@ -331,11 +350,12 @@ export const OperatorInterface: React.FC = () => {
           </div>
         </main>
 
-        <SystemStatusSidebar 
-            logs={displayStats.logs} 
-            requestHistory={requestHistory} 
-            displayStats={displayStats} 
-        />
+        {/* Right Sidebar: Now focusing on Mail */}
+        <aside className="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-hidden h-full">
+            <div className="flex-1 overflow-hidden p-4">
+                <EmailWidget onImportToAI={handleImportEmail} />
+            </div>
+        </aside>
       </div>
 
       <GlobalChatWindow 

@@ -18,6 +18,15 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Слушаем импорт из почты
+  React.useEffect(() => {
+      const handleImport = (e: any) => {
+          if (e.detail) setInputText(e.detail);
+      };
+      window.addEventListener('importEmailText', handleImport);
+      return () => window.removeEventListener('importEmailText', handleImport);
+  }, []);
+
   const handleProcess = async () => {
     if (!inputText.trim()) return;
     setIsProcessing(true);
@@ -53,7 +62,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
         - Email клиента (email).
         - Имя клиента (client_name).
         - Телефон (client_phone).
-        - Тема письма (email_subject): Заголовок или тема, если есть (Subject: ...).
+        - Тема письма (email_subject): Возьми из строки "ТЕМА ПИСЬМА: ..." или определи по контексту.
 
         Верни JSON объект:
         {

@@ -14,6 +14,8 @@
   - *Added fields*: `weight`, `photo_url`, `admin_comment`, `delivery_rate`.
 - **chat_messages**: Chat history.
   - `id`, `order_id`, `offer_id`, `sender_role`, `sender_name`, `recipient_name`, `message`, `is_read`, `is_archived`.
+- **incoming_emails**: (New) Cached emails from Gmail.
+  - `id`, `from_address`, `subject`, `body`, `status`.
 - **brands**: (New) List of known brands for validation.
   - `id`, `name`.
 
@@ -55,9 +57,12 @@
 - `archiveChat(...)`: Manually archives a chat.
 - `getUnreadChatCount()`: Global unread count.
 
-### Brands & Stats
+### Brands, Stats & Utilities
 - `getBrandsList()`: Fetches all brand names from `brands` table.
 - `addBrand(name)`: Inserts a new brand.
+- `generateTestOffers(orderId)`: (Manager Tool) Fills order with dummy data from real DB buyers.
+- `subscribeToUserChats(callback)`: Realtime global message listener.
+- `subscribeToChatMessages(orderId, callback)`: Realtime specific chat listener.
 - `getMarketStats()`: Returns dashboard stats (today/week/month counts).
 - `getStatusCounts()`: Returns counts by status.
 
@@ -68,6 +73,8 @@
 ### Operator Interface (`/operator`)
 *Replaces legacy Client Interface*
 - `OperatorInterface`: Main orchestrator. Handles state, auth, and layout.
+- `EmailWidget`: Realtime email inbox with 'New'/'Archive' tabs and AI integration.
+- `SystemStatusHorizontal`: Performance monitor (Tokens/Requests) with auto-reset timer.
 - `OperatorHeader`: Header with user profile and logout.
 - `OrderInfoForm`: Form for contact info (Phone, Name), Address, Deadline, Email Subject.
 - `PartsList`: Editable table of parts with **Fuzzy Brand Validation** (yellow warning/red error) and auto-add brand feature.
