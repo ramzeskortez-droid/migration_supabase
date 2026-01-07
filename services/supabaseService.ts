@@ -433,7 +433,7 @@ export class SupabaseService {
       const statuses = [
           { key: 'new', val: 'В обработке' },
           { key: 'kp_sent', val: 'КП готово' }, 
-          { key: 'ready_to_buy', val: 'Готов купить' },
+          { key: 'ready_to_buy', val: 'КП отправлено,Готов купить' },
           { key: 'supplier_confirmed', val: 'Подтверждение от поставщика' },
           { key: 'awaiting_payment', val: 'Ожидает оплаты' },
           { key: 'in_transit', val: 'В пути' },
@@ -442,9 +442,15 @@ export class SupabaseService {
           { key: 'refused', val: 'Отказ' }
       ];
 
-      const promises = statuses.map(s => 
-          supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status_admin', s.val)
-      );
+      const promises = statuses.map(s => {
+          let query = supabase.from('orders').select('*', { count: 'exact', head: true });
+          if (s.val.includes(',')) {
+              query = query.in('status_admin', s.val.split(',').map(v => v.trim()));
+          } else {
+              query = query.eq('status_admin', s.val);
+          }
+          return query;
+      });
 
       const results = await Promise.all(promises);
       const counts: Record<string, number> = {};

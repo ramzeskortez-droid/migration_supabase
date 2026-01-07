@@ -25,7 +25,7 @@ export const AdminToolbar: React.FC<AdminToolbarProps> = ({
       <div className="flex justify-between items-end border-b border-slate-200">
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
               {['new','kp_sent','ready_to_buy','supplier_confirmed','awaiting_payment','in_transit','completed','annulled','refused'].map(id => {
-                  const label = id === 'new' ? 'Новые' : id === 'kp_sent' ? 'КП отпр.' : id === 'ready_to_buy' ? 'Готов купить' : id === 'supplier_confirmed' ? 'Подтверждено' : id === 'awaiting_payment' ? 'Ждет оплаты' : id === 'in_transit' ? 'В пути' : id === 'completed' ? 'Выполнен' : id === 'annulled' ? 'Аннулирован' : 'Отказ';
+                  const label = id === 'new' ? 'Новые' : id === 'kp_sent' ? 'КП готово' : id === 'ready_to_buy' ? 'КП у клиента' : id === 'supplier_confirmed' ? 'Подтверждено' : id === 'awaiting_payment' ? 'Ждет оплаты' : id === 'in_transit' ? 'В пути' : id === 'completed' ? 'Выполнен' : id === 'annulled' ? 'Аннулирован' : 'Отказ';
                   const count = statusCounts[id] || 0;
                   return (
                       <button key={id} onClick={() => setActiveTab(id as AdminTab)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>

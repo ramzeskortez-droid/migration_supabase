@@ -53,7 +53,7 @@ export const AdminInterface: React.FC = () => {
       switch(tab) {
           case 'new': return 'В обработке';
           case 'kp_sent': return 'КП готово';
-          case 'ready_to_buy': return 'Готов купить';
+          case 'ready_to_buy': return 'КП отправлено';
           case 'supplier_confirmed': return 'Подтверждение от поставщика';
           case 'awaiting_payment': return 'Ожидает оплаты';
           case 'in_transit': return 'В пути';
@@ -80,6 +80,11 @@ export const AdminInterface: React.FC = () => {
   });
 
   const orders = useMemo(() => data?.pages.flatMap(page => page.data) || [], [data]);
+
+  // Принудительное обновление при смене таба
+  useEffect(() => {
+      refetch();
+  }, [activeTab]);
 
   // Загрузка счетчиков
   const fetchCounts = async () => {

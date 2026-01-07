@@ -35,7 +35,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       let statusFilter = '';
       switch (activeTab) {
           case 'processing': statusFilter = 'В обработке'; break;
-          case 'processed': statusFilter = 'КП готово'; break;
+          case 'processed': statusFilter = 'КП готово,КП отправлено'; break;
           case 'completed': statusFilter = 'Выполнен'; break;
           case 'rejected': statusFilter = 'Аннулирован,Отказ'; break;
       }
@@ -100,7 +100,6 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       } else {
           setExpandedId(id);
           const order = orders.find(o => o.id === id);
-          // Fetch if items are missing OR if it's a 'Processed' status where we need offers
           if (order && (!order.items || order.items.length === 0 || !order.offers)) {
               try {
                   const details = await SupabaseService.getOrderDetails(id);
@@ -117,7 +116,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
   const handleStatusChange = async (orderId: string, newStatus: string) => {
       try {
           await SupabaseService.updateWorkflowStatus(orderId, newStatus);
-          loadOrders(); // Refresh list to reflect changes
+          loadOrders(); 
       } catch (e) {
           console.error(e);
           alert('Ошибка обновления статуса');
@@ -151,7 +150,6 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
-          {/* Table Header */}
           <div className="hidden md:block border-b border-slate-100 bg-slate-50 shrink-0">
               <div className="p-3 grid grid-cols-[70px_1fr_1fr_90px_100px_140px_20px] gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left border-l-4 border-transparent">
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ Заказа <SortIcon field="id"/></div>
@@ -164,7 +162,6 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
               </div>
           </div>
 
-          {/* Table Body (Virtuoso with Infinite Scroll) */}
           <div className="flex-grow">
               <Virtuoso
                   style={{ height: '100%' }}
