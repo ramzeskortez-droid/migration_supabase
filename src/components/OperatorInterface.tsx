@@ -323,11 +323,13 @@ export const OperatorInterface: React.FC = () => {
       for(let i=0; i<2; i++) {
           const partName = partsPool[Math.floor(Math.random() * partsPool.length)];
           const brandName = safeBrands[Math.floor(Math.random() * safeBrands.length)];
+          const randomArticle = Math.random().toString(36).substring(2, 10).toUpperCase();
+
           newParts.push({
               id: Date.now() + i,
               name: partName,
               brand: brandName,
-              article: '',
+              article: randomArticle,
               uom: 'шт',
               quantity: Math.floor(Math.random() * 4) + 1
           });
