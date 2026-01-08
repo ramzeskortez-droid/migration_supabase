@@ -102,6 +102,11 @@ export const BuyerInterface: React.FC = () => {
       return data?.pages.flatMap(page => page.data) || [];
   }, [data]);
 
+  // Принудительное обновление при смене таба
+  useEffect(() => {
+      refetch();
+  }, [activeTab, refetch]);
+
   // --- Effects ---
   const fetchCounts = useCallback(async () => {
       if (!buyerAuth?.name) return;

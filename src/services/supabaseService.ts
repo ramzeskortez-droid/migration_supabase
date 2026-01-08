@@ -291,6 +291,9 @@ export class SupabaseService {
         throw error;
     }
 
+    // Лог для отладки
+    console.log(`FETCHED ORDERS for tab: ${buyerTab}, search: "${q}", count: ${data.length}`);
+
     let labelsMap: Record<string, any> = {};
     if (buyerToken) {
         const { data: labels } = await supabase.from('buyer_order_labels').select('order_id, color, label_text').eq('user_token', buyerToken);
@@ -350,23 +353,19 @@ export class SupabaseService {
       const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', supplierName);
       const myOfferIds = myOff?.map(o => o.order_id) || [];
 
-      // Запросы для счетчиков
-      const [resNew, resHot, resHistory] = await Promise.all([
-          // Новые: В обработке, нет моего оффера, < 3 дней
-          supabase.from('orders').select('id', { count: 'exact', head: true })
-            .eq('status_admin', 'В обработке')
-            .not('id', 'in', `(${myOfferIds.length > 0 ? myOfferIds.join(',') : 0})`)
-            .gte('created_at', isoDate),
-          
-          // Горящие: В обработке, нет моего оффера, > 3 дней
-          supabase.from('orders').select('id', { count: 'exact', head: true })
-            .eq('status_admin', 'В обработке')
-            .not('id', 'in', `(${myOfferIds.length > 0 ? myOfferIds.join(',') : 0})`)
-            .lt('created_at', isoDate),
+      // Функция для создания базового запроса
+      const getBaseQuery = () => {
+          let q = supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status_admin', 'В обработке');
+          if (myOfferIds.length > 0) {
+              q = q.not('id', 'in', `(${myOfferIds.join(',')})`);
+          }
+          return q;
+      };
 
-          // Отправленные: Мой оффер есть
-          supabase.from('orders').select('id', { count: 'exact', head: true })
-            .in('id', myOfferIds.length > 0 ? myOfferIds : [0])
+      const [resNew, resHot, resHistory] = await Promise.all([
+          getBaseQuery().gte('created_at', isoDate),
+          getBaseQuery().lt('created_at', isoDate),
+          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', myOfferIds.length > 0 ? myOfferIds : [0])
       ]);
 
       return {
