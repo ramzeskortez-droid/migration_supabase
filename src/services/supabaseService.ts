@@ -428,7 +428,7 @@ export class SupabaseService {
   }
 
   static subscribeToChatMessages(orderId: string, callback: (payload: any) => void) {
-      return supabase.channel(`chat:${orderId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `order_id=eq.${orderId}` }, (p) => callback(payload.new)).subscribe();
+      return supabase.channel(`chat:${orderId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `order_id=eq.${orderId}` }, (payload) => callback(payload.new)).subscribe();
   }
 
   static unsubscribeFromChat(channel: any) { supabase.removeChannel(channel); }
@@ -509,6 +509,20 @@ export class SupabaseService {
   static async archiveChat(orderId: string, supplierName: string): Promise<void> {
       const escapedName = supplierName.split('"').join('"');
       await supabase.from('chat_messages').update({ is_archived: true }).eq('order_id', orderId).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+  }
+
+  static async getOrderStatus(orderId: string): Promise<{ status_admin: string, supplier_names: string[] }> {
+      const { data, error } = await supabase
+          .from('orders')
+          .select('status_admin, offers (supplier_name)')
+          .eq('id', orderId)
+          .maybeSingle();
+      
+      if (error || !data) return { status_admin: '', supplier_names: [] };
+      return { 
+          status_admin: data.status_admin, 
+          supplier_names: (data.offers as any[] || []).map(o => o.supplier_name) 
+      };
   }
 
   static async getStatusCounts(): Promise<Record<string, number>> {

@@ -1,6 +1,13 @@
-import { Users, ShoppingBag, ShieldCheck, Phone, Send, Bug, TrendingUp, Menu, ChevronDown } from 'lucide-react';
-
-// ... (previous imports)
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { ClientInterface } from './components/ClientInterface';
+import { BuyerInterface } from './components/BuyerInterface';
+import { AdminInterface } from './components/AdminInterface';
+import { OperatorInterface } from './components/OperatorInterface';
+import { DebugInterface } from './components/DebugInterface';
+import { Users, ShoppingBag, ShieldCheck, TrendingUp, Menu, ChevronDown } from 'lucide-react';
+import { SupabaseService } from './services/supabaseService';
+import { ExchangeRates } from './types';
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -8,7 +15,11 @@ const App: React.FC = () => {
   const [rates, setRates] = React.useState<ExchangeRates | null>(null);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   
-  // ... (useEffect remains same)
+  useEffect(() => {
+     SupabaseService.getExchangeRates().then(setRates).catch(console.error);
+  }, []);
+
+  const isActive = (path: string) => location.pathname.startsWith(path);
 
   const getActiveLabel = () => {
       if (isActive('/operator')) return 'Оператор';
@@ -19,6 +30,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* Navigation Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-[100]">
         <div className="max-w-6xl mx-auto px-2 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
@@ -85,9 +97,7 @@ const App: React.FC = () => {
           <Route path="/buyer" element={<BuyerInterface />} />
           <Route path="/admin" element={<AdminInterface />} />
           <Route path="/debug" element={<DebugInterface />} /> 
-          {/* Default redirect */}
           <Route path="/" element={<Navigate to="/operator" replace />} />
-          {/* Catch all redirect */}
           <Route path="*" element={<Navigate to="/operator" replace />} />
         </Routes>
       </main>

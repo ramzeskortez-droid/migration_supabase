@@ -8,20 +8,40 @@ import { ArrowUpDown, ArrowUp, ArrowDown, Package, Loader2 } from 'lucide-react'
 interface OperatorOrdersListProps {
   refreshTrigger: number;
   ownerId?: string;
-  searchQuery?: string; // Новый проп
+  searchQuery?: string;
+  activeTab: TabType; // Внешнее управление
+  onTabChange: (tab: TabType) => void;
+  scrollToId?: string | null;
 }
 
 type TabType = 'processing' | 'processed' | 'completed' | 'rejected';
 type SortField = 'id' | 'client_name' | 'created_at' | 'status_admin';
 
-export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger, ownerId, searchQuery = '' }) => {
+export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger, ownerId, searchQuery = '', activeTab, onTabChange, scrollToId }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('processing');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const virtuosoRef = React.useRef<any>(null);
+
+  // Эффект скролла
+  useEffect(() => {
+      if (scrollToId && orders.length > 0) {
+          const index = orders.findIndex(o => o.id === scrollToId);
+          if (index !== -1) {
+              setExpandedId(scrollToId); // Сразу разворачиваем
+              setTimeout(() => {
+                  virtuosoRef.current?.scrollToIndex({
+                      index,
+                      align: 'start',
+                      behavior: 'smooth'
+                  });
+              }, 150);
+          }
+      }
+  }, [scrollToId, orders]);
 
   const loadOrders = async (isLoadMore = false) => {
     // Если токен не передан, не загружаем ничего (безопасность UI)
@@ -141,7 +161,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
               ].map(tab => (
                   <button 
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as TabType)}
+                    onClick={() => onTabChange(tab.id as TabType)}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     {tab.label}
@@ -165,6 +185,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
 
           <div className="flex-grow">
               <Virtuoso
+                  ref={virtuosoRef}
                   style={{ height: '100%' }}
                   data={orders}
                   endReached={loadMore}

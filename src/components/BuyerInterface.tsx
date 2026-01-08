@@ -180,9 +180,36 @@ export const BuyerInterface: React.FC = () => {
       setUnreadChatCount(prev => Math.max(0, prev - count));
   }, []);
 
-  const handleNavigateToOrder = (orderId: string) => {
-      setSearchQuery(orderId);
-      setExpandedId(orderId);
+  const [scrollToId, setScrollToId] = useState<string | null>(null);
+
+  const handleNavigateToOrder = async (orderId: string) => {
+      if (!buyerAuth?.name) return;
+      
+      try {
+          const { status_admin, supplier_names } = await SupabaseService.getOrderStatus(orderId);
+          
+          // Определяем нужный таб
+          const hasMyOffer = supplier_names.some(name => name.trim().toUpperCase() === buyerAuth.name.trim().toUpperCase());
+          
+          if (hasMyOffer) {
+              setActiveTab('history');
+          } else if (status_admin === 'В обработке') {
+              setActiveTab('new');
+          }
+          
+          setSearchQuery(orderId);
+          setExpandedId(orderId);
+          setScrollToId(orderId);
+          
+          // Сбрасываем флаг скролла через небольшую задержку, чтобы Virtuoso успел отработать
+          setTimeout(() => setScrollToId(null), 1000);
+          
+      } catch (e) {
+          console.error('Navigation error:', e);
+          // Fallback: просто поиск
+          setSearchQuery(orderId);
+          setExpandedId(orderId);
+      }
   };
 
   const getOfferStatus = useCallback((order: Order) => {
@@ -254,6 +281,7 @@ export const BuyerInterface: React.FC = () => {
                     getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
                     buyerToken={buyerAuth?.token}
                     onOpenChat={handleOpenChat}
+                    scrollToId={scrollToId}
                 />
                 <BuyerGlobalChat 
                     isOpen={isGlobalChatOpen}
