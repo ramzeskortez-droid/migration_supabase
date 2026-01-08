@@ -753,6 +753,10 @@ export class SupabaseService {
           for (let j = 0; j < currentBatchSize; j++) {
               const date = new Date();
               date.setHours(date.getHours() - Math.floor(Math.random() * 72));
+              
+              const deadline = new Date();
+              deadline.setDate(deadline.getDate() + 7); // Срок +7 дней
+
               batchOrders.push({
                   client_name: names[Math.floor(Math.random() * names.length)],
                   client_phone: `+7 (9${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}) ${Math.floor(100 + Math.random() * 900)}-${Math.floor(10 + Math.random() * 90)}-${Math.floor(10 + Math.random() * 90)}`,
@@ -762,7 +766,8 @@ export class SupabaseService {
                   status_admin: 'В обработке',
                   status_client: 'В обработке',
                   created_at: date.toISOString(),
-                  status_updated_at: date.toISOString()
+                  status_updated_at: date.toISOString(),
+                  deadline: deadline.toISOString()
               });
           }
           const { data: insertedOrders, error } = await supabase.from('orders').insert(batchOrders).select('id');
@@ -772,11 +777,13 @@ export class SupabaseService {
           insertedOrders.forEach(ord => {
               const numItems = Math.floor(Math.random() * 3) + 1;
               for (let k = 0; k < numItems; k++) {
+                  const randomArticle = Math.random().toString(36).substring(2, 10).toUpperCase();
                   batchItems.push({
                       order_id: ord.id,
                       name: parts[Math.floor(Math.random() * parts.length)],
                       quantity: Math.floor(Math.random() * 4) + 1,
                       brand: safeBrands[Math.floor(Math.random() * safeBrands.length)],
+                      article: randomArticle,
                       comment: k === 0 ? `[Тема: ${subjects[Math.floor(Math.random() * subjects.length)]}]` : '',
                       uom: 'шт', category: 'Оригинал'
                   });
