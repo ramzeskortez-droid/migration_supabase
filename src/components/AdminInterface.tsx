@@ -168,7 +168,6 @@ export const AdminInterface: React.FC = () => {
                           winnersPayload.push({
                               id: item.id,
                               admin_price: item.adminPrice || item.sellerPrice,
-                              admin_currency: item.adminCurrency || item.sellerCurrency,
                               delivery_rate: item.deliveryRate || 0,
                               admin_comment: item.adminComment || ''
                           });
