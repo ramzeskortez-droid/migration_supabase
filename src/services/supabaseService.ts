@@ -728,4 +728,62 @@ export class SupabaseService {
   static async updateWorkflowStatus(orderId: string, status: string): Promise<void> {
     await supabase.from('orders').update({ status_client: status, status_admin: status, status_updated_at: new Date().toISOString() }).eq('id', orderId);
   }
+
+  static async seedOrders(count: number, onProgress?: (current: number) => void, ownerToken: string = 'op1'): Promise<void> {
+      const brands = await this.getBrandsList();
+      const safeBrands = brands.length > 0 ? brands : ['Toyota', 'BMW', 'Mercedes', 'Audi', 'Lexus'];
+      const parts = ['Фильтр масляный', 'Колодки тормозные', 'Свеча зажигания', 'Амортизатор', 'Рычаг подвески', 'Подшипник ступицы', 'Фара правая', 'Бампер передний'];
+      const cities = ['Москва', 'Санкт-Петербург', 'Екатеринбург', 'Новосибирск', 'Казань', 'Нижний Новгород', 'Челябинск'];
+      const names = ['Алексей', 'Дмитрий', 'Сергей', 'Андрей', 'Максим', 'Евгений', 'Владимир', 'Иван'];
+      const subjects = ['Запрос запчастей', 'Срочно детали', 'Заявка на ТО', 'В работу', 'Проценка'];
+
+      let ownerId: string | undefined;
+      const { data: user } = await supabase.from('app_users').select('id').eq('token', ownerToken).maybeSingle();
+      if (user) ownerId = user.id;
+      else {
+          const { data: anyOp } = await supabase.from('app_users').select('id').eq('role', 'operator').limit(1).maybeSingle();
+          ownerId = anyOp?.id;
+      }
+      if (!ownerId) return;
+
+      const batchSize = 50;
+      for (let i = 0; i < count; i += batchSize) {
+          const batchOrders = [];
+          const currentBatchSize = Math.min(batchSize, count - i);
+          for (let j = 0; j < currentBatchSize; j++) {
+              const date = new Date();
+              date.setHours(date.getHours() - Math.floor(Math.random() * 72));
+              batchOrders.push({
+                  client_name: names[Math.floor(Math.random() * names.length)],
+                  client_phone: `+7 (9${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}) ${Math.floor(100 + Math.random() * 900)}-${Math.floor(10 + Math.random() * 90)}-${Math.floor(10 + Math.random() * 90)}`,
+                  client_email: `client${Math.floor(Math.random() * 10000)}@mail.ru`,
+                  location: cities[Math.floor(Math.random() * cities.length)],
+                  owner_id: ownerId,
+                  status_admin: 'В обработке',
+                  status_client: 'В обработке',
+                  created_at: date.toISOString(),
+                  status_updated_at: date.toISOString()
+              });
+          }
+          const { data: insertedOrders, error } = await supabase.from('orders').insert(batchOrders).select('id');
+          if (error) continue;
+
+          const batchItems = [];
+          insertedOrders.forEach(ord => {
+              const numItems = Math.floor(Math.random() * 3) + 1;
+              for (let k = 0; k < numItems; k++) {
+                  batchItems.push({
+                      order_id: ord.id,
+                      name: parts[Math.floor(Math.random() * parts.length)],
+                      quantity: Math.floor(Math.random() * 4) + 1,
+                      brand: safeBrands[Math.floor(Math.random() * safeBrands.length)],
+                      comment: k === 0 ? `[Тема: ${subjects[Math.floor(Math.random() * subjects.length)]}]` : '',
+                      uom: 'шт', category: 'Оригинал'
+                  });
+              }
+          });
+          if (batchItems.length > 0) await supabase.from('order_items').insert(batchItems);
+          if (onProgress) onProgress(i + currentBatchSize);
+      }
+  }
 }

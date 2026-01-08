@@ -288,7 +288,7 @@ export const OperatorInterface: React.FC = () => {
       window.dispatchEvent(event);
   };
 
-  const handleQuickFill = () => {
+  const handleQuickFill = async () => {
       const names = ['Иван', 'Петр', 'Алексей', 'Сергей', 'Максим'];
       const cities = ['Москва', 'СПб', 'Екб', 'Казань'];
       const subjects = ['Запчасти на ТО', 'Срочный заказ', 'Детали подвески', 'Расходники'];
@@ -309,23 +309,24 @@ export const OperatorInterface: React.FC = () => {
           clientPhone: randomPhone
       });
 
-      // Add random parts
+      // Fetch real brands from DB
+      const dbBrands = await SupabaseService.getBrandsList();
+      const safeBrands = dbBrands.length > 0 ? dbBrands : ['Toyota', 'BMW', 'Mercedes'];
+
+      // Add exactly 2 random parts
       const partsPool = [
-          { name: 'Фильтр масляный', brand: 'Toyota' },
-          { name: 'Колодки передние', brand: 'Brembo' },
-          { name: 'Свеча зажигания', brand: 'NGK' },
-          { name: 'Амортизатор', brand: 'KYB' }
+          'Фильтр масляный', 'Колодки тормозные', 'Свеча зажигания', 'Амортизатор', 
+          'Рычаг подвески', 'Подшипник ступицы', 'Фара правая', 'Бампер передний'
       ];
       
-      const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 items
       const newParts: Part[] = [];
-      
-      for(let i=0; i<count; i++) {
-          const p = partsPool[Math.floor(Math.random() * partsPool.length)];
+      for(let i=0; i<2; i++) {
+          const partName = partsPool[Math.floor(Math.random() * partsPool.length)];
+          const brandName = safeBrands[Math.floor(Math.random() * safeBrands.length)];
           newParts.push({
               id: Date.now() + i,
-              name: p.name,
-              brand: p.brand,
+              name: partName,
+              brand: brandName,
               article: '',
               uom: 'шт',
               quantity: Math.floor(Math.random() * 4) + 1
@@ -333,11 +334,8 @@ export const OperatorInterface: React.FC = () => {
       }
       
       setParts(newParts);
-      // Force validation check logic if needed, but useEffect in PartsList handles it usually? 
-      // Actually PartsList validates on render/change. We just set state.
-      // But we need to trigger validation state update.
-      // Since PartsList component is controlled, it should update.
-      setToast({ message: 'Данные заполнены', type: 'success' });
+      setIsBrandsValid(true); // Since they are from DB, they are valid
+      setToast({ message: 'Данные заполнены (2 позиции)', type: 'success' });
   };
 
   if (isAuthChecking) {
