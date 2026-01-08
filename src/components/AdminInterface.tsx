@@ -227,7 +227,14 @@ export const AdminInterface: React.FC = () => {
   const startEditing = (order: Order) => { 
       setEditingOrderId(order.id); 
       const form: any = {}; 
+      // Initialize client fields
+      form[`client_name`] = order.clientName || '';
+      form[`client_phone`] = order.clientPhone || '';
+      form[`client_email`] = order.clientEmail || '';
+      form[`location`] = order.location || '';
+      // Initialize delivery weeks (from first item as fallback/legacy logic, ideally should be order level)
       form[`delivery_weeks`] = order.items[0]?.deliveryWeeks?.toString() || ''; 
+      
       order.items.forEach((item, idx) => { 
           form[`item_${idx}_name`] = item.AdminName || item.name; 
           form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity; 
@@ -250,6 +257,14 @@ export const AdminInterface: React.FC = () => {
       try { 
           await SupabaseService.updateOrderJson(order.id, newItems); 
           
+          // 1.5 Сохранение метаданных клиента
+          await SupabaseService.updateOrderMetadata(order.id, {
+              client_name: editForm['client_name'],
+              client_phone: editForm['client_phone'],
+              client_email: editForm['client_email'],
+              location: editForm['location']
+          });
+
           // 2. Сохранение изменений в Offers (OfferItems)
           const editKeys = Object.keys(offerEdits);
           if (editKeys.length > 0) {

@@ -104,13 +104,22 @@ export class SupabaseService {
     if (error) throw error;
   }
 
-  static async updateOrderItemPrice(itemId: string, updates: { adminPrice?: number, isManualPrice?: boolean }): Promise<void> {
-    const { error } = await supabase.from('order_items').update({
-        admin_price: updates.adminPrice,
-        is_manual_price: updates.isManualPrice
-    }).eq('id', itemId);
-    if (error) throw error;
+  static async updateOrderJson(orderId: string, newItems: any[]): Promise<void> {
+    const itemsToInsert = newItems.map(item => ({
+      order_id: Number(orderId), name: item.AdminName || item.name, quantity: item.AdminQuantity || item.quantity,
+      comment: item.comment, category: item.category, photo_url: item.photo_url,
+      brand: item.brand, article: item.article, uom: item.uom
+    }));
+    await supabase.from('order_items').delete().eq('order_id', orderId);
+    await supabase.from('order_items').insert(itemsToInsert);
   }
+
+  static async updateOrderMetadata(orderId: string, metadata: { client_name?: string, client_phone?: string, client_email?: string, location?: string }): Promise<void> {
+      const { error } = await supabase.from('orders').update(metadata).eq('id', orderId);
+      if (error) throw error;
+  }
+
+  static async updateOrderItemPrice(itemId: string, updates: { adminPrice?: number, isManualPrice?: boolean }): Promise<void> {
 
   static async updateOfferItem(itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number }): Promise<void> {
       const { error } = await supabase.from('offer_items').update(updates).eq('id', itemId);
