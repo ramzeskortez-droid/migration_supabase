@@ -16,7 +16,7 @@ interface AdminItemsTableProps {
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
   exchangeRates: ExchangeRates | null;
-  offerEdits: Record<string, { adminComment?: string, adminPrice?: number }>;
+  offerEdits: Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>;
 }
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -197,6 +197,10 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         const editedComment = offerEdits?.[off.item.id]?.adminComment;
                                         const currentComment = editedComment !== undefined ? editedComment : (off.item.adminComment || "");
 
+                                        // Срок
+                                        const editedWeeks = offerEdits?.[off.item.id]?.deliveryWeeks;
+                                        const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.deliveryWeeks || 0);
+
                                         return (
                                             <div key={oIdx} className={`relative transition-all duration-300 border-l-4 ${isLeader ? "bg-emerald-50 border-l-emerald-500 shadow-inner" : "hover:bg-gray-50 border-l-transparent"}`}>
                                                 <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
@@ -239,7 +243,21 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         </div>
                                                     </div>
 
-                                                    <div className="text-orange-600 text-center font-black text-[11px]">{off.item.deliveryWeeks ? `${off.item.deliveryWeeks} нед.` : '-'}</div>
+                                                    <div className="text-orange-600 text-center font-black text-[11px] flex justify-center">
+                                                        {isEditing ? (
+                                                            <div className="relative w-16">
+                                                                <input 
+                                                                    type="number" 
+                                                                    className="w-full px-1 py-1 border-2 border-indigo-500 rounded-lg font-black text-xs text-center outline-none bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/30 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
+                                                                    value={currentWeeks}
+                                                                    onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'deliveryWeeks', Number(e.target.value))}
+                                                                />
+                                                                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold pointer-events-none">нед</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span>{currentWeeks ? `${currentWeeks} нед.` : '-'}</span>
+                                                        )}
+                                                    </div>
                                                     
                                                     <div className="flex justify-end pr-2">
                                                         {['В обработке', 'Идут торги'].includes(currentStatus) || isLeader ? (
