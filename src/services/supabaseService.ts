@@ -120,6 +120,12 @@ export class SupabaseService {
   }
 
   static async updateOrderItemPrice(itemId: string, updates: { adminPrice?: number, isManualPrice?: boolean }): Promise<void> {
+    const { error } = await supabase.from('order_items').update({
+        admin_price: updates.adminPrice,
+        is_manual_price: updates.isManualPrice
+    }).eq('id', itemId);
+    if (error) throw error;
+  }
 
   static async updateOfferItem(itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number }): Promise<void> {
       const { error } = await supabase.from('offer_items').update(updates).eq('id', itemId);
