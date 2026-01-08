@@ -38,10 +38,16 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userId }) => {
   };
 
   if (isLoading) {
-      return <div className="p-8 text-center text-gray-500">Загрузка статистики...</div>;
+      return <div className="p-8 text-center text-gray-500 animate-pulse font-bold text-xs">Загрузка статистики...</div>;
   }
 
-  if (!stats) return null;
+  if (!stats) {
+      return (
+          <div className="p-4 bg-red-50 text-red-500 border border-red-200 rounded-xl text-center text-xs font-bold">
+              Нет данных для дашборда (UserID: {userId || 'Пусто'})
+          </div>
+      );
+  }
 
   const { personal, department, leaders } = stats;
 
@@ -63,7 +69,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userId }) => {
       <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
         
         {/* Оборот (3 колонки) */}
-        <div className="lg:col-span-4 p-4 flex flex-col justify-center rounded-tl-xl rounded-bl-xl lg:rounded-bl-none">
+        <div className="lg:col-span-4 p-4 flex flex-col rounded-tl-xl rounded-bl-xl lg:rounded-bl-none">
           <TotalKpiCard
             title={`ОБОРОТ ОТДЕЛА ЗА ${capitalizedMonth.toUpperCase()}`}
             value={formatCurrency(department.turnover)}

@@ -1,5 +1,9 @@
 # Version History
 
+## 1.14.4 - Исправление критической ошибки отображения заказов
+- **Fix:** Исправлена ошибка `ReferenceError: labelsMap is not defined` в `SupabaseService.getOrders`.
+- **Logic:** Добавлена инициализация и загрузка стикеров только при наличии `buyerToken`.
+
 ## 1.14.3 - Исправление ошибок в интерфейсе Закупщика
 - **Fix:** Удален мертвый код (`showCopiedToast`, `copyToClipboard`) в `BuyerOrderDetails.tsx`, вызывавший падение приложения.
 

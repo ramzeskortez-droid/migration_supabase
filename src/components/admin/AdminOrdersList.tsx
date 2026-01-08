@@ -237,7 +237,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[70vh]">
         {/* Header (Sticky) */}
-        <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none shrink-0 z-20 border-l-4 border-transparent`}>
+        <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none shrink-0 z-[300] border-l-4 border-transparent`}>
              <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ ЗАКАЗА <SortIcon column="id"/></div>
              <div className="flex items-center">ТЕМА ПИСЬМА</div>
              <div className="text-left">СРОК ДО</div>
@@ -254,8 +254,8 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
             <Virtuoso
                 style={{ height: '100%' }}
                 data={orders}
-                endReached={() => { 
-                    if (hasMore && !isLoading) onLoadMore(); 
+                endReached={() => {
+                    if (hasMore && !isLoading) onLoadMore();
                 }}
                 atBottomThreshold={200}
                 increaseViewportBy={200}
@@ -272,7 +272,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                 components={{
                     Footer: () => (
                         <div className="py-8 flex flex-col items-center gap-2">
-                            {isLoading && <Loader2 className="animate-spin text-slate-300" size={20}/>}
+                            {isLoading && <Loader2 className="animate-spin text-slate-300" size={20}/>}  
                             {!hasMore && orders.length > 0 && <div className="text-[10px] font-bold text-slate-300 uppercase italic text-left w-full px-6">Все заказы загружены ({orders.length})</div>}
                             {hasMore && !isLoading && <button onClick={onLoadMore} className="text-[10px] text-indigo-500 hover:underline">Загрузить еще</button>}
                         </div>
