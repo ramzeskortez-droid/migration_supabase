@@ -147,24 +147,13 @@ const AdminOrderRow = memo(({
                         <>
                             <div className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
                                 <div className="flex items-center gap-2 mb-3"><FileText size={14} className="text-slate-400"/><span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span></div>
-                                {isEditing ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="space-y-1">
-                                            <label className="text-[8px] font-bold text-indigo-400 uppercase">Имя</label>
-                                            <input type="text" value={editForm['client_name']} onChange={e => setEditForm({...editForm, 'client_name': e.target.value})} className="w-full p-2 border-2 border-indigo-400 rounded text-xs font-black text-indigo-700 bg-indigo-50 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white focus:border-indigo-500 transition-all"/>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[8px] font-bold text-indigo-400 uppercase">Телефон</label>
-                                            <input type="text" value={editForm['client_phone']} onChange={e => setEditForm({...editForm, 'client_phone': e.target.value})} className="w-full p-2 border-2 border-indigo-400 rounded text-xs font-black text-indigo-700 bg-indigo-50 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white focus:border-indigo-500 transition-all"/>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[8px] font-bold text-indigo-400 uppercase">Почта</label>
-                                            <input type="text" value={editForm['client_email']} onChange={e => setEditForm({...editForm, 'client_email': e.target.value})} className="w-full p-2 border-2 border-indigo-400 rounded text-xs font-black text-indigo-700 bg-indigo-50 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white focus:border-indigo-500 transition-all lowercase"/>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[8px] font-bold text-indigo-400 uppercase">Адрес</label>
-                                            <input type="text" value={editForm['location']} onChange={e => setEditForm({...editForm, 'location': e.target.value})} className="w-full p-2 border-2 border-indigo-400 rounded text-xs font-black text-indigo-700 bg-indigo-50 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white focus:border-indigo-500 transition-all"/>
-                                        </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
+                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
+                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span><span className="font-bold text-slate-700">{order.clientPhone || "-"}</span></div>
+                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
+                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
+                                    
+                                    {isEditing ? (
                                         <div className="col-span-1 space-y-1">
                                             <label className="text-[8px] font-bold text-indigo-400 uppercase">Срок (нед)</label>
                                             <input 
@@ -174,15 +163,13 @@ const AdminOrderRow = memo(({
                                                 className="w-full p-2 border-2 border-indigo-400 rounded text-xs font-black text-indigo-600 bg-indigo-50 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white focus:border-indigo-500 transition-all"
                                             />
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span><span className="font-bold text-slate-700">{order.clientPhone || "-"}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
-                                    </div>
-                                )}
+                                    ) : (
+                                        /* Only show deadline if it exists or we are not editing (though usually it's derived from items, but here we edit the override) */
+                                        /* Actually, previously deadline wasn't explicitly shown in this block in read-only mode, only in list columns. Let's keep it consistent or just hide if not editing? */
+                                        /* The user said "Deadline for client" is editable. Let's show it here if we edit. */
+                                        null
+                                    )}
+                                </div>
                             </div>
 
                             <AdminItemsTable 
