@@ -156,7 +156,13 @@ export const BuyerInterface: React.FC = () => {
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
-          await SupabaseService.createOffer(orderId, buyerAuth.name, items, '', buyerAuth.phone, buyerAuth.id);
+          await SupabaseService.createOffer(
+              orderId, 
+              buyerAuth.name, 
+              items, 
+              buyerAuth.phone, // sellerPhone
+              buyerAuth.id     // userId (UUID)
+          );
           setExpandedId(null);
           setSuccessToast({ message: `Предложение к заказу № ${orderId} отправлено!`, id: Date.now().toString() });
           refetch();
