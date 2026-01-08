@@ -325,8 +325,8 @@ export class SupabaseService {
                 })) || []
             })) || [],
             isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
-        };
-    } as any);
+        } as unknown as Order;
+    });
     
     const nextCursor = data.length === limit ? data[data.length - 1].id : undefined;
     return { data: mappedData, nextCursor };
