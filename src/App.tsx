@@ -32,61 +32,69 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       {/* Navigation Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-[100]">
-        <div className="max-w-6xl mx-auto px-2 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-6xl mx-auto px-2 sm:px-4 h-12 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 shrink-0">
-             <img src="https://i.vgy.me/0lR7Mt.png" alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
-             <span className="font-black tracking-tight uppercase hidden sm:inline text-[11px]">
-               autoparts market | <span className="text-indigo-600">china-nai</span>
+             <img src="https://i.vgy.me/0lR7Mt.png" alt="logo" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
+             <span className="font-black tracking-tighter uppercase text-[14px] text-slate-900">
+               CHINA-<span className="text-indigo-600">NAI</span>
              </span>
           </div>
 
-          <div className="relative">
-             <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase text-slate-700 hover:bg-slate-200 transition-all shadow-sm border border-slate-200"
-             >
-                <Menu size={14} className="text-indigo-600" />
-                <span>{getActiveLabel()}</span>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
-             </button>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+               <button 
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-slate-700 hover:bg-slate-200 transition-all shadow-sm border border-slate-200"
+               >
+                  <Menu size={12} className="text-indigo-600" />
+                  <span>{getActiveLabel()}</span>
+                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+               </button>
 
-             {isMenuOpen && (
-                 <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
-                    <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-2 animate-in slide-in-from-top-2 fade-in duration-200">
-                        {[
-                            { path: '/operator', label: 'Оператор', icon: Users },
-                            { path: '/buyer', label: 'Закупщик', icon: ShoppingBag },
-                            { path: '/admin', label: 'Менеджер', icon: ShieldCheck }
-                        ].map(item => (
-                            <button 
-                                key={item.path}
-                                onClick={() => { navigate(item.path); setIsMenuOpen(false); }}
-                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors ${isActive(item.path) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                            >
-                                <item.icon size={16} />
-                                <span>{item.label}</span>
-                            </button>
-                        ))}
+               {isMenuOpen && (
+                   <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
+                      <div className="absolute top-full left-0 mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1 animate-in slide-in-from-top-1 fade-in duration-200">
+                          {[
+                              { path: '/operator', label: 'Оператор', icon: Users },
+                              { path: '/buyer', label: 'Закупщик', icon: ShoppingBag },
+                              { path: '/admin', label: 'Менеджер', icon: ShieldCheck }
+                          ].map(item => (
+                              <button 
+                                  key={item.path}
+                                  onClick={() => { navigate(item.path); setIsMenuOpen(false); }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-black uppercase transition-colors ${isActive(item.path) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                              >
+                                  <item.icon size={14} />
+                                  <span>{item.label}</span>
+                              </button>
+                          ))}
+                      </div>
+                   </>
+               )}
+            </div>
+
+            {rates && (
+                <div className="hidden md:flex items-center gap-2.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-slate-400 whitespace-nowrap shrink-0">
+                    <div className="flex items-center gap-1 text-indigo-400 opacity-70">
+                        <TrendingUp size={10} />
+                        <span className="text-[8px]">{new Date(rates.date).toLocaleDateString('ru-RU')}</span>
                     </div>
-                 </>
-             )}
+                    <div className="flex items-center gap-1">
+                        <span className="opacity-50">¥/₽:</span>
+                        <span className="text-slate-700 tracking-tighter">{rates.cny_rub}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <span className="opacity-50">$/₽:</span>
+                        <span className="text-slate-700 tracking-tighter">{rates.usd_rub}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <span className="opacity-50">$/¥:</span>
+                        <span className="text-slate-700 tracking-tighter">{rates.cny_usd}</span>
+                    </div>
+                </div>
+            )}
           </div>
-
-          {rates && (
-              <div className="hidden md:flex items-center gap-3 px-3 py-1 bg-slate-50/50 border border-slate-100 rounded-lg text-[9px] font-bold text-slate-500 whitespace-nowrap shrink-0">
-                  <div className="flex items-center gap-1.5 text-indigo-400">
-                      <TrendingUp size={10} />
-                      <span>{new Date(rates.date).toLocaleDateString('ru-RU')}</span>
-                  </div>
-                  <div className="w-px h-2.5 bg-slate-200"></div>
-                  <div>¥/₽: <span className="text-slate-800">{rates.cny_rub}</span></div>
-                  <div className="w-px h-2.5 bg-slate-200"></div>
-                  <div>$/₽: <span className="text-slate-800">{rates.usd_rub}</span></div>
-                  <div className="w-px h-2.5 bg-slate-200"></div>
-                  <div>$/¥: <span className="text-slate-800">{rates.cny_usd}</span></div>
-              </div>
-          )}
         </div>
       </header>
 

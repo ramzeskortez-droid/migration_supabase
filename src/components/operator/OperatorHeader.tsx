@@ -17,7 +17,7 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ operatorName, on
              <Database size={20} strokeWidth={2.5} />
            </div>
            <div className="leading-none">
-             <h1 className="font-bold text-lg text-slate-900 tracking-tight">AutoParts</h1>
+             <h1 className="font-black text-lg text-slate-900 tracking-tighter uppercase">CHINA-<span className="text-indigo-600">NAI</span></h1>
              <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Operator Panel</span>
            </div>
          </div>
