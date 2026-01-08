@@ -103,12 +103,15 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
 
             return (
                 <div key={idx} className="border-b border-gray-200 last:border-b-0">
-                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 transition-colors">
+                    <div 
+                        onClick={() => toggleRegistry(item.name)}
+                        className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 transition-colors cursor-pointer"
+                    >
                         <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                             <div className="flex items-center gap-2">
-                                <button onClick={() => toggleRegistry(item.name)} className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
+                                <div className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
                                     {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-600" /> : <ChevronRight className="w-4 h-4 text-gray-600" />}
-                                </button>
+                                </div>
                                 <span className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</span>
                             </div>
                             <div>
