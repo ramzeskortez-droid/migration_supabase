@@ -8,7 +8,7 @@ interface BuyerOrdersListProps {
   orders: Order[];
   expandedId: string | null;
   onToggle: (id: string | null) => void;
-  // ...
+  // State for editing items
   editingItemsMap: Record<string, any[]>;
   setEditingItemsMap: React.Dispatch<React.SetStateAction<Record<string, any[]>>>;
   onSubmit: (orderId: string, items: any[]) => Promise<void>;
@@ -21,10 +21,49 @@ interface BuyerOrdersListProps {
   getMyOffer: (order: Order) => any;
   buyerToken?: string;
   onOpenChat: (orderId: string) => void;
-  scrollToId?: string | null; // Новый проп
+  scrollToId?: string | null;
 }
 
-// ... (GRID_COLS and MemoizedBuyerOrderRow remain same)
+// Columns: ID+Sticker (80), Deadline (90), Subject (1.5fr), Item (1fr), Status (110), Date (80), Arrow (30)
+const GRID_COLS = "grid-cols-[80px_90px_1.5fr_1fr_110px_80px_30px]";
+
+const MemoizedBuyerOrderRow = memo(({
+    order, isExpanded, onToggle,
+    editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
+    statusInfo, myOffer, buyerToken, onOpenChat
+}: any) => {
+    
+    // Инициализация пустых полей для нового оффера
+    const getInitialItems = () => {
+        if (editingItemsMap[order.id]) return editingItemsMap[order.id];
+        return order.items.map((i: any) => ({
+            ...i,
+            comment: '', // Очищаем комментарий для ввода закупщика
+            originalComment: i.comment, // Сохраняем оригинал (тему) если нужно
+            offeredQuantity: i.quantity,
+            BuyerPrice: 0,
+            weight: 0,
+            deliveryWeeks: 0
+        }));
+    };
+
+    return (
+        <BuyerOrderRow 
+            order={order}
+            isExpanded={isExpanded}
+            onToggle={onToggle}
+            editingItems={isExpanded ? getInitialItems() : undefined}
+            setEditingItems={(items: any[]) => setEditingItemsMap((prev: any) => ({ ...prev, [order.id]: items }))}
+            onSubmit={onSubmit}
+            isSubmitting={isSubmitting}
+            statusInfo={statusInfo}
+            myOffer={myOffer}
+            buyerToken={buyerToken}
+            gridCols={GRID_COLS} 
+            onOpenChat={onOpenChat}
+        />
+    );
+});
 
 export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 

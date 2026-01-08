@@ -58,19 +58,209 @@ export const OperatorInterface: React.FC = () => {
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
-  // ... (useCallbacks and useEffects remain same)
-
   const handleMessageRead = useCallback((count: number) => {
       setUnreadChatCount(prev => Math.max(0, prev - count));
   }, []);
 
-  // ... (keeping other functions)
+  // Realtime Notifications
+  useEffect(() => {
+      if (!currentUser) return;
+
+      const channel = SupabaseService.subscribeToUserChats((payload) => {
+          const msg = payload.new;
+          
+          if (msg.recipient_name === 'ADMIN' && msg.sender_role === 'SUPPLIER') {
+              setUnreadChatCount(prev => prev + 1);
+              if (!isGlobalChatOpen) {
+                  setChatNotifications(prev => [...prev, msg].slice(-3));
+              }
+          }
+      }, `operator-notifications-${currentUser.id}`);
+
+      return () => { SupabaseService.unsubscribeFromChat(channel); };
+  }, [currentUser, isGlobalChatOpen]);
+
+  // Load User from LocalStorage
+  useEffect(() => {
+      const checkAuth = async () => {
+          const token = localStorage.getItem('operatorToken');
+          if (token) {
+              try {
+                  const user = await SupabaseService.loginWithToken(token);
+                  if (user && (user.role === 'operator' || user.role === 'admin')) {
+                      setCurrentUser(user);
+                      addLog(`Восстановлена сессия оператора: ${user.name}`);
+                  } else {
+                      localStorage.removeItem('operatorToken');
+                  }
+              } catch (e) {
+                  console.error('Auth Check Error:', e);
+              }
+          }
+          setIsAuthChecking(false);
+      };
+      checkAuth();
+  }, []);
+
+  // Чат: получение количества непрочитанных
+  const fetchUnreadCount = useCallback(async () => {
+      try {
+          const count = await SupabaseService.getUnreadChatCount();
+          setUnreadChatCount(count);
+      } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+      if (currentUser) {
+          fetchUnreadCount();
+          const interval = setInterval(fetchUnreadCount, 30000);
+          return () => clearInterval(interval);
+      }
+  }, [currentUser, fetchUnreadCount]);
+
+  const handleLogin = (user: AppUser) => {
+      setCurrentUser(user);
+      localStorage.setItem('operatorToken', user.token);
+      addLog(`Оператор ${user.name} вошел в систему.`);
+  };
+
+  const handleLogout = () => {
+      setCurrentUser(null);
+      localStorage.removeItem('operatorToken');
+  };
+
+  const addLog = (message: string) => {
+    const time = new Date().toLocaleTimeString('ru-RU', { hour12: false });
+    setDisplayStats(prev => ({
+      ...prev,
+      logs: [`[${time}] ${message}`, ...prev.logs].slice(0, 50)
+    }));
+  };
+
+  const handleAddBrand = async (name: string) => {
+      if (!name) return;
+      
+      try {
+          await SupabaseService.addBrand(name, currentUser?.name || 'Operator');
+          addLog(`Бренд "${name}" добавлен в базу.`);
+          setToast({ message: `Бренд ${name} добавлен`, type: 'success' });
+      } catch (e: any) {
+          if (e.code === '23505') {
+             setToast({ message: `Бренд ${name} уже существует`, type: 'info' });
+          } else {
+             console.error(e);
+             setToast({ message: 'Ошибка добавления бренда: ' + e.message, type: 'error' });
+          }
+      }
+  };
+
+  // Stats Logic (Sliding Window)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const oneMinuteAgo = now - 60000;
+
+      setRequestHistory(currentHistory => {
+        const recentHistory = currentHistory.filter(item => item.timestamp > oneMinuteAgo);
+        
+        const currentRpm = recentHistory.length;
+        const currentTpm = recentHistory.reduce((sum, item) => sum + item.tokens, 0);
+        
+        const oldest = recentHistory[0];
+        const resetIn = oldest ? Math.ceil((oldest.timestamp + 60000 - now) / 1000) : 0;
+
+        setDisplayStats(prev => ({
+          ...prev,
+          rpm: currentRpm,
+          tpm: currentTpm,
+          resetIn: Math.max(0, resetIn)
+        }));
+
+        return recentHistory;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Валидация: проверяем заполненность основных полей и валидность брендов.
+  const isFormValid = parts.length > 0 && 
+                     parts.every(p => p.name?.trim() && p.brand?.trim()) && 
+                     isBrandsValid;
+
+  const handleCreateOrder = async () => {
+    if (!currentUser) return;
+
+    if (!isFormValid) {
+        setToast({ message: 'Заполните обязательные поля: Бренд (должен быть зеленым) и Наименование', type: 'error' });
+        return;
+    }
+    
+    setIsSaving(true);
+    try {
+        const newBrands = parts
+            .filter(p => p.isNewBrand && p.brand?.trim())
+            .map(p => p.brand.trim());
+
+        if (newBrands.length > 0) {
+            for (const bName of newBrands) {
+                try {
+                    await SupabaseService.addBrand(bName, currentUser.name);
+                } catch (e) {}
+            }
+        }
+
+        const itemsForDb = parts.map((p, index) => {
+            let comment = '';
+            if (index === 0 && orderInfo.emailSubject) {
+                comment = `[Тема: ${orderInfo.emailSubject}]`;
+            }
+
+            return {
+                name: p.name,
+                quantity: p.quantity,
+                comment: comment, 
+                category: 'Оригинал',
+                brand: p.brand,
+                article: p.article,
+                uom: p.uom,
+                photoUrl: p.photoUrl
+            };
+        });
+
+        const orderId = await SupabaseService.createOrder(
+            itemsForDb,
+            orderInfo.clientName || 'Не указано',
+            orderInfo.clientPhone,
+            currentUser.id, 
+            orderInfo.deadline,
+            orderInfo.clientEmail,
+            orderInfo.city 
+        );
+
+        setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });
+        addLog(`Заказ №${orderId} создан.`);
+        setRefreshTrigger(prev => prev + 1);
+        
+        // Reset form
+        setParts([{ id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
+        setOrderInfo({
+            deadline: '', region: '', city: '', email: '', clientEmail: '', emailSubject: '', clientName: '', clientPhone: ''
+        });
+
+    } catch (e: any) {
+        console.error(e);
+        setToast({ message: 'Ошибка создания: ' + e.message, type: 'error' });
+        addLog(`Ошибка создания заявки: ${e.message}`);
+    } finally {
+        setIsSaving(false);
+    }
+  };
 
   const handleNavigateToOrder = async (orderId: string) => {
       try {
           const { status_admin } = await SupabaseService.getOrderStatus(orderId);
           
-          // Определяем таб
           if (['КП готово', 'КП отправлено'].includes(status_admin)) {
               setActiveTab('processed');
           } else if (['Выполнен'].includes(status_admin)) {
@@ -106,7 +296,6 @@ export const OperatorInterface: React.FC = () => {
     <div className="h-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden relative">
       {!currentUser && <OperatorAuthModal onLogin={handleLogin} />}
       
-      {/* Toast Notification: Top Right */}
       {toast && (
           <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
               <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type as any} duration={2000} />
@@ -134,27 +323,21 @@ export const OperatorInterface: React.FC = () => {
       />
 
       <div className={`flex flex-1 overflow-hidden transition-opacity duration-300 ${!currentUser ? 'opacity-30 pointer-events-none blur-sm' : 'opacity-100'}`}>
-        {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto space-y-8">
-            
-            {/* Form Section */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
                 <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} />
-                
                 <PartsList 
                     parts={parts} 
                     setParts={setParts} 
                     onAddBrand={handleAddBrand}
                     onValidationChange={setIsBrandsValid}
                 />
-                
                 <AiAssistant 
                     onImport={(newParts) => {
                         if (parts.length === 1 && !parts[0].name) {
                             setParts(newParts);
-                        }
-                        else {
+                        } else {
                             setParts([...parts, ...newParts]);
                         }
                     }}
@@ -166,13 +349,11 @@ export const OperatorInterface: React.FC = () => {
                     }}
                     onCreateOrder={handleCreateOrder}
                     isSaving={isSaving}
-                    isFormValid={isFormValid} // Pass validity
+                    isFormValid={isFormValid} 
                 />
-
                 <SystemStatusHorizontal displayStats={displayStats} />
             </div>
 
-            {/* Orders List Section */}
             <div className="space-y-4">
                 <div className="relative group flex items-center">
                     <Search className="absolute left-6 text-slate-400" size={20}/>
@@ -192,11 +373,9 @@ export const OperatorInterface: React.FC = () => {
                     scrollToId={scrollToId}
                 />
             </div>
-
           </div>
         </main>
 
-        {/* Right Sidebar: Now focusing on Mail */}
         <aside className="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-hidden h-full">
             <div className="flex-1 overflow-hidden p-4">
                 <EmailWidget onImportToAI={handleImportEmail} />
