@@ -4,6 +4,21 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 
+import './index.css';
+
+// Add custom style for pulse animation if index.css is not enough
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.01); }
+  }
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+`;
+document.head.appendChild(style);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

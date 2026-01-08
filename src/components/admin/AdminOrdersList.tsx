@@ -149,7 +149,15 @@ const AdminOrderRow = memo(({
                                 <div className="flex items-center gap-2 mb-3"><FileText size={14} className="text-slate-400"/><span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span></div>
                                 {isEditing ? (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="col-span-1 space-y-1"><label className="text-[8px] font-bold text-indigo-400 uppercase">Срок (нед)</label><input type="number" value={editForm['delivery_weeks']} onChange={e => setEditForm({...editForm, 'delivery_weeks': e.target.value})} className="w-full p-2 border-2 border-indigo-100 rounded text-xs font-black text-indigo-600 focus:border-indigo-300"/></div>
+                                        <div className="col-span-1 space-y-1">
+                                            <label className="text-[8px] font-bold text-indigo-400 uppercase">Срок (нед)</label>
+                                            <input 
+                                                type="number" 
+                                                value={editForm['delivery_weeks']} 
+                                                onChange={e => setEditForm({...editForm, 'delivery_weeks': e.target.value})} 
+                                                className="w-full p-2 border-2 border-indigo-400 rounded text-xs font-black text-indigo-600 bg-indigo-50 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white focus:border-indigo-500 transition-all"
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">

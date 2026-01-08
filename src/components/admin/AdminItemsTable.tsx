@@ -101,7 +101,11 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                             </div>
                             <div>
                                 {isEditing ? (
-                                    <input value={editForm[`item_${idx}_name`]} onChange={e => setEditForm({...editForm, [`item_${idx}_name`]: e.target.value})} className="w-full px-2 py-1 bg-white border border-indigo-200 rounded text-[11px] font-bold uppercase outline-none"/>
+                                    <input 
+                                        value={editForm[`item_${idx}_name`]} 
+                                        onChange={e => setEditForm({...editForm, [`item_${idx}_name`]: e.target.value})} 
+                                        className="w-full px-2 py-1 bg-indigo-50 border-2 border-indigo-400 rounded text-[11px] font-bold uppercase outline-none ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
+                                    />
                                 ) : (
                                     <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">{item.AdminName || item.name}</div>
                                 )}
@@ -109,7 +113,12 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                             <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
                             <div className="text-gray-700 text-center font-black text-xs">
                                 {isEditing ? (
-                                    <input type="number" value={editForm[`item_${idx}_qty`]} onChange={e => setEditForm({...editForm, [`item_${idx}_qty`]: e.target.value})} className="w-16 px-1 py-1 bg-white border border-indigo-200 rounded text-center text-xs font-bold"/>
+                                    <input 
+                                        type="number" 
+                                        value={editForm[`item_${idx}_qty`]} 
+                                        onChange={e => setEditForm({...editForm, [`item_${idx}_qty`]: e.target.value})} 
+                                        className="w-16 px-1 py-1 bg-indigo-50 border-2 border-indigo-400 rounded text-center text-xs font-bold ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
+                                    />
                                 ) : ( item.quantity )}
                             </div>
                             <div className="text-gray-600 text-center text-[10px] font-bold uppercase">{item.uom || 'шт'}</div>
@@ -216,7 +225,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         {isEditing ? (
                                                             <input 
                                                                 type="text" 
-                                                                className="w-full px-2 py-1 border-2 border-indigo-200 rounded-lg font-black text-xs outline-none bg-white text-indigo-700 focus:border-indigo-400"
+                                                                className="w-full px-2 py-1 border-2 border-indigo-500 rounded-lg font-black text-xs outline-none bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/30 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
                                                                 value={currentPriceRub}
                                                                 onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminPrice', Number(e.target.value.replace(/\D/g, '')))}
                                                             />
@@ -260,7 +269,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                             placeholder="Комментарий для поставщика (виден закупщику)..." 
                                                             value={currentComment} 
                                                             onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminComment', e.target.value)} 
-                                                            className={`w-full px-4 py-1.5 border rounded-xl text-[10px] font-bold text-gray-600 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner ${isEditing || currentComment ? 'bg-white border-indigo-100 focus:border-indigo-300' : 'bg-gray-50 border-gray-200'}`} 
+                                                            className={`w-full px-4 py-1.5 border rounded-xl text-[10px] font-bold text-gray-600 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner ${isEditing ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white' : (currentComment ? 'bg-white border-indigo-100' : 'bg-gray-50 border-gray-200')}`} 
                                                         />
                                                         <Edit2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
                                                     </div>
