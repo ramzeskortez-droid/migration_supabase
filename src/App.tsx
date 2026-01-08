@@ -81,23 +81,23 @@ const App: React.FC = () => {
           {rates && (
               <div className="hidden md:flex items-center gap-3">
                   <div className="flex flex-col items-end leading-none mr-1">
-                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Курс ЦБ</span>
+                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Курс CHINA-NAI</span>
                       <span className="text-[9px] font-black text-slate-400">{new Date(rates.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</span>
                   </div>
                   
                   <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm gap-4">
                       <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">CNY</span>
+                          <span className="text-[10px] font-black text-slate-400">¥/₽</span>
                           <span className="text-xs font-black text-slate-900">{rates.cny_rub}</span>
                       </div>
                       <div className="w-px h-3 bg-slate-200"></div>
                       <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">USD</span>
+                          <span className="text-[10px] font-black text-slate-400">$/₽</span>
                           <span className="text-xs font-black text-slate-900">{rates.usd_rub}</span>
                       </div>
                       <div className="w-px h-3 bg-slate-200"></div>
                       <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">USD/CNY</span>
+                          <span className="text-[10px] font-black text-slate-400">$/¥</span>
                           <span className="text-xs font-black text-slate-900">{rates.cny_usd}</span>
                       </div>
                   </div>
