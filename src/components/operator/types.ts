@@ -5,7 +5,8 @@ export interface Part {
   brand: string;
   uom: string;
   quantity: number;
-  photoUrl?: string; // Для фото
+  photoUrl?: string; 
+  isNewBrand?: boolean; // Флаг нового бренда
 }
 
 export interface OrderInfo {
@@ -13,7 +14,8 @@ export interface OrderInfo {
   region: string;
   city: string;
   email: string;
-  emailSubject: string; // Новое поле
+  clientEmail?: string; // Почта клиента
+  emailSubject: string; 
   clientName: string;
   clientPhone: string;
 }

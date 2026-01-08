@@ -199,7 +199,7 @@ export class SupabaseService {
     }
 
     let query = supabase.from('orders').select(`
-        id, created_at, client_name, client_phone, 
+        id, created_at, client_name, client_phone, client_email,
         status_admin, status_client, status_supplier,
         visible_to_client, location, status_updated_at,
         owner_id,
@@ -283,6 +283,7 @@ export class SupabaseService {
         type: RowType.ORDER,
         clientName: order.client_name,
         clientPhone: order.client_phone,
+        clientEmail: order.client_email,
         status: order.status_admin === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
         statusAdmin: order.status_admin,
         statusClient: order.status_client,
@@ -366,11 +367,11 @@ export class SupabaseService {
     return data;
   }
 
-  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string): Promise<string> {
+  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string, clientEmail?: string): Promise<string> {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
-        client_name: clientName, client_phone: clientPhone,
+        client_name: clientName, client_phone: clientPhone, client_email: clientEmail,
         location: 'РФ', owner_id: ownerId, deadline: deadline || null
       })
       .select().single();

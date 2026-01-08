@@ -8,15 +8,32 @@ interface PartsListProps {
   parts: Part[];
   setParts: (parts: Part[]) => void;
   onAddBrand: (name: string) => void;
+  onValidationChange?: (isValid: boolean) => void; // Коллбэк для валидации
 }
 
-export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBrand }) => {
+export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBrand, onValidationChange }) => {
   const [activeBrandInput, setActiveBrandInput] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   
   // Кэш проверенных брендов: { "makita": "Makita" } или { "unknown": null }
   const [brandCache, setBrandCache] = useState<Record<string, string | null>>({});
   const [validating, setValidating] = useState<Set<number>>(new Set());
+
+  // Эффект: уведомляем родителя об изменении общей валидности брендов
+  useEffect(() => {
+    if (!onValidationChange) return;
+    
+    const allValid = parts.every(part => {
+        const brandValue = part.brand?.trim() || '';
+        if (!brandValue) return false;
+        
+        const dbName = brandCache[brandValue.toLowerCase()];
+        const isStrictMatch = (dbName !== undefined && dbName !== null && dbName === brandValue) || part.isNewBrand;
+        return isStrictMatch;
+    });
+
+    onValidationChange(allValid);
+  }, [parts, brandCache, onValidationChange]);
 
   const addPart = () => {
     setParts([...parts, { id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
@@ -26,7 +43,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
     setParts(parts.filter(part => part.id !== id));
   };
 
-  const updatePart = (id: number, field: keyof Part, value: string | number) => {
+  const updatePart = (id: number, field: keyof Part, value: any) => {
     setParts(parts.map(part => part.id === id ? { ...part, [field]: value } : part));
   };
 
@@ -95,14 +112,20 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
           const dbName = brandCache[brandValue.toLowerCase()];
           const isChecking = validating.has(part.id);
           
-          // Валидно, если нашли в базе (dbName не null)
-          const isValid = dbName !== undefined && dbName !== null;
-          // Предупреждение, если нет точного совпадения, но есть подсказки (только для активного поля)
-          const isWarning = !isValid && activeBrandInput === part.id && suggestions.length > 0;
-          // Ошибка, если проверили и не нашли ничего похожего
-          const isError = brandValue.length > 0 && dbName === null && !isChecking && !isWarning;
-          // Регистр отличается от базы
-          const needsFix = isValid && dbName !== brandValue;
+          // 1. Строгое совпадение (Зеленое)
+          // Либо текст совпадает с базой (с учетом регистра), либо нажат флаг "Новый бренд"
+          const isStrictMatch = (dbName !== undefined && dbName !== null && dbName === brandValue) || part.isNewBrand;
+          
+          // 2. Нестрогое совпадение / Подсказки (Желтое)
+          // Есть в базе, но регистр не тот, ИЛИ бренда нет, но есть поисковые подсказки
+          const isNonStrictMatch = (!isStrictMatch && dbName !== undefined && dbName !== null && dbName !== brandValue) || 
+                                   (!isStrictMatch && !dbName && suggestions.length > 0 && activeBrandInput === part.id);
+
+          // 3. Ошибка / Нет совпадений (Красное)
+          // Бренда нет в базе, подсказок нет, и не нажат флаг "Новый бренд"
+          const isError = brandValue.length > 0 && !isStrictMatch && !isNonStrictMatch && !isChecking;
+
+          const needsFix = dbName && dbName !== brandValue && !part.isNewBrand;
 
           return (
             <div key={part.id} className="group relative grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
@@ -121,21 +144,24 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                <div className="relative">
                  <input 
                     value={part.brand}
-                    onChange={(e) => updatePart(part.id, 'brand', e.target.value)}
+                    onChange={(e) => {
+                        updatePart(part.id, 'brand', e.target.value);
+                        if (part.isNewBrand) updatePart(part.id, 'isNewBrand', false); // Сбрасываем флаг при редактировании
+                    }}
                     onFocus={() => setActiveBrandInput(part.id)}
                     onBlur={() => setTimeout(() => setActiveBrandInput(null), 200)}
                     placeholder="Бренд"
                     className={`${inputClass} pr-8
                         ${isError ? 'border-red-500 bg-red-50 text-red-700' : ''}
-                        ${isWarning ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : ''}
-                        ${isValid ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : ''}
+                        ${isNonStrictMatch ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : ''}
+                        ${isStrictMatch ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : ''}
                     `}
                  />
                  
                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {isChecking && <Loader2 size={12} className="animate-spin text-slate-400" />}
-                    {isValid && !needsFix && <CheckCircle size={14} className="text-emerald-500" />}
-                    {isWarning && <AlertTriangle size={14} className="text-yellow-500" />}
+                    {isStrictMatch && <CheckCircle size={14} className="text-emerald-500" />}
+                    {isNonStrictMatch && <AlertTriangle size={14} className="text-yellow-500" />}
                     {needsFix && (
                         <button 
                             onClick={() => updatePart(part.id, 'brand', dbName)}
@@ -145,13 +171,13 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                             <RefreshCw size={14} />
                         </button>
                     )}
-                    {isError && (
+                    {(isError || isNonStrictMatch) && !part.isNewBrand && (
                         <button 
-                            onClick={() => onAddBrand(part.brand)}
-                            className="text-red-500 hover:text-red-600 transition-colors"
-                            title="Бренда нет в базе. Нажмите чтобы добавить."
+                            onClick={() => updatePart(part.id, 'isNewBrand', true)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors"
+                            title="Добавить как новый бренд"
                         >
-                            <AlertTriangle size={14} />
+                            <Plus size={14} />
                         </button>
                     )}
                  </div>
@@ -196,11 +222,17 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                <div className="flex justify-center">
                   <input 
                     type="number"
-                    min="0"
-                    step="0.1"
+                    min="1"
+                    step="1"
                     value={part.quantity}
-                    onChange={(e) => updatePart(part.id, 'quantity', parseFloat(e.target.value) || 0)}
-                    className={`${inputClass} text-center font-bold`}
+                    onKeyDown={(e) => {
+                        if (e.key === '.' || e.key === ',') e.preventDefault();
+                    }}
+                    onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        updatePart(part.id, 'quantity', isNaN(val) ? 1 : val);
+                    }}
+                    className={`${inputClass} text-center font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                   />
                </div>
 

@@ -105,6 +105,7 @@ export interface Order {
   location: string;
   clientName: string;
   clientPhone?: string;
+  clientEmail?: string; // Почта клиента
   visibleToClient?: 'Y' | 'N';
   offers?: Order[];
   ownerId?: string; // Вместо ownerToken
