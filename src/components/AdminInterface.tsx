@@ -184,7 +184,7 @@ export const AdminInterface: React.FC = () => {
 
           await SupabaseService.approveOrderFast(orderId, winnersPayload);
           
-          showToast("КП успешно сформировано");
+          showToast(`КП по заказу #${orderId} сформировано`);
           setSearchQuery(''); // Сбрасываем поиск, чтобы увидеть заказ в новом табе
           setActiveTab('kp_sent'); 
           refetch(); 
