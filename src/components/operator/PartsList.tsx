@@ -99,8 +99,8 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
         {/* Header Row */}
         <div className="grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
           <div className={`${headerClass} text-center`}>#</div>
-          <div className={headerClass}>Наименование</div>
-          <div className={headerClass}>Бренд</div>
+          <div className={headerClass}>Наименование <span className="text-red-500">*</span></div>
+          <div className={headerClass}>Бренд <span className="text-red-500">*</span></div>
           <div className={headerClass}>Артикул</div>
           <div className={`${headerClass} text-center`}>Ед.</div>
           <div className={`${headerClass} text-center`}>Кол-во</div>

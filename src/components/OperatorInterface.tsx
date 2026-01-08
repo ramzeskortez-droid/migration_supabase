@@ -49,28 +49,148 @@ export const OperatorInterface: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
-  // ... (keeping previous logic)
+  const handleMessageRead = useCallback((count: number) => {
+      setUnreadChatCount(prev => Math.max(0, prev - count));
+  }, []);
+
+  // Realtime Notifications
+  useEffect(() => {
+      if (!currentUser) return;
+
+      const channel = SupabaseService.subscribeToUserChats((payload) => {
+          const msg = payload.new;
+          
+          if (msg.recipient_name === 'ADMIN' && msg.sender_role === 'SUPPLIER') {
+              setUnreadChatCount(prev => prev + 1);
+              if (!isGlobalChatOpen) {
+                  setChatNotifications(prev => [...prev, msg].slice(-3));
+              }
+          }
+      }, `operator-notifications-${currentUser.id}`);
+
+      return () => { SupabaseService.unsubscribeFromChat(channel); };
+  }, [currentUser, isGlobalChatOpen]);
+
+  // Load User from LocalStorage
+  useEffect(() => {
+      const checkAuth = async () => {
+          const token = localStorage.getItem('operatorToken');
+          if (token) {
+              try {
+                  const user = await SupabaseService.loginWithToken(token);
+                  if (user && (user.role === 'operator' || user.role === 'admin')) {
+                      setCurrentUser(user);
+                      addLog(`Восстановлена сессия оператора: ${user.name}`);
+                  } else {
+                      localStorage.removeItem('operatorToken'); // Invalid token
+                  }
+              } catch (e) {
+                  console.error('Auth Check Error:', e);
+              }
+          }
+          setIsAuthChecking(false);
+      };
+      checkAuth();
+  }, []);
+
+  // Чат: получение количества непрочитанных
+  const fetchUnreadCount = useCallback(async () => {
+      try {
+          const count = await SupabaseService.getUnreadChatCount();
+          setUnreadChatCount(count);
+      } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+      if (currentUser) {
+          fetchUnreadCount();
+          const interval = setInterval(fetchUnreadCount, 30000);
+          return () => clearInterval(interval);
+      }
+  }, [currentUser, fetchUnreadCount]);
+
+  const handleLogin = (user: AppUser) => {
+      setCurrentUser(user);
+      localStorage.setItem('operatorToken', user.token);
+      addLog(`Оператор ${user.name} вошел в систему.`);
+  };
+
+  const handleLogout = () => {
+      setCurrentUser(null);
+      localStorage.removeItem('operatorToken');
+  };
+
+  const addLog = (message: string) => {
+    const time = new Date().toLocaleTimeString('ru-RU', { hour12: false });
+    setDisplayStats(prev => ({
+      ...prev,
+      logs: [`[${time}] ${message}`, ...prev.logs].slice(0, 50)
+    }));
+  };
+
+  const handleAddBrand = async (name: string) => {
+      if (!name) return;
+      
+      try {
+          await SupabaseService.addBrand(name, currentUser?.name || 'Operator');
+          addLog(`Бренд "${name}" добавлен в базу.`);
+          setToast({ message: `Бренд ${name} добавлен`, type: 'success' });
+      } catch (e: any) {
+          if (e.code === '23505') {
+             setToast({ message: `Бренд ${name} уже существует`, type: 'info' });
+          } else {
+             console.error(e);
+             setToast({ message: 'Ошибка добавления бренда: ' + e.message, type: 'error' });
+          }
+      }
+  };
+
+  // Stats Logic (Sliding Window)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const oneMinuteAgo = now - 60000;
+
+      setRequestHistory(currentHistory => {
+        const recentHistory = currentHistory.filter(item => item.timestamp > oneMinuteAgo);
+        
+        const currentRpm = recentHistory.length;
+        const currentTpm = recentHistory.reduce((sum, item) => sum + item.tokens, 0);
+        
+        const oldest = recentHistory[0];
+        const resetIn = oldest ? Math.ceil((oldest.timestamp + 60000 - now) / 1000) : 0;
+
+        setDisplayStats(prev => ({
+          ...prev,
+          rpm: currentRpm,
+          tpm: currentTpm,
+          resetIn: Math.max(0, resetIn)
+        }));
+
+        return recentHistory;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Валидация: проверяем заполненность основных полей и валидность брендов.
   const isFormValid = parts.length > 0 && 
                      parts.every(p => p.name?.trim() && p.brand?.trim()) && 
-                     isBrandsValid &&
-                     orderInfo.clientPhone?.trim();
+                     isBrandsValid;
 
   const handleCreateOrder = async () => {
     if (!currentUser) return;
 
     if (!isFormValid) {
-        setToast({ message: 'Заполните обязательные поля и проверьте бренды (должны быть зелеными)', type: 'error' });
+        setToast({ message: 'Заполните обязательные поля: Бренд (должен быть зеленым) и Наименование', type: 'error' });
         return;
     }
     
-    if (!orderInfo.clientPhone) {
-        setToast({ message: 'Укажите телефон клиента', type: 'error' });
-        return;
-    }
-
     setIsSaving(true);
     try {
         // Собираем бренды, помеченные как "новые", чтобы добавить их в базу

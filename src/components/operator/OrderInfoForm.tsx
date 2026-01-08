@@ -42,7 +42,7 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         {/* Row 1: Client & Contact */}
         <div className="md:col-span-4 grid grid-cols-2 gap-2">
            <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Телефон (макс 20)</label>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Телефон</label>
               <input 
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
                 placeholder="+7 (999)..."
@@ -51,9 +51,10 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
               />
            </div>
            <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Имя (макс 20)</label>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Имя</label>
               <input 
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
+                placeholder="Иван"
                 value={orderInfo.clientName}
                 onChange={(e) => handleChange('clientName', e.target.value)}
               />
