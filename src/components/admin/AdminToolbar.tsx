@@ -19,7 +19,7 @@ export const AdminToolbar: React.FC<AdminToolbarProps> = ({
     <>
       <div className="relative group flex items-center">
           <Search className="absolute left-6 text-slate-400" size={20}/>
-          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Поиск..." className="w-full pl-14 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-300 shadow-sm" />
+          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Поиск по ID, теме, позиции, бренду или почте..." className="w-full pl-14 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-300 shadow-sm" />
       </div>
 
       <div className="flex justify-between items-end border-b border-slate-200">

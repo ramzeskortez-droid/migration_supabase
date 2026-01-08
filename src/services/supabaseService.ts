@@ -183,19 +183,14 @@ export class SupabaseService {
     onlyWithMyOffersName?: string,
     ownerToken?: string, 
     buyerToken?: string, 
-    excludeOffersFrom?: string 
+    excludeOffersFrom?: string,
+    buyerTab?: 'new' | 'hot' | 'history' // Добавлен параметр таба
   ): Promise<{ data: Order[], nextCursor?: number }> {
     
     let excludedIds: any[] = [];
     if (excludeOffersFrom) {
         const { data: off } = await supabase.from('offers').select('order_id').eq('supplier_name', excludeOffersFrom);
         excludedIds = off?.map(o => o.order_id) || [];
-    }
-
-    let matchingBrandIds: any[] = [];
-    if (brandFilter && brandFilter.length > 0) {
-        const { data: items } = await supabase.from('order_items').select('order_id').in('brand', brandFilter);
-        matchingBrandIds = items?.map(i => i.order_id) || [];
     }
 
     let query = supabase.from('orders').select(`
@@ -208,6 +203,30 @@ export class SupabaseService {
         offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days))
     `);
 
+    // --- Логика табов закупщика на сервере ---
+    if (buyerTab === 'new' || buyerTab === 'hot') {
+        query = query.eq('status_admin', 'В обработке');
+        if (excludeOffersFrom) {
+            // Исключаем те, где я уже ответил
+            if (excludedIds.length > 0) query = query.not('id', 'in', `(${excludedIds.join(',')})`);
+        }
+        
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        const isoDate = threeDaysAgo.toISOString();
+
+        if (buyerTab === 'new') {
+            query = query.gte('created_at', isoDate);
+        } else {
+            query = query.lt('created_at', isoDate);
+        }
+    } else if (buyerTab === 'history' && onlyWithMyOffersName) {
+        const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
+        const ids = myOff?.map(o => o.order_id) || [];
+        query = query.in('id', ids.length > 0 ? ids : [0]);
+    }
+
+    // --- Изоляция и фильтры ---
     if (ownerToken) {
         if (ownerToken.length > 20) {
              query = query.eq('owner_id', ownerToken);
@@ -220,41 +239,33 @@ export class SupabaseService {
 
     if (clientPhoneFilter) query = query.eq('client_phone', clientPhoneFilter);
     
-    if (excludeOffersFrom && excludedIds.length > 0) {
-        query = query.not('id', 'in', `(${excludedIds.join(',')})`);
-    }
-
     if (brandFilter && brandFilter.length > 0) {
-        if (matchingBrandIds.length > 0) {
-            query = query.in('id', matchingBrandIds);
+        const { data: items } = await supabase.from('order_items').select('order_id').in('brand', brandFilter);
+        const ids = items?.map(i => i.order_id) || [];
+        query = query.in('id', ids.length > 0 ? ids : [0]);
+    }
+
+    if (statusFilter && !buyerTab) { // Не применяем если есть buyerTab
+        if (statusFilter.includes(',')) {
+            query = query.in('status_admin', statusFilter.split(',').map(s => s.trim()));
         } else {
-            return { data: [], nextCursor: undefined };
+            query = query.eq('status_admin', statusFilter);
         }
     }
 
-    if (statusFilter) {
-        const isIdSearch = searchQuery && !isNaN(Number(searchQuery.trim()));
-        if (!isIdSearch) {
-            if (statusFilter.includes(',')) {
-                query = query.in('status_admin', statusFilter.split(',').map(s => s.trim()));
-            } else {
-                query = query.eq('status_admin', statusFilter);
-            }
-        }
-    }
-
-    if (onlyWithMyOffersName) {
-        const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
-        const ids = myOff?.map(o => o.order_id) || [];
-        query = query.in('id', ids);
-    }
-
+    // --- РАСШИРЕННЫЙ ПОИСК ---
     if (searchQuery) {
         const q = searchQuery.trim();
+        // Мы используем PostgREST full search или комплексный OR
+        // Для поиска по вложенным таблицам (items) в Supabase используется синтаксис !inner
+        // Но проще сделать поиск по основным полям + JOIN-подобный фильтр
+        
         if (!isNaN(Number(q))) {
-             query = query.or(`id.eq.${q},client_phone.ilike.%${q}%`);
+             query = query.or(`id.eq.${q},client_phone.ilike.%${q}%,client_name.ilike.%${q}%,client_email.ilike.%${q}%`);
         } else {
-             query = query.or(`client_name.ilike.%${q}%`);
+             // Поиск по теме (комментарий), имени позиции, бренду, артикулу
+             // Т.к. это вложенные items, используем фильтр по вложенным данным
+             query = query.or(`client_name.ilike.%${q}%,client_email.ilike.%${q}%,order_items.name.ilike.%${q}%,order_items.brand.ilike.%${q}%,order_items.article.ilike.%${q}%,order_items.comment.ilike.%${q}%`);
         }
     }
 
@@ -278,24 +289,30 @@ export class SupabaseService {
         });
     }
     
-    const mappedData = data.map(order => ({
-        id: String(order.id),
-        type: RowType.ORDER,
-        clientName: order.client_name,
-        clientPhone: order.client_phone,
-        clientEmail: order.client_email,
-        status: order.status_admin === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
-        statusAdmin: order.status_admin,
-        statusClient: order.status_client,
-        statusSeller: order.status_supplier,
-        workflowStatus: order.status_client as WorkflowStatus,
-        createdAt: new Date(order.created_at).toLocaleString('ru-RU'),
-        statusUpdatedAt: order.status_updated_at ? new Date(order.status_updated_at).toLocaleString('ru-RU') : undefined,
-        location: order.location,
-        visibleToClient: order.visible_to_client ? 'Y' : 'N',
-        ownerId: order.owner_id,
-        deadline: order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : undefined,
-        buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
+    const mappedData = data.map(order => {
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        const orderDate = new Date(order.created_at);
+        const isHot = order.status_admin === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
+
+        return {
+            id: String(order.id),
+            type: RowType.ORDER,
+            clientName: order.client_name,
+            clientPhone: order.client_phone,
+            clientEmail: order.client_email,
+            status: order.status_admin === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
+            statusAdmin: isHot ? 'ГОРИТ' : order.status_admin,
+            statusClient: order.status_client,
+            statusSeller: order.status_supplier,
+            workflowStatus: order.status_client as WorkflowStatus,
+            createdAt: new Date(order.created_at).toLocaleString('ru-RU'),
+            statusUpdatedAt: order.status_updated_at ? new Date(order.status_updated_at).toLocaleString('ru-RU') : undefined,
+            location: order.location,
+            visibleToClient: order.visible_to_client ? 'Y' : 'N',
+            ownerId: order.owner_id,
+            deadline: order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : undefined,
+            buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: order.order_items?.map((i: any) => ({
                 id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url, adminPrice: i.admin_price
             })) || [],
@@ -307,11 +324,60 @@ export class SupabaseService {
                     deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0
                 })) || []
             })) || [],
-        isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
-    } as Order));
+            isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
+        };
+    } as any);
     
     const nextCursor = data.length === limit ? data[data.length - 1].id : undefined;
     return { data: mappedData, nextCursor };
+  }
+
+  static async getBuyerTabCounts(supplierName: string): Promise<{ new: number, hot: number, history: number }> {
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const isoDate = threeDaysAgo.toISOString();
+
+      // Заказы где я не участвую
+      const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', supplierName);
+      const excludedIds = myOff?.map(o => o.order_id) || [];
+
+      let baseQuery = supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status_admin', 'В обработке');
+      if (excludedIds.length > 0) baseQuery = baseQuery.not('id', 'in', `(${excludedIds.join(',')})`);
+
+      const [resNew, resHot, resHistory] = await Promise.all([
+          baseQuery.gte('created_at', isoDate),
+          baseQuery.lt('created_at', isoDate),
+          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', excludedIds.length > 0 ? excludedIds : [0])
+      ]);
+
+      return {
+          new: resNew.count || 0,
+          hot: resHot.count || 0,
+          history: resHistory.count || 0
+      };
+  }
+
+  static async getBuyerQuickBrands(supplierName: string): Promise<string[]> {
+      const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', supplierName);
+      const excludedIds = myOff?.map(o => o.order_id) || [];
+
+      // Берем все бренды из заказов "В обработке", где я еще не участвую
+      let query = supabase.from('order_items').select('brand, orders!inner(id, status_admin)');
+      query = query.eq('orders.status_admin', 'В обработке');
+      if (excludedIds.length > 0) query = query.not('orders.id', 'in', `(${excludedIds.join(',')})`);
+
+      const { data } = await query;
+      if (!data) return [];
+
+      const brandCounts: Record<string, number> = {};
+      data.forEach((i: any) => {
+          if (i.brand) brandCounts[i.brand] = (brandCounts[i.brand] || 0) + 1;
+      });
+
+      return Object.entries(brandCounts)
+          .sort((a, b) => b[1] - a[1]) // Сортировка по упоминаниям
+          .slice(0, 7) // ТОП-7
+          .map(entry => entry[0]);
   }
 
   static async getOrderDetails(orderId: string): Promise<{ items: OrderItem[], offers: Order[] }> {
