@@ -1,5 +1,11 @@
 # Version History
 
+## 1.14.3 - Исправление ошибок в интерфейсе Закупщика
+- **Fix:** Удален мертвый код (`showCopiedToast`, `copyToClipboard`) в `BuyerOrderDetails.tsx`, вызывавший падение приложения.
+
+## 1.14.2 - Восстановление методов SupabaseService
+- **Fix:** Полное восстановление методов `createOrder`, `subscribeToUserChats` и других в сервисном слое.
+
 ## 1.14.1 - Hotfixes и обновление AI
 - **Fixes:**
   - Восстановлены методы чата и подписок в `SupabaseService.ts` (критический фикс).

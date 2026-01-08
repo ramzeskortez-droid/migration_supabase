@@ -42,12 +42,6 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       setEditingItems(newItems);
   };
 
-  const copyToClipboard = (text: string) => {
-      navigator.clipboard.writeText(text);
-      setShowCopiedToast(true);
-      setTimeout(() => setShowCopiedToast(false), 2000);
-  };
-
   const formatPrice = (val?: number) => {
     if (!val) return '0';
     return new Intl.NumberFormat('ru-RU').format(val);
@@ -98,8 +92,6 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
 
   return (
     <div className="p-4 bg-white border-t border-slate-100 animate-in fade-in duration-200 relative">
-        {showCopiedToast && <div className="absolute top-4 right-4 z-50"><Toast message="VIN скопирован" duration={1500} onClose={() => setShowCopiedToast(false)}/></div>}
-        
         <DebugCopyModal 
             isOpen={copyModal.isOpen}
             title={copyModal.title}
