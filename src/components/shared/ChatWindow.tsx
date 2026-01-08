@@ -13,6 +13,8 @@ interface ChatWindowProps {
   itemName?: string;
   onNavigateToOrder?: (orderId: string) => void;
   onRead?: (orderId: string, supplierName: string) => void;
+  isArchived?: boolean; // Новый проп
+  onArchiveUpdate?: () => void; // Колбэк для мгновенного обновления списка
 }
 
 // -- Sub-components for Optimization --
@@ -46,21 +48,16 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
             )}
 
             {messages.map((msg) => {
-                // Определяем "свое" сообщение
                 let isMe = false;
                 if (currentUserRole === 'SUPPLIER') {
                     isMe = msg.sender_role === 'SUPPLIER';
                 } else {
-                    // ADMIN и OPERATOR видят сообщения с ролью ADMIN как свои
                     isMe = msg.sender_role === 'ADMIN';
                 }
 
-                // Логика отображения имени
                 let displayName = msg.sender_name;
                 if (msg.sender_role === 'ADMIN') {
-                    // Если имя просто "ADMIN", показываем "Менеджер" (старая логика или админ)
                     if (msg.sender_name === 'ADMIN') displayName = 'Менеджер';
-                    // Если имя начинается с "Оператор -", оставляем как есть
                 }
 
                 return (
@@ -85,8 +82,12 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
                             )}
 
                             {msg.item_name && (
-                                <div className="mb-1 text-[9px] font-bold bg-black/10 px-2 py-0.5 rounded inline-flex items-center gap-1">
-                                    <Package size={8}/> {msg.item_name}
+                                <div className="mb-1 flex flex-wrap gap-1">
+                                    {msg.item_name.split(',').map((item: string) => (
+                                        <div key={item} className="text-[9px] font-bold bg-black/10 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                                            <Package size={8}/> {item.trim()}
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                             <div className="leading-relaxed whitespace-pre-wrap">{msg.message}</div>
@@ -99,19 +100,29 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
     );
 });
 
-const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (msg: string, item?: string, file?: File) => void, loading: boolean, orderItems: string[], itemName?: string }) => {
+const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (msg: string, items?: string[], file?: File) => void, loading: boolean, orderItems: string[], itemName?: string }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [selectedItem, setSelectedItem] = useState<string | null>(itemName || null);
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set(itemName ? [itemName] : []));
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [showItemSelector, setShowItemSelector] = useState(false);
 
     const handleSendClick = () => {
         const val = inputRef.current?.value;
         if (!val?.trim() && !selectedFile) return;
-        onSend(val || '', selectedItem || undefined, selectedFile || undefined);
+        onSend(val || '', Array.from(selectedItems), selectedFile || undefined);
         if (inputRef.current) inputRef.current.value = '';
         setSelectedFile(null);
+        setSelectedItems(new Set());
+    };
+
+    const toggleSelectedItem = (item: string) => {
+        setSelectedItems(prev => {
+            const next = new Set(prev);
+            if (next.has(item)) next.delete(item);
+            else next.add(item);
+            return next;
+        });
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,16 +134,16 @@ const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (ms
     return (
         <div className="bg-white border-t border-slate-100 shrink-0">
             {/* Item & File Selection Bar */}
-            <div className="px-3 pt-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div className="px-3 pt-2 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                 <button 
                     onClick={() => setShowItemSelector(!showItemSelector)}
-                    className={`text-[9px] font-bold uppercase px-2 py-1 rounded-lg border transition-all flex items-center gap-1 shrink-0 ${selectedItem ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-200 hover:text-indigo-500'}`}
+                    className={`text-[9px] font-bold uppercase px-2 py-1 rounded-lg border transition-all flex items-center gap-1 shrink-0 ${selectedItems.size > 0 ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-200 hover:text-indigo-500'}`}
                 >
                     <Package size={10}/>
-                    {selectedItem ? `Позиция: ${selectedItem}` : 'Позиция'}
+                    {selectedItems.size > 0 ? `Позиций: ${selectedItems.size}` : 'Прикрепить позиции'}
                 </button>
-                {selectedItem && (
-                    <button onClick={() => setSelectedItem(null)} className="text-slate-300 hover:text-red-400 shrink-0">
+                {selectedItems.size > 0 && (
+                    <button onClick={() => setSelectedItems(new Set())} className="text-slate-300 hover:text-red-400 shrink-0">
                         <X size={12}/>
                     </button>
                 )}
@@ -159,12 +170,12 @@ const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (ms
             </div>
 
             {showItemSelector && (
-                <div className="px-3 py-2 flex flex-wrap gap-2 animate-in slide-in-from-bottom-2 fade-in">
+                <div className="px-3 py-2 flex flex-wrap gap-2 animate-in slide-in-from-bottom-2 fade-in max-h-32 overflow-y-auto bg-slate-50 border-t border-slate-100">
                     {orderItems.map(item => (
                         <button 
                             key={item}
-                            onClick={() => { setSelectedItem(item); setShowItemSelector(false); }}
-                            className={`text-[9px] px-2 py-1 rounded-md border ${selectedItem === item ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}
+                            onClick={() => toggleSelectedItem(item)}
+                            className={`text-[9px] px-2 py-1 rounded-md border transition-all ${selectedItems.has(item) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}
                         >
                             {item}
                         </button>
@@ -194,7 +205,7 @@ const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (ms
 // -- Main Component --
 
 const ChatWindowComponent: React.FC<ChatWindowProps> = ({
-  orderId, offerId, supplierName, currentUserRole, currentUserName, itemName, onNavigateToOrder, onRead
+  orderId, offerId, supplierName, currentUserRole, currentUserName, itemName, onNavigateToOrder, onRead, isArchived, onArchiveUpdate
 }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -220,20 +231,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       if (!orderId || !supplierName) return;
       try {
           const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, supplierName);
-          
-          setMessages(prev => {
-              const optimistic = prev.filter(m => typeof m.id === 'number' && m.id > 1000000000000);
-              
-              if (optimistic.length === 0) {
-                  if (prev.length !== data.length) return data;
-                  if (data.length > 0 && prev.length > 0) {
-                      if (data[data.length - 1].id !== prev[prev.length - 1].id) return data;
-                  }
-                  if (JSON.stringify(prev) !== JSON.stringify(data)) return data;
-                  return prev;
-              }
-              return [...data, ...optimistic];
-          });
+          setMessages(data);
       } catch (e) {
           console.error(e);
       }
@@ -243,19 +241,16 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       if (!messages.length) return;
 
       const hasUnread = messages.some(m => !m.is_read && m.sender_role !== currentUserRole);
-      // Для оператора unread - это если роль отправителя SUPPLIER
       const hasUnreadForOperator = currentUserRole === 'OPERATOR' && messages.some(m => !m.is_read && m.sender_role === 'SUPPLIER');
 
       if (hasUnread || hasUnreadForOperator) {
           const markRead = async () => {
               if (onRead) onRead(orderId, supplierName);
-
               if (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') {
                  await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
               } else {
                  await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
               }
-              
               setMessages(prev => prev.map(m => (!m.is_read && m.sender_role !== currentUserRole) ? { ...m, is_read: true } : m));
           };
           markRead();
@@ -264,47 +259,26 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
 
   useEffect(() => {
       fetchMessages();
-      
       const channel = SupabaseService.subscribeToChatMessages(orderId, (newMsg) => {
-          // Проверяем, относится ли сообщение к этому диалогу (поставщик)
           const isRelevant = newMsg.sender_name === supplierName || newMsg.recipient_name === supplierName;
-          
           if (isRelevant) {
               setMessages(prev => {
-                  // 1. Проверяем, есть ли уже сообщение с таким ID (защита от дублей)
                   if (prev.find(m => m.id === newMsg.id)) return prev;
-
-                  // 2. Проверяем, есть ли "оптимистичное" сообщение с таким же текстом
-                  // (от меня, недавнее, временный ID)
-                  const optimisticMatch = prev.find(m => 
-                      m.message === newMsg.message && 
-                      m.sender_name === newMsg.sender_name && 
-                      typeof m.id === 'number' && m.id > 1000000000000
-                  );
-
-                  if (optimisticMatch) {
-                      // Заменяем временное на реальное (без дублирования)
-                      return prev.map(m => m.id === optimisticMatch.id ? newMsg : m);
-                  }
-
-                  // 3. Если совпадений нет — просто добавляем
+                  const optimisticMatch = prev.find(m => m.message === newMsg.message && m.sender_name === newMsg.sender_name && typeof m.id === 'number' && m.id > 1000000000000);
+                  if (optimisticMatch) return prev.map(m => m.id === optimisticMatch.id ? newMsg : m);
                   return [...prev, newMsg];
               });
           }
       });
-
-      return () => {
-          SupabaseService.unsubscribeFromChat(channel);
-      };
+      return () => { SupabaseService.unsubscribeFromChat(channel); };
   }, [orderId, supplierName]);
 
   useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = useCallback(async (msgText: string, selectedItemName?: string, file?: File) => {
+  const handleSend = useCallback(async (msgText: string, selectedItemNames?: string[], file?: File) => {
       const tempId = Date.now();
-      
       let senderName = 'ADMIN';
       let dbRole: 'ADMIN' | 'SUPPLIER' = 'ADMIN';
 
@@ -312,14 +286,13 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           senderName = currentUserName ? `Оператор - ${currentUserName}` : 'Оператор';
           dbRole = 'ADMIN';
       } else if (currentUserRole === 'ADMIN') {
-          senderName = 'ADMIN'; // Преобразуется в Менеджер при рендере
+          senderName = 'ADMIN';
           dbRole = 'ADMIN';
       } else {
           senderName = supplierName;
           dbRole = 'SUPPLIER';
       }
 
-      // Optimistic message (without file URL initially)
       const optimisticMsg = {
           id: tempId,
           order_id: Number(orderId),
@@ -327,8 +300,8 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           sender_name: senderName,
           recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
           message: msgText,
-          item_name: selectedItemName,
-          file_url: file ? URL.createObjectURL(file) : undefined, // Preview
+          item_name: selectedItemNames?.join(', '), 
+          file_url: file ? URL.createObjectURL(file) : undefined,
           file_type: file ? (file.type.startsWith('image/') ? 'image' : 'file') : undefined,
           created_at: new Date().toISOString(),
           is_read: false
@@ -337,11 +310,9 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       setMessages(prev => [...prev, optimisticMsg]);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
-      setLoading(true);
       try {
           let fileUrl = '';
           let fileType = '';
-
           if (file) {
               fileUrl = await SupabaseService.uploadFile(file, 'chat');
               fileType = file.type.startsWith('image/') ? 'image' : 'file';
@@ -354,38 +325,32 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               sender_name: senderName,
               recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
               message: msgText,
-              item_name: selectedItemName,
+              item_name: selectedItemNames?.join(', '),
               file_url: fileUrl || undefined,
-              file_type: fileType || undefined
+              file_type: fileType || undefined,
+              is_archived: false // Automatically restore if was archived
           });
           
           setMessages(prev => {
-              // Если Realtime уже добавил это сообщение (по ID), то просто удаляем оптимистичное
-              if (prev.find(m => m.id === realMsg.id)) {
-                  return prev.filter(m => m.id !== tempId);
-              }
-              // Иначе обновляем оптимистичное на реальное
+              if (prev.find(m => m.id === realMsg.id)) return prev.filter(m => m.id !== tempId);
               return prev.map(m => m.id === tempId ? realMsg : m);
           });
           
+          if (isArchived && onArchiveUpdate) onArchiveUpdate();
+
       } catch (e: any) {
           console.error('Send error:', e);
-          alert('Ошибка отправки: ' + (e.message || JSON.stringify(e)));
           setMessages(prev => prev.filter(m => m.id !== tempId));
-      } finally {
-          setLoading(false);
       }
-  }, [orderId, offerId, supplierName, currentUserRole, currentUserName]);
+  }, [orderId, offerId, supplierName, currentUserRole, currentUserName, isArchived, onArchiveUpdate]);
 
   const confirmArchive = async () => {
       try {
           await SupabaseService.archiveChat(orderId, supplierName);
+          if (onArchiveUpdate) onArchiveUpdate();
           setToast({ message: (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? 'Чат отправлен в архив' : 'Спасибо! Чат закрыт.' });
           setShowArchiveConfirm(false);
-      } catch (e) {
-          console.error(e);
-          alert('Ошибка при архивации');
-      }
+      } catch (e) { console.error(e); }
   };
 
   return (
@@ -416,13 +381,15 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
                 </span>
             </div>
             <div className="flex items-center gap-2">
-                <button 
-                    onClick={() => setShowArchiveConfirm(true)}
-                    className="text-[9px] font-black uppercase text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors mr-2"
-                    title={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
-                >
-                    <Archive size={12}/> {(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
-                </button>
+                {!isArchived && (
+                    <button 
+                        onClick={() => setShowArchiveConfirm(true)}
+                        className="text-[9px] font-black uppercase text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors mr-2"
+                        title={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
+                    >
+                        <Archive size={12}/> {(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
+                    </button>
+                )}
                 {onNavigateToOrder && (
                     <button 
                         onClick={() => onNavigateToOrder(orderId)}

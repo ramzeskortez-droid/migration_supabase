@@ -132,9 +132,11 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             <div className="text-center">
                 <span className="block text-[7px] font-bold text-slate-400 uppercase mb-0.5">Фото</span>
                 {opPhoto ? (
-                    <a href={opPhoto} target="_blank" rel="noreferrer" className="text-[18px] hover:scale-110 transition-transform block">📷</a>
+                    <a href={opPhoto} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity block">
+                        <img src={opPhoto} alt="Заявка" className="w-10 h-8 object-cover rounded border border-slate-200 shadow-sm mx-auto" />
+                    </a>
                 ) : (
-                    <span className="text-slate-300">-</span>
+                    <span className="text-slate-300 text-[10px]">-</span>
                 )}
             </div>
         </div>

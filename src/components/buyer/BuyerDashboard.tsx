@@ -64,7 +64,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userId }) => {
   const gapSumPercent = calculatePercent(personal.kp_sum, leaders.sum_val);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 relative z-0">
       {/* Верхняя секция: Оборот и Лидеры */}
       <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
         

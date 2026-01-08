@@ -47,12 +47,20 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
     return new Intl.NumberFormat('ru-RU').format(val);
   };
 
-  const formatItemText = (item: any, idx: number) => {
-      return `${idx + 1}. Позиция: ${item.AdminName || item.name} | ${item.brand || '-'} | ${item.quantity} шт\n`;
+  const formatItemText = (item: any, idx?: number) => {
+      const parts = [
+          item.AdminName || item.name,
+          item.brand,
+          item.article,
+          `${item.quantity} ${item.uom || 'шт.'}`
+      ].filter(Boolean);
+      
+      const text = parts.join(' ');
+      return idx !== undefined ? `${idx + 1}. ${text}\n` : text;
   };
 
-  const handleCopyItem = (item: any, idx: number) => {
-      const content = formatItemText(item, idx);
+  const handleCopyItem = (item: any) => {
+      const content = formatItemText(item);
       setCopyModal({ isOpen: true, title: 'Копирование позиции', content });
   };
 

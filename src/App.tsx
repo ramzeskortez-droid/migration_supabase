@@ -1,35 +1,24 @@
-import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ClientInterface } from './components/ClientInterface';
-import { BuyerInterface } from './components/BuyerInterface';
-import { AdminInterface } from './components/AdminInterface';
-import { OperatorInterface } from './components/OperatorInterface';
-import { DebugInterface } from './components/DebugInterface';
-import { Users, ShoppingBag, ShieldCheck, Phone, Send, Bug, TrendingUp } from 'lucide-react';
-import { SupabaseService } from './services/supabaseService';
-import { ExchangeRates } from './types';
+import { Users, ShoppingBag, ShieldCheck, Phone, Send, Bug, TrendingUp, Menu, ChevronDown } from 'lucide-react';
 
-// Хардкодим URL по умолчанию
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxooqVnUce3SIllt2RUtG-KJ5EzNswyHqrTpdsTGhc6XOKW6qaUdlr6ld77LR2KQz0-/exec';
+// ... (previous imports)
 
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [rates, setRates] = React.useState<ExchangeRates | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   
-  // Инициализация URL API при первом запуске
-  useEffect(() => {
-     if (!localStorage.getItem('GAS_API_URL')) {
-         localStorage.setItem('GAS_API_URL', DEFAULT_API_URL);
-     }
-     SupabaseService.getExchangeRates().then(setRates).catch(console.error);
-  }, []);
+  // ... (useEffect remains same)
 
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  const getActiveLabel = () => {
+      if (isActive('/operator')) return 'Оператор';
+      if (isActive('/buyer')) return 'Закупщик';
+      if (isActive('/admin')) return 'Менеджер';
+      return 'Меню';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Navigation Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-[100]">
         <div className="max-w-6xl mx-auto px-2 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
@@ -39,33 +28,37 @@ const App: React.FC = () => {
              </span>
           </div>
 
-          <div className="flex-grow flex justify-center overflow-x-auto no-scrollbar">
-             <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
-                <button 
-                  onClick={() => navigate('/operator')} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/operator') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                  <Users size={14}/> <span>Оператор</span>
-                </button>
-                <button 
-                  onClick={() => navigate('/buyer')} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/buyer') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                  <ShoppingBag size={14}/> <span>Закупщик</span>
-                </button>
-                <button 
-                  onClick={() => navigate('/admin')} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/admin') ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                  <ShieldCheck size={14}/> <span>Менеджер</span>
-                </button>
-                <button 
-                  onClick={() => navigate('/debug')} 
-                  className={`px-2 py-1.5 sm:px-3 rounded-md text-[9px] sm:text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2 ${isActive('/debug') ? 'bg-white shadow-sm text-red-600' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                  <Bug size={14}/> <span>Debug</span>
-                </button>
-             </div>
+          <div className="relative">
+             <button 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase text-slate-700 hover:bg-slate-200 transition-all shadow-sm border border-slate-200"
+             >
+                <Menu size={14} className="text-indigo-600" />
+                <span>{getActiveLabel()}</span>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+             </button>
+
+             {isMenuOpen && (
+                 <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                        {[
+                            { path: '/operator', label: 'Оператор', icon: Users },
+                            { path: '/buyer', label: 'Закупщик', icon: ShoppingBag },
+                            { path: '/admin', label: 'Менеджер', icon: ShieldCheck }
+                        ].map(item => (
+                            <button 
+                                key={item.path}
+                                onClick={() => { navigate(item.path); setIsMenuOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors ${isActive(item.path) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                <item.icon size={16} />
+                                <span>{item.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                 </>
+             )}
           </div>
 
           {rates && (

@@ -14,6 +14,7 @@ import { SupabaseService } from '../services/supabaseService';
 import { Toast } from './shared/Toast';
 import { ChatNotification } from './shared/ChatNotification';
 import { AppUser } from '../types';
+import { Search } from 'lucide-react';
 
 export const OperatorInterface: React.FC = () => {
   // Auth State
@@ -30,6 +31,7 @@ export const OperatorInterface: React.FC = () => {
     region: '',
     city: '',
     email: '',
+    clientEmail: '',
     emailSubject: '',
     clientName: '',
     clientPhone: ''
@@ -49,6 +51,7 @@ export const OperatorInterface: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
@@ -245,7 +248,7 @@ export const OperatorInterface: React.FC = () => {
         // Reset form
         setParts([{ id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
         setOrderInfo({
-            deadline: '', region: '', city: '', email: '', emailSubject: '', clientName: '', clientPhone: ''
+            deadline: '', region: '', city: '', email: '', clientEmail: '', emailSubject: '', clientName: '', clientPhone: ''
         });
 
     } catch (e: any) {
@@ -258,22 +261,13 @@ export const OperatorInterface: React.FC = () => {
   };
 
   const handleNavigateToOrder = (orderId: string) => {
-      // Logic to find and scroll to order in archive if needed
-      // For now just logging
-      addLog(`Переход к чату заказа #${orderId}`);
+      setSearchQuery(orderId);
+      addLog(`Переход к заказу #${orderId}`);
   };
 
   const handleImportEmail = (text: string) => {
-      // Ищем текстовое поле ассистента через DOM или через стейт (если бы он был поднят)
-      // В данном случае, самый простой способ для интеграции — передать текст в AiAssistant
-      // Мы можем просто добавить лог и уведомление, а текст передать через пропс, если AiAssistant поддерживает
-      // Но у нас AiAssistant — отдельный компонент со своим внутренним стейтом.
-      // Чтобы не переписывать ассистента, мы можем использовать событие или прокинуть стейт.
-      // Пока просто выведем в лог и тост, и я обновлю AiAssistant, чтобы он умел принимать внешний текст.
       setToast({ message: 'Текст письма передан в ассистент', type: 'info' });
       addLog('Импорт текста из почты...');
-      
-      // Чтобы это заработало мгновенно, я создам кастомное событие
       const event = new CustomEvent('importEmailText', { detail: text });
       window.dispatchEvent(event);
   };
@@ -353,7 +347,18 @@ export const OperatorInterface: React.FC = () => {
             </div>
 
             {/* Orders List Section */}
-            <OperatorOrdersList refreshTrigger={refreshTrigger} ownerId={currentUser?.id} />
+            <div className="space-y-4">
+                <div className="relative group flex items-center">
+                    <Search className="absolute left-6 text-slate-400" size={20}/>
+                    <input 
+                        value={searchQuery} 
+                        onChange={e => setSearchQuery(e.target.value)} 
+                        placeholder="Поиск по ID, клиенту или телефону..." 
+                        className="w-full pl-14 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-300 shadow-sm" 
+                    />
+                </div>
+                <OperatorOrdersList refreshTrigger={refreshTrigger} ownerId={currentUser?.id} searchQuery={searchQuery} />
+            </div>
 
           </div>
         </main>

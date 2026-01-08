@@ -244,6 +244,8 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                                 currentUserName={currentUserName}
                                 onNavigateToOrder={handleNavigate}
                                 onRead={handleRead}
+                                isArchived={activeTab === 'archive'}
+                                onArchiveUpdate={fetchThreads}
                             />
                         </div>
                     </div>

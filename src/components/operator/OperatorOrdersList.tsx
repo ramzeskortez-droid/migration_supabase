@@ -8,12 +8,13 @@ import { ArrowUpDown, ArrowUp, ArrowDown, Package, Loader2 } from 'lucide-react'
 interface OperatorOrdersListProps {
   refreshTrigger: number;
   ownerId?: string;
+  searchQuery?: string; // Новый проп
 }
 
 type TabType = 'processing' | 'processed' | 'completed' | 'rejected';
 type SortField = 'id' | 'client_name' | 'created_at' | 'status_admin';
 
-export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger, ownerId }) => {
+export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger, ownerId, searchQuery = '' }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -47,12 +48,12 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
           50, // Batch size
           sortField, 
           sortDir, 
-          '', 
+          searchQuery, // Используем searchQuery из пропсов
           statusFilter,
           undefined, // phone
           undefined, // brand
           undefined, // offers
-          ownerId // <-- ИЗОЛЯЦИЯ: передаем ID
+          ownerId 
       );
 
       if (isLoadMore) {
@@ -70,7 +71,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
 
   useEffect(() => {
     loadOrders();
-  }, [refreshTrigger, activeTab, sortField, sortDir, ownerId]);
+  }, [refreshTrigger, activeTab, sortField, sortDir, ownerId, searchQuery]);
 
   const loadMore = useCallback(() => {
       if (!loading && hasMore) {
