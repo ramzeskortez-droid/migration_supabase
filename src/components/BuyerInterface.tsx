@@ -25,21 +25,59 @@ export const BuyerInterface: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'new' | 'history' | 'hot'>('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  
   const [activeBrands, setActiveBrands] = useState<string[]>([]);
-  
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [scrollToId, setScrollToId] = useState<string | null>(null);
   
-  const [availableBrands, setAvailableBrands] = useState<string[]>([]); // Все бренды
-  const [historyBrands, setHistoryBrands] = useState<string[]>([]); // Бренды закупщика
-  const [quickBrands, setQuickBrands] = useState<string[]>([]); // Динамические бренды (ТОП-7)
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]); 
+  const [historyBrands, setHistoryBrands] = useState<string[]>([]); 
+  const [quickBrands, setQuickBrands] = useState<string[]>([]); 
   const [tabCounts, setTabCounts] = useState({ new: 0, hot: 0, history: 0 });
 
-  // ... (editingDrafts and Realtime Notifications same)
+  const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
+
+  // --- Realtime Notifications ---
+  useEffect(() => {
+      if (!buyerAuth) return;
+      const channel = SupabaseService.subscribeToUserChats((payload) => {
+          const msg = payload.new;
+          if (msg.recipient_name === buyerAuth.name) {
+              setUnreadChatCount(prev => prev + 1);
+              if (!isGlobalChatOpen) {
+                  setChatNotifications(prev => [...prev, msg].slice(-3));
+              }
+          }
+      }, `buyer-notifications-${buyerAuth.id}`);
+      return () => { SupabaseService.unsubscribeFromChat(channel); };
+  }, [buyerAuth, isGlobalChatOpen]);
+
+  // --- Handlers ---
+  const handleLogin = (user: AppUser) => {
+      setBuyerAuth(user);
+      localStorage.setItem('buyer_auth_token', JSON.stringify(user));
+      setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+      setBuyerAuth(null);
+      setExpandedId(null);
+      setEditingItemsMap({});
+      localStorage.removeItem('buyer_auth_token');
+      queryClient.removeQueries();
+      setShowAuthModal(true);
+  };
+
+  // ВОССТАНОВЛЕННАЯ ФУНКЦИЯ
+  const getMyOffer = useCallback((order: Order) => {
+      if (!buyerAuth?.name) return null;
+      return order.offers?.find(off => 
+        String(off.clientName || '').trim().toUpperCase() === buyerAuth.name.trim().toUpperCase()
+      ) || null;
+  }, [buyerAuth]);
 
   // --- React Query Infinite Scroll ---
   const {
@@ -51,7 +89,7 @@ export const BuyerInterface: React.FC = () => {
       refetch
   } = useOrdersInfinite({
       searchQuery,
-      buyerTab: activeTab, // Используем серверную логику табов
+      buyerTab: activeTab,
       brandFilter: activeBrands.length > 0 ? activeBrands : null,
       onlyWithMyOffersName: buyerAuth?.name,
       excludeOffersFrom: buyerAuth?.name,
@@ -113,18 +151,11 @@ export const BuyerInterface: React.FC = () => {
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
-          await SupabaseService.createOffer(
-              orderId, 
-              buyerAuth.name, 
-              items, 
-              buyerAuth.phone, 
-              buyerAuth.id
-          );
+          await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id);
           setExpandedId(null);
           setSuccessToast({ message: `Предложение к заказу № ${orderId} отправлено!`, id: Date.now().toString() });
           refetch();
           fetchCounts();
-          // Обновляем списки брендов
           SupabaseService.getSupplierUsedBrands(buyerAuth.name).then(setHistoryBrands);
           SupabaseService.getBuyerQuickBrands(buyerAuth.name).then(setQuickBrands);
       } catch (e: any) {
@@ -145,33 +176,26 @@ export const BuyerInterface: React.FC = () => {
       setUnreadChatCount(prev => Math.max(0, prev - count));
   }, []);
 
-  const [scrollToId, setScrollToId] = useState<string | null>(null);
-
   const handleNavigateToOrder = async (orderId: string) => {
       if (!buyerAuth?.name) return;
-      
       try {
           const { status_admin, supplier_names } = await SupabaseService.getOrderStatus(orderId);
-          
-          // Определяем нужный таб
           const hasMyOffer = supplier_names.some(name => name.trim().toUpperCase() === buyerAuth.name.trim().toUpperCase());
           
-          if (hasMyOffer) {
-              setActiveTab('history');
-          } else if (status_admin === 'В обработке') {
-              setActiveTab('new');
+          if (hasMyOffer) setActiveTab('history');
+          else if (status_admin === 'В обработке') {
+              const threeDaysAgo = new Date();
+              threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+              const order = orders.find(o => o.id === orderId); // Пытаемся найти в текущих если загружено
+              // Здесь логика даты на сервере уже есть, поэтому просто переключаем таб
+              setActiveTab(status_admin === 'В обработке' ? 'new' : 'history');
           }
           
           setSearchQuery(orderId);
           setExpandedId(orderId);
           setScrollToId(orderId);
-          
-          // Сбрасываем флаг скролла через небольшую задержку, чтобы Virtuoso успел отработать
           setTimeout(() => setScrollToId(null), 1000);
-          
       } catch (e) {
-          console.error('Navigation error:', e);
-          // Fallback: просто поиск
           setSearchQuery(orderId);
           setExpandedId(orderId);
       }
@@ -182,8 +206,13 @@ export const BuyerInterface: React.FC = () => {
     if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
     const isRefusal = myOffer.items.every((item: any) => (item.offeredQuantity || 0) === 0);
     if (isRefusal) return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
+    
+    // Статус ГОРИТ вычисляется на сервере и приходит в statusAdmin
+    if (order.statusAdmin === 'ГОРИТ') return { label: 'ГОРИТ', color: 'bg-orange-600 text-white border-orange-700 animate-pulse', icon: null };
+
     const isBiddingActive = order.statusAdmin === 'В обработке' || order.statusAdmin === 'ОТКРЫТ';
     if (isBiddingActive && !order.isProcessed) return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: null };
+    
     const winningItems = myOffer.items.filter((i: any) => i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
     if (winningItems.length === myOffer.items.length) return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: null };
     else if (winningItems.length === 0) return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: null };
@@ -218,7 +247,6 @@ export const BuyerInterface: React.FC = () => {
                     unreadCount={unreadChatCount}
                 />
                 
-                {/* Новый Дашборд KPI */}
                 <BuyerDashboard userId={buyerAuth.id} />
 
                 <BuyerToolbar 
@@ -226,7 +254,7 @@ export const BuyerInterface: React.FC = () => {
                     searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                     activeBrands={activeBrands} setActiveBrands={setActiveBrands}
                     availableBrands={availableBrands}
-                    historyBrands={quickBrands} // Используем динамические бренды
+                    historyBrands={quickBrands} 
                     counts={tabCounts} 
                     onRefresh={() => {
                         refetch();

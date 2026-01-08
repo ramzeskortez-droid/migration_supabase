@@ -184,15 +184,32 @@ export class SupabaseService {
     ownerToken?: string, 
     buyerToken?: string, 
     excludeOffersFrom?: string,
-    buyerTab?: 'new' | 'hot' | 'history' // Добавлен параметр таба
+    buyerTab?: 'new' | 'hot' | 'history'
   ): Promise<{ data: Order[], nextCursor?: number }> {
     
+    let matchingIds: any[] = [];
+    const q = searchQuery.trim();
+
+    // 1. ПРЕДВАРИТЕЛЬНЫЙ ПОИСК ПО ПОЗИЦИЯМ (если есть текстовый запрос)
+    if (q && isNaN(Number(q))) {
+        const { data: items } = await supabase
+            .from('order_items')
+            .select('order_id')
+            .or(`name.ilike.%${q}%,brand.ilike.%${q}%,article.ilike.%${q}%,comment.ilike.%${q}%`);
+        
+        if (items && items.length > 0) {
+            matchingIds = Array.from(new Set(items.map(i => i.order_id)));
+        }
+    }
+
+    // 2. СБОР ИСКЛЮЧЕНИЙ ДЛЯ ЗАКУПЩИКА
     let excludedIds: any[] = [];
     if (excludeOffersFrom) {
         const { data: off } = await supabase.from('offers').select('order_id').eq('supplier_name', excludeOffersFrom);
         excludedIds = off?.map(o => o.order_id) || [];
     }
 
+    // 3. ОСНОВНОЙ ЗАПРОС
     let query = supabase.from('orders').select(`
         id, created_at, client_name, client_phone, client_email,
         status_admin, status_client, status_supplier,
@@ -203,30 +220,24 @@ export class SupabaseService {
         offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days))
     `);
 
-    // --- Логика табов закупщика на сервере ---
+    // Фильтрация по табам закупщика
     if (buyerTab === 'new' || buyerTab === 'hot') {
         query = query.eq('status_admin', 'В обработке');
-        if (excludeOffersFrom) {
-            // Исключаем те, где я уже ответил
-            if (excludedIds.length > 0) query = query.not('id', 'in', `(${excludedIds.join(',')})`);
-        }
+        if (excludedIds.length > 0) query = query.not('id', 'in', `(${excludedIds.join(',')})`);
         
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         const isoDate = threeDaysAgo.toISOString();
 
-        if (buyerTab === 'new') {
-            query = query.gte('created_at', isoDate);
-        } else {
-            query = query.lt('created_at', isoDate);
-        }
+        if (buyerTab === 'new') query = query.gte('created_at', isoDate);
+        else query = query.lt('created_at', isoDate);
     } else if (buyerTab === 'history' && onlyWithMyOffersName) {
         const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
         const ids = myOff?.map(o => o.order_id) || [];
         query = query.in('id', ids.length > 0 ? ids : [0]);
     }
 
-    // --- Изоляция и фильтры ---
+    // Изоляция для оператора
     if (ownerToken) {
         if (ownerToken.length > 20) {
              query = query.eq('owner_id', ownerToken);
@@ -245,7 +256,7 @@ export class SupabaseService {
         query = query.in('id', ids.length > 0 ? ids : [0]);
     }
 
-    if (statusFilter && !buyerTab) { // Не применяем если есть buyerTab
+    if (statusFilter && !buyerTab) {
         if (statusFilter.includes(',')) {
             query = query.in('status_admin', statusFilter.split(',').map(s => s.trim()));
         } else {
@@ -253,19 +264,18 @@ export class SupabaseService {
         }
     }
 
-    // --- РАСШИРЕННЫЙ ПОИСК ---
-    if (searchQuery) {
-        const q = searchQuery.trim();
-        // Мы используем PostgREST full search или комплексный OR
-        // Для поиска по вложенным таблицам (items) в Supabase используется синтаксис !inner
-        // Но проще сделать поиск по основным полям + JOIN-подобный фильтр
-        
+    // ЛОГИКА ПОИСКА (ОБЪЕДИНЕНИЕ СmatchingIds)
+    if (q) {
         if (!isNaN(Number(q))) {
-             query = query.or(`id.eq.${q},client_phone.ilike.%${q}%,client_name.ilike.%${q}%,client_email.ilike.%${q}%`);
+             // Если число - ищем строго по ID или телефону
+             query = query.or(`id.eq.${q},client_phone.ilike.%${q}%`);
         } else {
-             // Поиск по теме (комментарий), имени позиции, бренду, артикулу
-             // Т.к. это вложенные items, используем фильтр по вложенным данным
-             query = query.or(`client_name.ilike.%${q}%,client_email.ilike.%${q}%,order_items.name.ilike.%${q}%,order_items.brand.ilike.%${q}%,order_items.article.ilike.%${q}%,order_items.comment.ilike.%${q}%`);
+             // Если текст - ищем по полям заказа ИЛИ по найденным ID из позиций
+             let orFilter = `client_name.ilike.%${q}%,client_email.ilike.%${q}%`;
+             if (matchingIds.length > 0) {
+                 orFilter += `,id.in.(${matchingIds.join(',')})`;
+             }
+             query = query.or(orFilter);
         }
     }
 
@@ -337,17 +347,26 @@ export class SupabaseService {
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       const isoDate = threeDaysAgo.toISOString();
 
-      // Заказы где я не участвую
       const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', supplierName);
-      const excludedIds = myOff?.map(o => o.order_id) || [];
+      const myOfferIds = myOff?.map(o => o.order_id) || [];
 
-      let baseQuery = supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status_admin', 'В обработке');
-      if (excludedIds.length > 0) baseQuery = baseQuery.not('id', 'in', `(${excludedIds.join(',')})`);
-
+      // Запросы для счетчиков
       const [resNew, resHot, resHistory] = await Promise.all([
-          baseQuery.gte('created_at', isoDate),
-          baseQuery.lt('created_at', isoDate),
-          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', excludedIds.length > 0 ? excludedIds : [0])
+          // Новые: В обработке, нет моего оффера, < 3 дней
+          supabase.from('orders').select('id', { count: 'exact', head: true })
+            .eq('status_admin', 'В обработке')
+            .not('id', 'in', `(${myOfferIds.length > 0 ? myOfferIds.join(',') : 0})`)
+            .gte('created_at', isoDate),
+          
+          // Горящие: В обработке, нет моего оффера, > 3 дней
+          supabase.from('orders').select('id', { count: 'exact', head: true })
+            .eq('status_admin', 'В обработке')
+            .not('id', 'in', `(${myOfferIds.length > 0 ? myOfferIds.join(',') : 0})`)
+            .lt('created_at', isoDate),
+
+          // Отправленные: Мой оффер есть
+          supabase.from('orders').select('id', { count: 'exact', head: true })
+            .in('id', myOfferIds.length > 0 ? myOfferIds : [0])
       ]);
 
       return {
