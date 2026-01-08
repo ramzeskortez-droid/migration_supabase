@@ -528,6 +528,37 @@ export class SupabaseService {
       const { error } = await supabase.from('brands').delete().eq('id', id);
       if (error) throw error;
   }
+
+  // --- MISSING METHOD RESTORED ---
+  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string): Promise<string> {
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        client_name: clientName, client_phone: clientPhone,
+        location: 'РФ',
+        owner_id: ownerId, 
+        deadline: deadline || null
+      })
+      .select().single();
+
+    if (orderError) throw orderError;
+
+    const itemsToInsert = items.map(item => ({
+      order_id: orderData.id, 
+      name: item.name, 
+      quantity: item.quantity || 1,
+      comment: item.comment, 
+      category: item.category,
+      photo_url: item.photoUrl || null,
+      brand: item.brand || null,
+      article: item.article || null,
+      uom: item.uom || 'шт'
+    }));
+
+    const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
+    if (itemsError) throw itemsError;
+    return String(orderData.id);
+  }
   
   static async seedOrders(count: number, onProgress: (created: number) => void, ownerToken: string = 'op1'): Promise<void> {
     const { data: u } = await supabase.from('app_users').select('id').eq('token', ownerToken).maybeSingle();
