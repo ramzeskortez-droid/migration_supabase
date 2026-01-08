@@ -234,7 +234,8 @@ export const OperatorInterface: React.FC = () => {
             orderInfo.clientPhone,
             currentUser.id, 
             orderInfo.deadline,
-            orderInfo.clientEmail // Pass clientEmail
+            orderInfo.clientEmail, // Pass clientEmail
+            orderInfo.city // Pass address/city as location
         );
 
         setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });

@@ -367,12 +367,12 @@ export class SupabaseService {
     return data;
   }
 
-  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string, clientEmail?: string): Promise<string> {
+  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string, clientEmail?: string, location?: string): Promise<string> {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         client_name: clientName, client_phone: clientPhone, client_email: clientEmail,
-        location: 'РФ', owner_id: ownerId, deadline: deadline || null
+        location: location || 'РФ', owner_id: ownerId, deadline: deadline || null
       })
       .select().single();
 

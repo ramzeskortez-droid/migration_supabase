@@ -38,8 +38,8 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   const getWinnersForItem = (item: any) => {
       const winners: any[] = [];
-      // Оператор видит варианты ТОЛЬКО если менеджер утвердил КП
-      if (order.offers && order.statusAdmin === 'КП готово') {
+      // Оператор видит варианты ТОЛЬКО если менеджер утвердил КП (готово или уже отправлено)
+      if (order.offers && (order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено')) {
           order.offers.forEach((off: any) => {
               if (!off.items) return;
               const matching = off.items.find((i: any) => 
@@ -197,12 +197,12 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                         <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                                             <div className="flex items-center gap-2">
                                                 {winners.length > 0 && (
-                                                    <button onClick={() => toggleItem(item.name)} className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
+                                                    <button onClick={(e) => { e.stopPropagation(); toggleItem(item.name); }} className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
                                                         {isItemExpanded ? <ChevronDown size={14} className="text-gray-600"/> : <ChevronRight size={14} className="text-gray-600"/>}
                                                     </button>
                                                 )}
                                                 <div className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</div>
-                                                {order.statusAdmin === 'КП готово' && (
+                                                {(order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено') && (
                                                     <button 
                                                         onClick={(e) => handleCopyItem(e, item, idx)}
                                                         className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm border border-indigo-100 group/copy ml-1"
@@ -220,9 +220,9 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                                             <div className="text-gray-700 text-center font-black text-xs">{item.quantity}</div>
                                             <div className="text-gray-600 text-center text-[10px] font-bold uppercase">{item.uom || 'шт'}</div>
                                             <div className="flex justify-center">
-                                                {item.photoUrl ? (
-                                                    <a href={item.photoUrl} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity">
-                                                        <img src={item.photoUrl} alt="Заявка" className="w-10 h-8 object-cover rounded border border-gray-300 shadow-sm" />
+                                                {item.opPhotoUrl ? (
+                                                    <a href={item.opPhotoUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:opacity-80 transition-opacity">
+                                                        <img src={item.opPhotoUrl} alt="Заявка" className="w-10 h-8 object-cover rounded border border-gray-300 shadow-sm" />
                                                     </a>
                                                 ) : ( <span className="text-gray-300 text-[10px]">-</span> )}
                                             </div>
@@ -280,7 +280,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-                {order.statusAdmin === 'КП готово' && (
+                {(order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено') && (
                     <button 
                         onClick={handleCopyAll}
                         className="px-6 py-3 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all flex items-center gap-2"

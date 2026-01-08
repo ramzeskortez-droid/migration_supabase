@@ -22,6 +22,7 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [regSuccess, setRegSuccess] = useState(false); // Флаг успешной регистрации
 
   const handleDemoLogin = (demoToken: string) => {
       setToken(demoToken);
@@ -44,7 +45,7 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
         setError('Неверный токен доступа');
       }
     } catch (err: any) {
-      setError('Ошибка входа: ' + err.message);
+      setError(err.message); // Используем сообщение из сервиса (там уже есть "на проверке")
     } finally {
       setLoading(false);
     }
@@ -66,8 +67,8 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
       
       setLoading(true);
       try {
-          const user = await SupabaseService.registerUser(newName, newToken, 'operator');
-          onLogin(user); // Автоматический вход после регистрации
+          await SupabaseService.registerUser(newName, newToken, 'operator');
+          setRegSuccess(true); // Показываем сообщение об ожидании
       } catch (err: any) {
           setError('Ошибка регистрации: ' + (err.message.includes('unique constraint') ? 'Такой токен уже занят' : err.message));
       } finally {
@@ -76,6 +77,24 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
   };
 
   const renderContent = () => {
+      if (regSuccess) {
+          return (
+              <div className="text-center space-y-4 animate-in fade-in duration-500">
+                  <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-500 ring-4 ring-amber-50">
+                      <ShieldCheck size={32} />
+                  </div>
+                  <h3 className="font-black text-slate-800 uppercase tracking-tight">Заявка отправлена</h3>
+                  <p className="text-sm text-slate-500 font-bold leading-relaxed">Ваш аккаунт создан и ожидает проверки менеджером. <br/> Пожалуйста, попробуйте войти позже.</p>
+                  <button 
+                    onClick={() => { setMode('login'); setRegSuccess(false); setError(null); }}
+                    className="w-full bg-slate-900 text-white p-3.5 rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
+                  >
+                    Вернуться ко входу
+                  </button>
+              </div>
+          );
+      }
+
       if (mode === 'login') {
           return (
             <>
@@ -203,7 +222,7 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
                         disabled={loading || !newName || !newToken}
                         className="bg-indigo-600 text-white p-3.5 rounded-xl hover:bg-indigo-700 font-bold mt-2 flex items-center justify-center gap-2"
                   >
-                        {loading ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : <span>Зарегистрировать и Войти</span>}
+                        {loading ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : <span>Подать заявку</span>}
                   </button>
 
                   <button 
