@@ -193,13 +193,16 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
                             return (
                                 <div key={idx} className="border-b border-gray-100 last:border-b-0">
-                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors group/row">
+                                    <div 
+                                        onClick={() => winners.length > 0 && toggleItem(item.name)}
+                                        className={`bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors group/row ${winners.length > 0 ? 'cursor-pointer' : ''}`}
+                                    >
                                         <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                                             <div className="flex items-center gap-2">
                                                 {winners.length > 0 && (
-                                                    <button onClick={(e) => { e.stopPropagation(); toggleItem(item.name); }} className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
+                                                    <div className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
                                                         {isItemExpanded ? <ChevronDown size={14} className="text-gray-600"/> : <ChevronRight size={14} className="text-gray-600"/>}
-                                                    </button>
+                                                    </div>
                                                 )}
                                                 <div className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</div>
                                                 {(order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено') && (
