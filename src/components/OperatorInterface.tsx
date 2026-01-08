@@ -288,6 +288,58 @@ export const OperatorInterface: React.FC = () => {
       window.dispatchEvent(event);
   };
 
+  const handleQuickFill = () => {
+      const names = ['Иван', 'Петр', 'Алексей', 'Сергей', 'Максим'];
+      const cities = ['Москва', 'СПб', 'Екб', 'Казань'];
+      const subjects = ['Запчасти на ТО', 'Срочный заказ', 'Детали подвески', 'Расходники'];
+      
+      const randomName = names[Math.floor(Math.random() * names.length)];
+      const randomCity = cities[Math.floor(Math.random() * cities.length)];
+      const randomSubject = subjects[Math.floor(Math.random() * subjects.length)];
+      const randomPhone = `+7 (9${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}) ${Math.floor(100 + Math.random() * 900)}-${Math.floor(10 + Math.random() * 90)}-${Math.floor(10 + Math.random() * 90)}`;
+      
+      setOrderInfo({
+          deadline: new Date().toISOString().split('T')[0],
+          region: 'РФ',
+          city: randomCity,
+          email: '',
+          clientEmail: `client${Math.floor(Math.random() * 1000)}@mail.ru`,
+          emailSubject: randomSubject,
+          clientName: randomName,
+          clientPhone: randomPhone
+      });
+
+      // Add random parts
+      const partsPool = [
+          { name: 'Фильтр масляный', brand: 'Toyota' },
+          { name: 'Колодки передние', brand: 'Brembo' },
+          { name: 'Свеча зажигания', brand: 'NGK' },
+          { name: 'Амортизатор', brand: 'KYB' }
+      ];
+      
+      const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 items
+      const newParts: Part[] = [];
+      
+      for(let i=0; i<count; i++) {
+          const p = partsPool[Math.floor(Math.random() * partsPool.length)];
+          newParts.push({
+              id: Date.now() + i,
+              name: p.name,
+              brand: p.brand,
+              article: '',
+              uom: 'шт',
+              quantity: Math.floor(Math.random() * 4) + 1
+          });
+      }
+      
+      setParts(newParts);
+      // Force validation check logic if needed, but useEffect in PartsList handles it usually? 
+      // Actually PartsList validates on render/change. We just set state.
+      // But we need to trigger validation state update.
+      // Since PartsList component is controlled, it should update.
+      setToast({ message: 'Данные заполнены', type: 'success' });
+  };
+
   if (isAuthChecking) {
       return <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-black uppercase text-xs tracking-widest">Загрузка профиля...</div>;
   }
@@ -326,7 +378,7 @@ export const OperatorInterface: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
-                <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} />
+                <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} onQuickFill={handleQuickFill} />
                 <PartsList 
                     parts={parts} 
                     setParts={setParts} 

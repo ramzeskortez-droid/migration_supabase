@@ -1,12 +1,14 @@
 import React from 'react';
 import { OrderInfo } from './types';
+import { Zap } from 'lucide-react';
 
 interface OrderInfoFormProps {
   orderInfo: OrderInfo;
   setOrderInfo: (info: OrderInfo) => void;
+  onQuickFill?: () => void;
 }
 
-export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrderInfo }) => {
+export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrderInfo, onQuickFill }) => {
   const handleChange = (field: keyof OrderInfo, value: string) => {
     // Валидация
     if (field === 'clientName' && value.length > 20) return;
@@ -22,9 +24,22 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
 
   return (
     <section>
-      <div className="flex items-center gap-2 mb-4">
-        <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-        <h2 className="font-bold text-slate-800 tracking-tight uppercase text-xs">Основная информация по заявке</h2>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+            <h2 className="font-bold text-slate-800 tracking-tight uppercase text-xs">Основная информация по заявке</h2>
+        </div>
+        
+        {onQuickFill && (
+            <button 
+                onClick={onQuickFill}
+                className="flex items-center gap-1 text-[10px] font-black uppercase text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100"
+                title="Автозаполнение тестовыми данными"
+            >
+                <Zap size={12} className="fill-indigo-500" />
+                Быстрый тест
+            </button>
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         
