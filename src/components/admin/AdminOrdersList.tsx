@@ -34,7 +34,7 @@ const AdminOrderRow = memo(({
     handleStatusChange, handleNextStep, setAdminModal,
     startEditing, saveEditing, handleFormCP, isSubmitting,
     editForm, setEditForm, handleItemChange, handleLocalUpdateRank,
-    openRegistry, toggleRegistry, exchangeRates
+    openRegistry, toggleRegistry, exchangeRates, offerEdits
 }: any) => {
     const isEditing = editingOrderId === order.id;
     // Removed carBrand logic as car fields are dropped
@@ -62,6 +62,11 @@ const AdminOrderRow = memo(({
         });
     });
     const coveredItems = itemsWithOffers.size;
+    
+    // Stats Coloring
+    let statsBadgeColor = 'bg-slate-100 text-slate-400';
+    if (totalItems > 0 && coveredItems === totalItems) statsBadgeColor = 'bg-emerald-100 text-emerald-700';
+    else if (coveredItems > 0) statsBadgeColor = 'bg-amber-100 text-amber-700';
 
     // Subject & First Item
     const firstItem = order.items?.[0];
@@ -119,8 +124,10 @@ const AdminOrderRow = memo(({
                 </div>
 
                 {/* 8. Stats */}
-                <div className="text-left font-mono font-bold text-slate-600 bg-slate-100 rounded px-1 w-fit">
-                    {totalItems} / <span className={coveredItems === totalItems ? 'text-emerald-600' : 'text-slate-600'}>{coveredItems}</span>
+                <div className="text-left">
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-black uppercase ${statsBadgeColor}`}>
+                        {totalItems} / {coveredItems}
+                    </span>
                 </div>
 
                 {/* 9. Status (Rightmost) */}
@@ -148,8 +155,8 @@ const AdminOrderRow = memo(({
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span><span className="font-bold text-slate-700">{order.clientPhone || "-"}</span></div>
+                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
                                         <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
-                                        <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Тема письма</span><span className="font-bold text-slate-700 uppercase">{subject}</span></div>
                                     </div>
                                 )}
                             </div>
@@ -165,6 +172,7 @@ const AdminOrderRow = memo(({
                                 openRegistry={openRegistry}
                                 toggleRegistry={toggleRegistry}
                                 exchangeRates={exchangeRates}
+                                offerEdits={offerEdits}
                             />
 
                             <div className="flex flex-wrap md:flex-nowrap justify-end gap-2 md:gap-3 mt-6 pt-4 border-t border-slate-200">
@@ -217,11 +225,12 @@ interface AdminOrdersListProps {
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
   exchangeRates: any;
+  offerEdits: any;
 }
 
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   orders, sortConfig, handleSort, expandedId, setExpandedId,
-  onLoadMore, hasMore, isLoading, exchangeRates,
+  onLoadMore, hasMore, isLoading, exchangeRates, offerEdits,
   ...rowProps
 }) => {
 
@@ -266,6 +275,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                         isExpanded={expandedId === order.id}
                         onToggle={toggleExpand}
                         exchangeRates={exchangeRates}
+                        offerEdits={offerEdits}
                         {...rowProps}
                     />
                 )}

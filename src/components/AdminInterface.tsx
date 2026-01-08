@@ -44,6 +44,7 @@ export const AdminInterface: React.FC = () => {
   const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
+  const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number }>>({});
   
   // Сортировка
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
@@ -138,7 +139,29 @@ export const AdminInterface: React.FC = () => {
       }
   };
 
-  const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {};
+  const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {
+      // Здесь мы используем itemName как ключ, но для офферов лучше использовать offer_item_id.
+      // В AdminItemsTable мы передадим offerItemId вместо offerId + itemName для точности.
+      // Но пока поддержим старую сигнатуру или адаптируем.
+      // В текущей реализации AdminItemsTable вызывает: handleItemChange(order.id, off.offerId, item.name, 'adminComment', val)
+      // Нам нужен offerItemId.
+      // ДАВАЙТЕ ОБНОВИМ SIGNATURE в AdminItemsTable сначала, но здесь пока примем 4-й аргумент как ID если он есть.
+      
+      // Временное решение: field может быть 'adminComment' | 'adminPrice'.
+      // Мы будем сохранять это в state offerEdits.
+      
+      // Поскольку signature сложная, я предполагаю что в offerId на самом деле передается offerItemId (так как в AdminItemsTable это было бы логично, но там сейчас offerId).
+      // Давайте изменим AdminItemsTable вызов.
+      // А здесь реализуем логику:
+      
+      if (field === 'adminComment' || field === 'adminPrice') {
+         // offerId здесь будет выступать как ID элемента оффера (offer_item_id), если мы поправим вызов.
+         setOfferEdits(prev => ({
+             ...prev,
+             [offerId]: { ...prev[offerId], [field]: value }
+         }));
+      }
+  };
 
   const handleFormCP = async (orderId: string) => {
       executeApproval(orderId);
@@ -210,21 +233,42 @@ export const AdminInterface: React.FC = () => {
           form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity; 
       }); 
       setEditForm(form); 
+      setOfferEdits({}); // Сброс правок офферов
   };
 
   const saveEditing = async (order: Order) => { 
       setIsSubmitting(order.id); 
+      
+      // 1. Сохранение изменений в Items (OrderItems)
       const newItems = order.items.map((item, idx) => ({ 
           ...item, 
           AdminName: editForm[`item_${idx}_name`], 
           AdminQuantity: Number(editForm[`item_${idx}_qty`]), 
           deliveryWeeks: Number(editForm[`delivery_weeks`])
       })); 
+      
       try { 
           await SupabaseService.updateOrderJson(order.id, newItems); 
+          
+          // 2. Сохранение изменений в Offers (OfferItems)
+          const editKeys = Object.keys(offerEdits);
+          if (editKeys.length > 0) {
+              await Promise.all(editKeys.map(offerItemId => {
+                  const edits = offerEdits[offerItemId];
+                  return SupabaseService.updateOfferItem(offerItemId, {
+                      admin_comment: edits.adminComment,
+                      admin_price: edits.adminPrice
+                  });
+              }));
+          }
+
           setEditingOrderId(null); 
+          setOfferEdits({});
           refetch(); 
-      } catch (e) { } finally { setIsSubmitting(null); } 
+      } catch (e) { 
+          console.error(e);
+          showToast("Ошибка сохранения");
+      } finally { setIsSubmitting(null); } 
   };
 
   const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
@@ -335,6 +379,7 @@ export const AdminInterface: React.FC = () => {
                         openRegistry={openRegistry}
                         toggleRegistry={toggleRegistry}
                         exchangeRates={exchangeRates}
+                        offerEdits={offerEdits}
                       />
                   </div>
               )}

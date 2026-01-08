@@ -16,6 +16,7 @@ interface AdminItemsTableProps {
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
   exchangeRates: ExchangeRates | null;
+  offerEdits: Record<string, { adminComment?: string, adminPrice?: number }>;
 }
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,11 +24,9 @@ import { SupabaseService } from '../../services/supabaseService';
 
 export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   order, isEditing, editForm, setEditForm, handleItemChange, handleLocalUpdateRank, 
-  currentStatus, openRegistry, toggleRegistry, exchangeRates
+  currentStatus, openRegistry, toggleRegistry, exchangeRates, offerEdits
 }) => {
   const queryClient = useQueryClient();
-  const [manualPriceIds, setManualPriceIds] = useState<Set<string>>(new Set());
-  const [localPrices, setLocalPrices] = useState<Record<string, number>>({});
   const [generating, setGenerating] = useState(false);
 
   const calculatePrice = (sellerPrice: number, sellerCurrency: Currency, weight: number) => {
@@ -53,20 +52,6 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   const convertToYuan = (rubles: number): string => {
     if (!exchangeRates?.cny_rub) return "0.00";
     return (rubles / exchangeRates.cny_rub).toFixed(2);
-  };
-
-  const toggleManualPrice = (id: string) => {
-      setManualPriceIds(prev => {
-          const next = new Set(prev);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          return next;
-      });
-  };
-
-  const handlePriceChange = (key: string, val: string) => {
-      const num = parseInt(val.replace(/\D/g, '')) || 0;
-      setLocalPrices(prev => ({ ...prev, [key]: num }));
   };
 
   // Гибкая сетка для офферов (суммарно 100%)
@@ -192,11 +177,16 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                 <div className="min-w-[1000px] divide-y divide-gray-100">
                                     {itemOffers.map((off, oIdx) => {
                                         const isLeader = off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER';
-                                        const priceKey = `${off.offerId}_${off.item.id}`;
-                                        const isManual = manualPriceIds.has(off.item.id) || off.item.isManualPrice;
                                         
+                                        // Расчет цены
                                         const autoPrice = calculatePrice(off.item.sellerPrice, off.item.sellerCurrency, off.item.weight);
-                                        const currentPriceRub = localPrices[priceKey] ?? off.item.adminPrice ?? autoPrice;
+                                        // Приоритет: Правка в сессии > База данных > Авторасчет
+                                        const editedPrice = offerEdits?.[off.item.id]?.adminPrice;
+                                        const currentPriceRub = editedPrice !== undefined ? editedPrice : (off.item.adminPrice ?? autoPrice);
+
+                                        // Комментарий
+                                        const editedComment = offerEdits?.[off.item.id]?.adminComment;
+                                        const currentComment = editedComment !== undefined ? editedComment : (off.item.adminComment || "");
 
                                         return (
                                             <div key={oIdx} className={`relative transition-all duration-300 border-l-4 ${isLeader ? "bg-emerald-50 border-l-emerald-500 shadow-inner" : "hover:bg-gray-50 border-l-transparent"}`}>
@@ -223,13 +213,12 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                     </div>
 
                                                     <div className="relative group/price">
-                                                        {isManual ? (
+                                                        {isEditing ? (
                                                             <input 
                                                                 type="text" 
-                                                                className="w-full px-2 py-1 border-2 border-amber-400 rounded-lg font-black text-xs outline-none bg-white text-amber-700"
+                                                                className="w-full px-2 py-1 border-2 border-indigo-200 rounded-lg font-black text-xs outline-none bg-white text-indigo-700 focus:border-indigo-400"
                                                                 value={currentPriceRub}
-                                                                onChange={(e) => handlePriceChange(priceKey, e.target.value)}
-                                                                autoFocus
+                                                                onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminPrice', Number(e.target.value.replace(/\D/g, '')))}
                                                             />
                                                         ) : (
                                                             <div className="text-base font-black text-gray-900 leading-none">
@@ -238,12 +227,6 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         )}
                                                         <div className="flex items-center justify-between mt-1">
                                                             <div className="text-[9px] font-black text-gray-400 uppercase">≈ {convertToYuan(currentPriceRub)} ¥</div>
-                                                            <button 
-                                                                onClick={() => toggleManualPrice(off.item.id)}
-                                                                className={`p-1 rounded hover:bg-slate-100 transition-colors ${isManual ? 'text-amber-600' : 'text-slate-300 hover:text-indigo-500'}`}
-                                                            >
-                                                                <Pencil size={10} />
-                                                            </button>
                                                         </div>
                                                     </div>
 
@@ -272,7 +255,13 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                     )}
 
                                                     <div className="col-span-full mt-2 relative">
-                                                        <input type="text" placeholder="Комментарий для поставщика (если проиграл)..." value={off.item.adminComment || ""} onChange={(e) => handleItemChange(order.id, off.offerId, item.name, 'adminComment', e.target.value)} className="w-full px-4 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-600 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all shadow-inner" />
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Комментарий для поставщика (виден закупщику)..." 
+                                                            value={currentComment} 
+                                                            onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminComment', e.target.value)} 
+                                                            className={`w-full px-4 py-1.5 border rounded-xl text-[10px] font-bold text-gray-600 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner ${isEditing || currentComment ? 'bg-white border-indigo-100 focus:border-indigo-300' : 'bg-gray-50 border-gray-200'}`} 
+                                                        />
                                                         <Edit2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
                                                     </div>
                                                 </div>

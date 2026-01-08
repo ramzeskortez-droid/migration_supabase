@@ -14,11 +14,20 @@ export const AdminUsers: React.FC = () => {
         queryFn: () => SupabaseService.getAppUsers(activeTab)
     });
 
+    const { data: pendingUsers } = useQuery({
+        queryKey: ['admin_users_pending_count'],
+        queryFn: () => SupabaseService.getAppUsers('pending'),
+        refetchInterval: 10000
+    });
+    
+    const pendingCount = pendingUsers?.length || 0;
+
     const mutation = useMutation({
         mutationFn: ({ userId, status }: { userId: string, status: 'approved' | 'rejected' }) => 
             SupabaseService.updateUserStatus(userId, status),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin_users'] });
+            queryClient.invalidateQueries({ queryKey: ['admin_users_pending_count'] });
         }
     });
 
@@ -145,7 +154,7 @@ export const AdminUsers: React.FC = () => {
                     >
                         <Clock size={14} />
                         На модерации
-                        {activeTab !== 'pending' && users?.length ? <span className="bg-rose-500 text-white w-2 h-2 rounded-full animate-pulse" /> : null}
+                        {pendingCount > 0 && <span className="bg-rose-500 text-white w-2 h-2 rounded-full animate-pulse" />}
                     </button>
                     <button 
                         onClick={() => setActiveTab('approved')}

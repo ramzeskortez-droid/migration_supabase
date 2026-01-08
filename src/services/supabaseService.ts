@@ -112,6 +112,11 @@ export class SupabaseService {
     if (error) throw error;
   }
 
+  static async updateOfferItem(itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number }): Promise<void> {
+      const { error } = await supabase.from('offer_items').update(updates).eq('id', itemId);
+      if (error) throw error;
+  }
+
   // --- FILE STORAGE ---
 
   static async uploadFile(file: File, folder: 'orders' | 'offers' | 'chat'): Promise<string> {
