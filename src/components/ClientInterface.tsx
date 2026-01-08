@@ -54,17 +54,16 @@ export const ClientInterface: React.FC = () => {
     setShowAuthModal(false);
   };
 
-  const handleCreateOrder = async (vin: string, car: any, items: any[]) => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+  const handleCreateOrder = async (items: any[]) => {
+    if (!clientAuth) return;
+    
     try {
-        const newOrderId = await SupabaseService.createOrder(vin || 'N/A', items, clientAuth.name, car, clientAuth.phone);
-        showToast(`Заказ №${newOrderId} создан`);
-        refresh();
-    } catch (err) { 
-        alert("Ошибка при создании заказа."); 
-    } finally { 
-        setIsSubmitting(false); 
+      const newOrderId = await SupabaseService.createOrder(items, clientAuth.name, clientAuth.phone);
+      addLog(`Создан новый заказ #${newOrderId}`);
+      await fetchOrders();
+    } catch (e) {
+      console.error(e);
+      alert('Ошибка при создании заказа');
     }
   };
 

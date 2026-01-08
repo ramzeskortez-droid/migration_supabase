@@ -19,7 +19,6 @@ interface BuyerOrderDetailsProps {
 export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({ 
   order, editingItems, setEditingItems, onSubmit, isSubmitting, myOffer, statusInfo, onOpenChat 
 }) => {
-  const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
       isOpen: false, title: '', content: ''
   });

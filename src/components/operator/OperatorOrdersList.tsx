@@ -70,7 +70,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
 
   useEffect(() => {
     loadOrders();
-  }, [refreshTrigger, activeTab, sortField, sortDir, ownerToken]);
+  }, [refreshTrigger, activeTab, sortField, sortDir, ownerId]);
 
   const loadMore = useCallback(() => {
       if (!loading && hasMore) {

@@ -81,17 +81,17 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
 
             <Search className="absolute left-6 text-slate-400" size={20}/>
 
-            <input 
+                      <input 
 
-                value={searchQuery} 
+                        value={searchQuery} 
 
-                onChange={e => setSearchQuery(e.target.value)} 
+                        onChange={e => setSearchQuery(e.target.value)} 
 
-                placeholder="Поиск по VIN, модели или ID..." 
+                        placeholder="Поиск по модели, бренду или ID..." 
 
-                className="w-full pl-14 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-300 shadow-sm transition-all" 
+                        className="w-full pl-14 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-300 shadow-sm" 
 
-            />
+                      />
 
          </div>
 

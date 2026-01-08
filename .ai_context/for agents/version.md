@@ -1,5 +1,13 @@
 # Version History
 
+## 1.14.1 - Hotfixes и обновление AI
+- **Fixes:**
+  - Восстановлены методы чата и подписок в `SupabaseService.ts` (критический фикс).
+  - Исправлена ошибка `ownerToken` в `OperatorOrdersList.tsx`.
+  - Удалены последние упоминания `car` и `vin` из JSX-компонентов.
+  - Форма `NewOrderForm` упрощена до списка товаров.
+- **AI:** Обновлен Groq API Key в конфигурации.
+
 ## 1.14.0 - Глобальный Рефакторинг и Оптимизация Схемы
 - **Database Refactor:**
   - Удалены устаревшие поля автомобилей (`car_brand`, `car_model`, `vin`).

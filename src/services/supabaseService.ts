@@ -181,13 +181,7 @@ export class SupabaseService {
     clientPhoneFilter?: string,
     brandFilter?: string[], 
     onlyWithMyOffersName?: string,
-    ownerToken?: string, // NOTE: Now effectively used to lookup owner_id via app_users JOIN, OR passed as ID? Assuming passed as ID in new logic or we filter by owner_id if possible. 
-    // BUT: ownerToken param is string. If we migrated to IDs, we should pass ID.
-    // For now, let's assume the calling code still passes 'op1' token. We need to handle this.
-    // Ideally, calling code passes UUID.
-    // Let's filter by owner_id if uuid, or fallback?
-    // Actually, RLS uses auth. But here we query manually.
-    // Let's assume we filter by `owner_id` column now.
+    ownerToken?: string, // Legacy param name, used as ownerId
     buyerToken?: string, 
     excludeOffersFrom?: string 
   ): Promise<{ data: Order[], nextCursor?: number }> {
@@ -204,7 +198,6 @@ export class SupabaseService {
         matchingBrandIds = items?.map(i => i.order_id) || [];
     }
 
-    // UPDATED SELECT: Removed car fields, using owner_id
     let query = supabase.from('orders').select(`
         id, created_at, client_name, client_phone, 
         status_admin, status_client, status_supplier,
@@ -215,22 +208,13 @@ export class SupabaseService {
         offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days))
     `);
 
-    // TODO: We need to resolve ownerToken (string) to owner_id (uuid) if we want to filter.
-    // OR we can join app_users.
-    // For now, if ownerToken is passed, we assume it MIGHT be a token, so we look up the user first.
     if (ownerToken) {
-        // Optimisation: if ownerToken looks like UUID, use directly. Else lookup.
-        // Simple check: length > 20
         if (ownerToken.length > 20) {
              query = query.eq('owner_id', ownerToken);
         } else {
-             // Look up user ID by token (Legacy support or convenient shorthand)
              const { data: u } = await supabase.from('app_users').select('id').eq('token', ownerToken).maybeSingle();
              if (u) query = query.eq('owner_id', u.id);
-             else {
-                 // If token invalid, return nothing?
-                 return { data: [], nextCursor: undefined }; 
-             }
+             else return { data: [], nextCursor: undefined }; 
         }
     }
 
@@ -270,7 +254,7 @@ export class SupabaseService {
         if (!isNaN(Number(q))) {
              query = query.or(`id.eq.${q},client_phone.ilike.%${q}%`);
         } else {
-             query = query.or(`client_name.ilike.%${q}%`); // Removed car fields search
+             query = query.or(`client_name.ilike.%${q}%`);
         }
     }
 
@@ -329,7 +313,7 @@ export class SupabaseService {
                 id: o.id, clientName: o.supplier_name, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
                     id: oi.id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
-                    adminPrice: oi.admin_price, // REPLACED admin_price_rub
+                    adminPrice: oi.admin_price,
                     deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0
                 })) || []
             })) || [],
@@ -356,7 +340,6 @@ export class SupabaseService {
 
       if (error) throw error;
 
-      // Сортировка позиций заказа по ID
       const sortedOrderItems = data.order_items.sort((a: any, b: any) => a.id - b.id);
 
       const items: OrderItem[] = sortedOrderItems.map((item: any) => ({
@@ -366,7 +349,7 @@ export class SupabaseService {
         comment: item.comment,
         category: item.category,
         opPhotoUrl: item.photo_url,
-        adminPrice: item.admin_price, // REPLACED
+        adminPrice: item.admin_price,
         brand: item.brand,
         article: item.article,
         uom: item.uom
@@ -387,9 +370,7 @@ export class SupabaseService {
           offeredQuantity: oi.quantity,
           sellerPrice: oi.price,
           sellerCurrency: oi.currency as Currency,
-          adminPrice: oi.admin_price, // REPLACED
-          adminCurrency: oi.admin_currency as Currency, // Assuming DB still has it or we default? DB dropped it. So this might be undefined.
-          // But types.ts says adminCurrency?: Currency. So undefined is fine.
+          adminPrice: oi.admin_price, 
           rank: oi.is_winner ? 'ЛИДЕР' : 'РЕЗЕРВ',
           deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
           weight: oi.weight,
@@ -415,10 +396,6 @@ export class SupabaseService {
           { count: today },
           { count: week },
           { count: month },
-          // Removed recentOrders logic if it used car_brand. 
-          // If we want top brands, we must check order_items.brand.
-          // But that's a heavy query (JOIN).
-          // For now, let's just count totals to avoid errors.
       ] = await Promise.all([
           supabase.from('orders').select('*', { count: 'exact', head: true }),
           supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', startOfToday),
@@ -429,80 +406,6 @@ export class SupabaseService {
       return { today: today || 0, week: week || 0, month: month || 0, total: total || 0, leader: "N/A" };
   }
 
-  // ... (getStatusCounts remains same)
-
-  // ... (getSellerBrands, searchBrands... same)
-
-  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string): Promise<string> {
-    // Removed VIN, Car info.
-    // ownerId passed directly (User ID).
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        client_name: clientName, client_phone: clientPhone,
-        location: 'РФ',
-        owner_id: ownerId, // Use ID
-        deadline: deadline || null
-      })
-      .select().single();
-
-    if (orderError) throw orderError;
-
-    const itemsToInsert = items.map(item => ({
-      order_id: orderData.id, 
-      name: item.name, 
-      quantity: item.quantity || 1,
-      comment: item.comment, 
-      category: item.category,
-      photo_url: item.photoUrl || null,
-      brand: item.brand || null,
-      article: item.article || null,
-      uom: item.uom || 'шт'
-    }));
-
-    const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
-    if (itemsError) throw itemsError;
-    return String(orderData.id);
-  }
-
-  // ... (getBuyerDashboardStats, createOffer... same)
-
-  static async updateRank(offerItemId: string, orderItemId: string, offerId: string, adminPrice?: number, adminCurrency?: Currency, actionType?: 'RESET', adminComment?: string, deliveryRate?: number, adminPriceRub?: number): Promise<void> {
-    const { data: offer } = await supabase.from('offers').select('order_id').eq('id', offerId).single();
-    if (!offer) return;
-
-    // Use adminPrice (single source of truth). adminPriceRub is ignored/mapped.
-    const finalPrice = adminPriceRub ?? adminPrice;
-
-    if (actionType === 'RESET') {
-      await supabase.from('offer_items')
-        .update({ is_winner: false, admin_price: null })
-        .eq('id', offerItemId); 
-      
-      await supabase.from('order_items')
-        .update({ admin_price: null })
-        .eq('id', orderItemId);
-    } else {
-      await supabase.from('offer_items')
-        .update({
-            is_winner: true, 
-            admin_price: finalPrice, // Write to admin_price
-            delivery_rate: deliveryRate || 0, 
-            admin_comment: adminComment || '',
-        })
-        .eq('id', offerItemId);
-
-      await supabase.from('order_items')
-        .update({
-            admin_price: finalPrice 
-        })
-        .eq('id', orderItemId);
-    }
-  }
-
-  // ... (Chat methods same)
-  
-  // Re-export static methods that didn't change...
   static async getStatusCounts(): Promise<Record<string, number>> {
       const statuses = [
           { key: 'new', val: 'В обработке' },
@@ -627,11 +530,6 @@ export class SupabaseService {
   }
   
   static async seedOrders(count: number, onProgress: (created: number) => void, ownerToken: string = 'op1'): Promise<void> {
-    // Seed logic needs OWNER ID now. 
-    // We fetch ID for 'op1' (if exists) or create dummy.
-    // For now, let's assume ownerToken is passed as ID or we skip seed logic update for brevity unless user asks.
-    // Actually, seedOrders is broken if we use ownerToken string.
-    // Let's resolve ID.
     const { data: u } = await supabase.from('app_users').select('id').eq('token', ownerToken).maybeSingle();
     const ownerId = u?.id;
 
@@ -661,7 +559,7 @@ export class SupabaseService {
           location: location,
           status_admin: 'В обработке', 
           status_client: 'В обработке',
-          owner_id: ownerId, // Used ID
+          owner_id: ownerId, 
           deadline: deadline,
           _temp_subject: subject 
         });
@@ -698,5 +596,189 @@ export class SupabaseService {
 
       onProgress(Math.min((i + 1) * BATCH_SIZE, count));
     }
+  }
+
+  static async generateTestOffers(orderId: string): Promise<void> {
+    const { data: items } = await supabase.from('order_items').select('*').eq('order_id', orderId);
+    if (!items || items.length === 0) return;
+
+    const { data: buyers } = await supabase.from('app_users').select('*').eq('role', 'buyer').eq('status', 'approved');
+    
+    if (!buyers || buyers.length === 0) {
+        throw new Error('Нет доступных закупщиков в базе');
+    }
+
+    const { data: existingOffers } = await supabase.from('offers').select('supplier_name').eq('order_id', orderId);
+    const existingNames = new Set(existingOffers?.map(o => o.supplier_name) || []);
+
+    const availableBuyers = buyers.filter(b => !existingNames.has(b.name));
+
+    if (availableBuyers.length === 0) {
+        throw new Error('Все закупщики уже оставили предложения');
+    }
+
+    const shuffled = availableBuyers.sort(() => 0.5 - Math.random());
+    const selectedBuyers = shuffled.slice(0, 2);
+
+    for (const user of selectedBuyers) {
+        const { data: offer } = await supabase.from('offers').insert({
+            order_id: orderId,
+            supplier_name: user.name,
+            supplier_phone: user.phone,
+            created_by: user.id 
+        }).select().single();
+
+        if (!offer) continue;
+
+        const offerItems = items.map((item: any) => ({
+            offer_id: offer.id,
+            order_item_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: Math.floor(Math.random() * 500) + 100, 
+            currency: 'CNY',
+            delivery_days: (Math.floor(Math.random() * 4) + 4) * 7, 
+            weight: Number((Math.random() * 5).toFixed(1)),
+            comment: 'Тестовое предложение (Auto)'
+        }));
+
+        await supabase.from('offer_items').insert(offerItems);
+    }
+    
+    await supabase.from('orders').update({ 
+        status_supplier: 'Идут торги',
+        status_updated_at: new Date().toISOString()
+    }).eq('id', orderId);
+  }
+
+  static subscribeToUserChats(
+      callback: (payload: { new: any, eventType: 'INSERT' | 'UPDATE' }) => void,
+      channelId: string = 'global-user-chats'
+  ) {
+      const channel = supabase.channel(channelId)
+          .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+              (payload) => callback({ new: payload.new, eventType: 'INSERT' })
+          )
+          .subscribe();
+      return channel;
+  }
+
+  static subscribeToChatMessages(orderId: string, callback: (payload: any) => void) {
+      const channel = supabase.channel(`chat:${orderId}`)
+          .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `order_id=eq.${orderId}` },
+              (payload) => callback(payload.new)
+          )
+          .subscribe();
+      return channel;
+  }
+
+  static unsubscribeFromChat(channel: any) {
+      supabase.removeChannel(channel);
+  }
+
+  static async getChatMessages(orderId: string, offerId?: string, supplierName?: string): Promise<any[]> {
+      let query = supabase.from('chat_messages').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
+      if (supplierName) {
+          const escapedName = supplierName.split('"').join('"');
+          query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+  }
+
+  static async sendChatMessage(payload: {
+      order_id: string, offer_id?: string | null, sender_role: 'ADMIN' | 'SUPPLIER',
+      sender_name: string, recipient_name?: string, message: string, item_name?: string,
+      file_url?: string, file_type?: string
+  }): Promise<any> {
+      const { data, error } = await supabase.from('chat_messages').insert(payload).select().single();
+      if (error) throw error;
+      const supplierName = payload.sender_role === 'SUPPLIER' ? payload.sender_name : payload.recipient_name;
+      if (supplierName) {
+          const escapedName = supplierName.split('"').join('"');
+          await supabase.from('chat_messages').update({ is_archived: false }).eq('order_id', payload.order_id).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`).eq('is_archived', true);
+      }
+      return data;
+  }
+
+  static async getUnreadChatCount(): Promise<number> {
+      const { count, error } = await supabase.from('chat_messages').select('*', { count: 'exact', head: true }).eq('sender_role', 'SUPPLIER').eq('is_read', false);
+      if (error) throw error;
+      return count || 0;
+  }
+
+  static async getUnreadChatCountForSupplier(supplierName: string): Promise<{ count: number }> {
+      const { count, error } = await supabase.from('chat_messages').select('*', { count: 'exact', head: true }).eq('recipient_name', supplierName).eq('is_read', false);
+      if (error) throw error;
+      return { count: count || 0 };
+  }
+
+  static async markChatAsRead(orderId: string, supplierName: string, readerRole: 'ADMIN' | 'SUPPLIER'): Promise<void> {
+      let query = supabase.from('chat_messages').update({ is_read: true }).eq('order_id', orderId);
+      const escapedName = supplierName.split('"').join('"'); 
+      
+      if (readerRole === 'ADMIN') {
+          query = query.eq('sender_name', escapedName).eq('sender_role', 'SUPPLIER');
+      } else {
+          query = query.eq('sender_role', 'ADMIN').eq('recipient_name', escapedName);
+      }
+
+      const { error } = await query;
+      if (error) console.error('markChatAsRead ERROR:', error);
+  }
+
+  static async deleteChatHistory(orderId: string, supplierName?: string): Promise<void> {
+      let query = supabase.from('chat_messages').delete().eq('order_id', orderId);
+      if (supplierName) {
+          const escapedName = supplierName.split('"').join('"');
+          query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      }
+      const { error } = await query;
+      if (error) throw error;
+  }
+
+  static async getOrderItemsSimple(orderId: string): Promise<string[]> {
+      const { data } = await supabase.from('order_items').select('name').eq('order_id', orderId);
+      return data?.map((i: any) => i.name) || [];
+  }
+
+  static async getGlobalChatThreads(filterBySupplierName?: string, isArchived: boolean = false): Promise<Record<string, Record<string, { lastMessage: string, lastAuthorName: string, time: string, unread: number }>>> {
+      if (!isArchived) supabase.rpc('archive_old_chats').then(() => {});
+      let query = supabase.from('chat_messages').select('*').eq('is_archived', isArchived).order('created_at', { ascending: false }).limit(500);
+      if (filterBySupplierName) {
+          const escapedName = filterBySupplierName.split('"').join('"');
+          query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      const threads: Record<string, Record<string, any>> = {};
+      data?.forEach((msg: any) => {
+          const oid = String(msg.order_id);
+          let supplierKey = msg.sender_role === 'SUPPLIER' ? msg.sender_name : (msg.recipient_name || 'Unknown');
+          if (supplierKey === 'Unknown') return;
+          if (!threads[oid]) threads[oid] = {};
+          if (!threads[oid][supplierKey]) {
+              threads[oid][supplierKey] = { 
+                  lastMessage: msg.message, 
+                  lastAuthorName: msg.sender_name, 
+                  time: msg.created_at, 
+                  unread: 0 
+              };
+          }
+          const isMsgFromOther = filterBySupplierName ? (msg.sender_role === 'ADMIN') : (msg.sender_role === 'SUPPLIER');
+          if (!msg.is_read && isMsgFromOther) threads[oid][supplierKey].unread++;
+      });
+      return threads;
+  }
+
+  static async archiveChat(orderId: string, supplierName: string): Promise<void> {
+      const escapedName = supplierName.split('"').join('"');
+      const { error } = await supabase.from('chat_messages').update({ is_archived: true }).eq('order_id', orderId).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      if (error) throw error;
   }
 }

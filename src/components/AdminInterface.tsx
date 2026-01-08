@@ -161,8 +161,7 @@ export const AdminInterface: React.FC = () => {
                               admin_price: item.adminPrice || item.sellerPrice,
                               admin_currency: item.adminCurrency || item.sellerCurrency,
                               delivery_rate: item.deliveryRate || 0,
-                              admin_comment: item.adminComment || '',
-                              admin_price_rub: item.adminPriceRub || item.sellerPrice // Fallback
+                              admin_comment: item.adminComment || ''
                           });
                       } 
                   } 
