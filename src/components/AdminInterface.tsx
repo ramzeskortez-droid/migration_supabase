@@ -44,7 +44,7 @@ export const AdminInterface: React.FC = () => {
   const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
-  const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number }>>({});
+  const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>>({});
   
   // Сортировка
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
@@ -140,22 +140,8 @@ export const AdminInterface: React.FC = () => {
   };
 
   const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {
-      // Здесь мы используем itemName как ключ, но для офферов лучше использовать offer_item_id.
-      // В AdminItemsTable мы передадим offerItemId вместо offerId + itemName для точности.
-      // Но пока поддержим старую сигнатуру или адаптируем.
-      // В текущей реализации AdminItemsTable вызывает: handleItemChange(order.id, off.offerId, item.name, 'adminComment', val)
-      // Нам нужен offerItemId.
-      // ДАВАЙТЕ ОБНОВИМ SIGNATURE в AdminItemsTable сначала, но здесь пока примем 4-й аргумент как ID если он есть.
-      
-      // Временное решение: field может быть 'adminComment' | 'adminPrice'.
-      // Мы будем сохранять это в state offerEdits.
-      
-      // Поскольку signature сложная, я предполагаю что в offerId на самом деле передается offerItemId (так как в AdminItemsTable это было бы логично, но там сейчас offerId).
-      // Давайте изменим AdminItemsTable вызов.
-      // А здесь реализуем логику:
-      
-      if (field === 'adminComment' || field === 'adminPrice') {
-         // offerId здесь будет выступать как ID элемента оффера (offer_item_id), если мы поправим вызов.
+      if (field === 'adminComment' || field === 'adminPrice' || field === 'deliveryWeeks') {
+         // offerId here acts as offer_item_id
          setOfferEdits(prev => ({
              ...prev,
              [offerId]: { ...prev[offerId], [field]: value }
@@ -232,8 +218,6 @@ export const AdminInterface: React.FC = () => {
       form[`client_phone`] = order.clientPhone || '';
       form[`client_email`] = order.clientEmail || '';
       form[`location`] = order.location || '';
-      // Initialize delivery weeks (from first item as fallback/legacy logic, ideally should be order level)
-      form[`delivery_weeks`] = order.items[0]?.deliveryWeeks?.toString() || ''; 
       
       order.items.forEach((item, idx) => { 
           form[`item_${idx}_name`] = item.AdminName || item.name; 
@@ -250,8 +234,7 @@ export const AdminInterface: React.FC = () => {
       const newItems = order.items.map((item, idx) => ({ 
           ...item, 
           AdminName: editForm[`item_${idx}_name`], 
-          AdminQuantity: Number(editForm[`item_${idx}_qty`]), 
-          deliveryWeeks: Number(editForm[`delivery_weeks`])
+          AdminQuantity: Number(editForm[`item_${idx}_qty`])
       })); 
       
       try { 
@@ -270,10 +253,14 @@ export const AdminInterface: React.FC = () => {
           if (editKeys.length > 0) {
               await Promise.all(editKeys.map(offerItemId => {
                   const edits = offerEdits[offerItemId];
-                  return SupabaseService.updateOfferItem(offerItemId, {
+                  const updates: any = {
                       admin_comment: edits.adminComment,
                       admin_price: edits.adminPrice
-                  });
+                  };
+                  if (edits.deliveryWeeks !== undefined) {
+                      updates.delivery_days = edits.deliveryWeeks * 7;
+                  }
+                  return SupabaseService.updateOfferItem(offerItemId, updates);
               }));
           }
 
