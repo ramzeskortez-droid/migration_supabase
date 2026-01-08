@@ -39,11 +39,80 @@ export const AdminFinanceSettings: React.FC = () => {
         loadRates();
     }, []);
 
+    const handleChange = (field: keyof ExchangeRates, value: string) => {
+        // Разрешаем ввод цифр, точек и запятых
+        const rawValue = value.replace(/[^0-9.,]/g, '');
+        
+        // Для хранения в стейте конвертируем в число (заменяя запятую на точку)
+        // Но чтобы пользователь мог вводить "13,", нам нужно хитрое состояние или
+        // просто парсить при рендере?
+        // Проще всего: 
+        // 1. Стейт rates хранит числа (для отправки).
+        // 2. Локальный стейт инпутов хранит строки (для ввода).
+        // Но чтобы не усложнять, попробуем так:
+        // Будем хранить число в rates, а в инпуте показывать строку с запятой, если надо?
+        // Нет, инпут контролируемый. Если мы парсим сразу, мы не сможем ввести "13,".
+        
+        // Решение:
+        // Переделаем компонент, чтобы инпуты были неконтролируемыми или имели локальный стейт строки.
+        // Или просто дадим возможность вводить запятую, а парсить будем перед отправкой/расчетом.
+        // Но rates используется в примере расчета сразу.
+        
+        // Давайте сделаем `localRates` строковым стейтом.
+        
+        setLocalRates(prev => ({ ...prev, [field]: rawValue }));
+        
+        // Обновляем числовое представление для расчетов "на лету"
+        const numVal = parseFloat(rawValue.replace(',', '.')) || 0;
+        setRates(prev => ({ ...prev, [field]: numVal }));
+    };
+
+    // Строковый стейт для инпутов, чтобы поддерживать ввод запятой
+    const [localRates, setLocalRates] = useState<Record<keyof ExchangeRates, string>>({
+        date: todayStr,
+        cny_rub: '0',
+        usd_rub: '0',
+        cny_usd: '0',
+        delivery_kg_usd: '0',
+        markup_percent: '0'
+    });
+
+    useEffect(() => {
+        const loadRates = async () => {
+            setLoading(true);
+            try {
+                const data = await SupabaseService.getExchangeRates();
+                if (data) {
+                    const loaded = {
+                        ...data,
+                        date: todayStr
+                    };
+                    setRates(loaded);
+                    // Инициализируем локальный стейт строками (можно с запятыми или точками)
+                    setLocalRates({
+                        date: todayStr,
+                        cny_rub: String(data.cny_rub),
+                        usd_rub: String(data.usd_rub),
+                        cny_usd: String(data.cny_usd),
+                        delivery_kg_usd: String(data.delivery_kg_usd),
+                        markup_percent: String(data.markup_percent)
+                    });
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки курсов:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadRates();
+    }, []);
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         setStatus(null);
         try {
+            // rates уже содержит актуальные числа (обновляются в handleChange)
             await SupabaseService.upsertExchangeRates(rates);
             setStatus({ message: 'Курсы на сегодня успешно сохранены', type: 'success' });
             setTimeout(() => setStatus(null), 3000);
@@ -52,11 +121,6 @@ export const AdminFinanceSettings: React.FC = () => {
         } finally {
             setSaving(false);
         }
-    };
-
-    const handleChange = (field: keyof ExchangeRates, value: string) => {
-        const numVal = parseFloat(value.replace(',', '.')) || 0;
-        setRates(prev => ({ ...prev, [field]: numVal }));
     };
 
     if (loading) {
@@ -95,7 +159,7 @@ export const AdminFinanceSettings: React.FC = () => {
                         <input 
                             type="text" 
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-black text-xl text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all"
-                            value={rates.cny_rub}
+                            value={localRates.cny_rub}
                             onChange={(e) => handleChange('cny_rub', e.target.value)}
                         />
                     </div>
@@ -104,7 +168,7 @@ export const AdminFinanceSettings: React.FC = () => {
                         <input 
                             type="text" 
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-black text-xl text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all"
-                            value={rates.usd_rub}
+                            value={localRates.usd_rub}
                             onChange={(e) => handleChange('usd_rub', e.target.value)}
                         />
                     </div>
@@ -113,7 +177,7 @@ export const AdminFinanceSettings: React.FC = () => {
                         <input 
                             type="text" 
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-black text-xl text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all"
-                            value={rates.cny_usd}
+                            value={localRates.cny_usd}
                             onChange={(e) => handleChange('cny_usd', e.target.value)}
                         />
                     </div>
@@ -132,7 +196,7 @@ export const AdminFinanceSettings: React.FC = () => {
                                 <input 
                                     type="text" 
                                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-black text-slate-700 outline-none focus:border-indigo-500 transition-all pr-12"
-                                    value={rates.delivery_kg_usd}
+                                    value={localRates.delivery_kg_usd}
                                     onChange={(e) => handleChange('delivery_kg_usd', e.target.value)}
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">$</span>
@@ -151,7 +215,7 @@ export const AdminFinanceSettings: React.FC = () => {
                                 <input 
                                     type="text" 
                                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-black text-slate-700 outline-none focus:border-amber-500 transition-all pr-12"
-                                    value={rates.markup_percent}
+                                    value={localRates.markup_percent}
                                     onChange={(e) => handleChange('markup_percent', e.target.value)}
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">%</span>
