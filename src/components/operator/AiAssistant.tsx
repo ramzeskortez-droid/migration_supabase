@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Sparkles, Save } from 'lucide-react';
+import { Loader2, Sparkles, Save, FileText } from 'lucide-react';
 import { Part, OrderInfo } from './types';
 
 interface AiAssistantProps {
@@ -26,6 +26,30 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
       window.addEventListener('importEmailText', handleImport);
       return () => window.removeEventListener('importEmailText', handleImport);
   }, []);
+
+  const handleEmulate = () => {
+      const template = `Добрый день!
+ТЕМА: ЗАЯВКА 24121414
+Подскажите, пожалуйста, по наличию и ценам на оборудование Danfoss и совместимые аналоги. Нужно до 15.01 организовать поставку в город Грязи, Грязинский р-н, Липецкая обл, Россия.
+
+Позиции к запросу:
+
+Комплект кабелей гнездовых 3 м\tDanfoss\t027H0438\t3\tшт
+Электропривод\tICAD\t1200B\tс\tдисплеем\tDanfoss\t027H0491\t2\tшт
+Кабель\tсигнальный\t5\tм\tCarel\tNTCCAB050\t1\tкомплект
+Датчик\tтемпературы\tуниверсальный\tEliwell\tTAC100\t6\tшт
+Модуль\tпитания\tдля\tICAD\t600/900\tDanfoss\t027H0502\t2\tуп
+
+Просьба указать наличие, цену с\tНДС, сроки поставки и доступные аналоги (если какие‑то позиции отсутствуют).
+При наличии прайса\tили\tтехнических описаний\t—\tпришлите, пожалуйста, в\tответ.
+
+С уважением,
+Елена
+Тел:\t+7\t(900)\t123‑45‑67
+E‑mail:\telena.kaknibud@pochta.ru`;
+      setInputText(template);
+      onLog('Текст тестовой заявки вставлен.');
+  };
 
   const handleProcess = async () => {
     if (!inputText.trim()) return;
@@ -160,6 +184,15 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
         </div>
 
         <div className="flex gap-4">
+            <button
+              onClick={handleEmulate}
+              className="px-4 py-3 rounded-xl text-sm font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+              title="Вставить тестовый текст заявки"
+            >
+              <FileText size={16} />
+              <span className="hidden sm:inline">Эмуляция</span>
+            </button>
+
             <button
               onClick={handleProcess}
               disabled={isProcessing || !inputText.trim()}
