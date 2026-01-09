@@ -76,11 +76,13 @@ export class SupabaseService {
 
   static async updateUserStatus(userId: string, status: 'approved' | 'rejected'): Promise<void> {
       if (status === 'rejected') {
-          const { error } = await supabase.from('app_users').delete().eq('id', userId);
+          const { error, count } = await supabase.from('app_users').delete({ count: 'exact' }).eq('id', userId);
           if (error) throw error;
+          if (count === 0) throw new Error('Пользователь не найден или нет прав на удаление');
       } else {
-          const { error } = await supabase.from('app_users').update({ status }).eq('id', userId);
+          const { data, error } = await supabase.from('app_users').update({ status }).eq('id', userId).select();
           if (error) throw error;
+          if (!data || data.length === 0) throw new Error('Пользователь не найден или нет прав на обновление (RLS)');
       }
   }
 

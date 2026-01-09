@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
 import { AppUser } from '../../types';
+import { Toast } from '../shared/Toast';
 import { UserCheck, UserX, Clock, Users as UsersIcon, Phone, Shield, Calendar, Search } from 'lucide-react';
 
 export const AdminUsers: React.FC = () => {
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
     const [searchTerm, setSearchTerm] = useState('');
+    const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
     const { data: users, isLoading } = useQuery({
         queryKey: ['admin_users', activeTab],
@@ -25,9 +27,16 @@ export const AdminUsers: React.FC = () => {
     const mutation = useMutation({
         mutationFn: ({ userId, status }: { userId: string, status: 'approved' | 'rejected' }) => 
             SupabaseService.updateUserStatus(userId, status),
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
+            setToast({ 
+                message: variables.status === 'approved' ? 'Пользователь успешно одобрен' : 'Пользователь отклонен и удален', 
+                type: 'success' 
+            });
             queryClient.invalidateQueries({ queryKey: ['admin_users'] });
             queryClient.invalidateQueries({ queryKey: ['admin_users_pending_count'] });
+        },
+        onError: (error: any) => {
+            setToast({ message: `Ошибка: ${error.message}`, type: 'error' });
         }
     });
 
@@ -66,7 +75,7 @@ export const AdminUsers: React.FC = () => {
     const groupedUsers = groupUsersByRole();
 
     const renderUserCard = (user: any) => (
-        <div key={user.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+        <div key={user.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base shrink-0 ${
@@ -105,20 +114,26 @@ export const AdminUsers: React.FC = () => {
                     </div>
                     
                     {activeTab === 'pending' ? (
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1.5 relative z-10">
                             <button 
-                                onClick={() => mutation.mutate({ userId: user.id, status: 'rejected' })}
-                                className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    mutation.mutate({ userId: user.id, status: 'rejected' });
+                                }}
+                                className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm cursor-pointer"
                                 title="Отклонить"
                             >
-                                <UserX size={14} />
+                                <UserX size={16} className="pointer-events-none" />
                             </button>
                             <button 
-                                onClick={() => mutation.mutate({ userId: user.id, status: 'approved' })}
-                                className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    mutation.mutate({ userId: user.id, status: 'approved' });
+                                }}
+                                className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm cursor-pointer"
                                 title="Одобрить"
                             >
-                                <UserCheck size={14} />
+                                <UserCheck size={16} className="pointer-events-none" />
                             </button>
                         </div>
                     ) : (
@@ -135,7 +150,8 @@ export const AdminUsers: React.FC = () => {
     );
 
     return (
-        <div className="p-6 space-y-6 h-full flex flex-col">
+        <div className="p-6 space-y-6 h-full flex flex-col relative">
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
