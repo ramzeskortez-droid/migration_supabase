@@ -1,6 +1,6 @@
 import React from 'react';
 import { OrderInfo } from './types';
-import { Zap } from 'lucide-react';
+import { Zap, Copy } from 'lucide-react';
 
 interface OrderInfoFormProps {
   orderInfo: OrderInfo;

@@ -63,6 +63,8 @@ export const OperatorInterface: React.FC = () => {
       setUnreadChatCount(prev => Math.max(0, prev - count));
   }, []);
 
+  const handleCloseToast = useCallback(() => setToast(null), []);
+
   // Realtime Notifications
   useEffect(() => {
       if (!currentUser) return;
@@ -239,7 +241,14 @@ export const OperatorInterface: React.FC = () => {
             orderInfo.clientName || 'Не указано',
             orderInfo.clientPhone,
             currentUser.id, 
-            orderInfo.deadline,
+            orderInfo.deadline || (() => {
+                const date = new Date();
+                date.setDate(date.getDate() + 3);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            })(),
             orderInfo.clientEmail,
             orderInfo.city 
         );
@@ -251,7 +260,8 @@ export const OperatorInterface: React.FC = () => {
         // Reset form
         setParts([{ id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
         setOrderInfo({
-            deadline: '', region: '', city: '', email: '', clientEmail: '', emailSubject: '', clientName: '', clientPhone: ''
+            deadline: '',
+            region: '', city: '', email: '', clientEmail: '', emailSubject: '', clientName: '', clientPhone: ''
         });
 
     } catch (e: any) {
@@ -356,7 +366,7 @@ export const OperatorInterface: React.FC = () => {
       
       {toast && (
           <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
-              <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type as any} duration={2000} />
+              <Toast message={toast.message} onClose={handleCloseToast} type={toast.type as any} duration={1000} />
           </div>
       )}
 

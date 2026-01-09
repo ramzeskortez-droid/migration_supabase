@@ -84,7 +84,7 @@ export const EmailWidget: React.FC<EmailWidgetProps> = ({ onImportToAI }) => {
             <div className="p-5 border-b border-slate-100 bg-white">
                 <div className="flex items-center gap-2 mb-4">
                     <Mail size={20} className="text-indigo-600" />
-                    <h3 className="font-black uppercase text-sm text-slate-800 tracking-tight">Почтовый ящик</h3>
+                    <h3 className="font-black uppercase text-sm text-slate-800 tracking-tight">Почтовый ящик china@nai.ru</h3>
                 </div>
                 
                 <div className="flex p-1 bg-slate-100 rounded-xl">

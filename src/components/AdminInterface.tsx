@@ -116,7 +116,7 @@ export const AdminInterface: React.FC = () => {
 
   const showToast = (msg: string) => {
       setSuccessToast({ message: msg, id: Date.now().toString() });
-      setTimeout(() => setSuccessToast(null), 3000);
+      setTimeout(() => setSuccessToast(null), 1000);
   };
 
   const handleSort = (key: string) => { 

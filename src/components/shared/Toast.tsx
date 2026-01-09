@@ -10,7 +10,7 @@ interface ToastProps {
   onClose: () => void;
 }
 
-export const Toast: React.FC<ToastProps> = ({ message, type = 'success', duration = 3000, onClose }) => {
+export const Toast: React.FC<ToastProps> = ({ message, type = 'success', duration = 1000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {

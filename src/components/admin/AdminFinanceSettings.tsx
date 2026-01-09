@@ -117,7 +117,7 @@ export const AdminFinanceSettings: React.FC = () => {
             // rates уже содержит актуальные числа (обновляются в handleChange)
             await SupabaseService.upsertExchangeRates(rates);
             setStatus({ message: 'Курсы на сегодня успешно сохранены', type: 'success' });
-            setTimeout(() => setStatus(null), 3000);
+            setTimeout(() => setStatus(null), 1000);
         } catch (e: any) {
             setStatus({ message: 'Ошибка сохранения: ' + e.message, type: 'error' });
         } finally {

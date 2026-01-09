@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Order } from '../../types';
 import { ChevronDown, ChevronUp, Check, FileText, Camera, ChevronRight, Pencil, Copy } from 'lucide-react';
 import { DebugCopyModal } from '../shared/DebugCopyModal';
+import { Toast } from '../shared/Toast';
 
 interface OperatorOrderRowProps {
   order: Order;
@@ -16,6 +18,7 @@ const OFFER_GRID = "grid-cols-[1.2fr_1fr_70px_80px_1.8fr_80px]";
 export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange }) => {
   const [datePart, timePart] = order.createdAt.split(', ');
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{message: string} | null>(null);
   
   // Состояние для копирования
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
@@ -108,6 +111,13 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   return (
     <div className={`border-b border-slate-50 transition-all ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50/30'}`}>
+      {toast && createPortal(
+          <div className="fixed top-4 right-4 z-[9999] animate-in slide-in-from-top-2 fade-in duration-300">
+              <Toast message={toast.message} onClose={() => setToast(null)} duration={1000}/>
+          </div>,
+          document.body
+      )}
+
       {/* Debug Modal */}
       <DebugCopyModal 
         isOpen={copyModal.isOpen}
@@ -185,7 +195,21 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                         <span className="font-black text-slate-800 uppercase">{order.location || "-"}</span>
                     </div>
                     <div>
-                        <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Тема письма</span>
+                        <span className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase mb-1">
+                            Тема письма
+                            {subject && subject !== '-' && (
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(subject);
+                                        setToast({ message: 'Тема скопирована' });
+                                    }} 
+                                    className="text-slate-400 hover:text-indigo-600 transition-colors"
+                                    title="Копировать"
+                                >
+                                    <Copy size={10} />
+                                </button>
+                            )}
+                        </span>
                         <span className="font-bold text-slate-700 uppercase">{subject}</span>
                     </div>
                 </div>
