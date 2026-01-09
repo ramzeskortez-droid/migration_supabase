@@ -59,12 +59,14 @@ export const EmailWidget: React.FC<EmailWidgetProps> = ({ onImportToAI }) => {
         const fullText = `ТЕМА ПИСЬМА: ${email.subject}\n\nСОДЕРЖИМОЕ:\n${email.body}`;
         onImportToAI(fullText);
         
+        // Если уже в архиве, не меняем статус и не удаляем из списка
+        if (activeTab === 'archive') return;
+
         await supabase
             .from('incoming_emails')
             .update({ status: 'processed' })
             .eq('id', email.id);
         
-        // fetchEmails вызовется автоматически через Realtime или вручную:
         setEmails(prev => prev.filter(e => e.id !== email.id));
     };
 
@@ -147,8 +149,16 @@ export const EmailWidget: React.FC<EmailWidgetProps> = ({ onImportToAI }) => {
                             )}
                             
                             {activeTab === 'archive' && (
-                                <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase">
-                                    <CheckCircle2 size={12} /> Обработано
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase">
+                                        <CheckCircle2 size={12} /> Обработано
+                                    </div>
+                                    <button 
+                                        onClick={() => handleProcess(email)}
+                                        className="w-full py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl text-[9px] font-black uppercase hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        В Ассистент <ArrowRight size={12} />
+                                    </button>
                                 </div>
                             )}
                         </div>

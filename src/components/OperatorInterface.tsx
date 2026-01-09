@@ -14,12 +14,13 @@ import { SupabaseService } from '../services/supabaseService';
 import { Toast } from './shared/Toast';
 import { ChatNotification } from './shared/ChatNotification';
 import { AppUser } from '../types';
-import { Search } from 'lucide-react';
+import { Search, Mail, ChevronRight } from 'lucide-react';
 
 export const OperatorInterface: React.FC = () => {
   // Auth State
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isEmailOpen, setIsEmailOpen] = useState(false); // Почта свернута по умолчанию
 
   // State
   const [parts, setParts] = useState<Part[]>([
@@ -428,8 +429,16 @@ export const OperatorInterface: React.FC = () => {
           </div>
         </main>
 
-        <aside className="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-hidden h-full">
-            <div className="flex-1 overflow-hidden p-4">
+        <aside className={`${isEmailOpen ? 'w-80' : 'w-14'} bg-white border-l border-slate-200 flex flex-col shrink-0 transition-all duration-300 relative`}>
+            <button 
+                onClick={() => setIsEmailOpen(!isEmailOpen)}
+                className={`absolute top-4 z-20 p-2 rounded-xl transition-all ${isEmailOpen ? 'right-4 bg-slate-100 text-slate-500 hover:bg-slate-200' : 'left-1/2 -translate-x-1/2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 shadow-sm'}`}
+                title={isEmailOpen ? "Свернуть" : "Почта"}
+            >
+                {isEmailOpen ? <ChevronRight size={16}/> : <Mail size={20}/>}
+            </button>
+
+            <div className={`flex-1 overflow-hidden p-4 pt-16 transition-all duration-300 ${isEmailOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
                 <EmailWidget onImportToAI={handleImportEmail} />
             </div>
         </aside>
