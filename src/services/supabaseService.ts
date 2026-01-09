@@ -239,7 +239,7 @@ export class SupabaseService {
         owner_id,
         deadline,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price),
-        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days))
+        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url))
     `);
 
     // Фильтрация по табам закупщика

@@ -24,10 +24,11 @@ export interface AppUser {
 export interface ExchangeRates {
   date: string;
   cny_rub: number;
-  usd_rub: number;
-  cny_usd: number;
+  usd_rub?: number; // Deprecated
+  cny_usd: number; // Теперь используется как кросс-курс для логистики
   delivery_kg_usd: number;
   markup_percent: number;
+  delivery_weeks_add: number;
 }
 
 export interface BuyerLabel {

@@ -54,30 +54,44 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
       return winners;
   };
 
-  const formatItemText = (item: any, idx: number) => {
+  const formatItemText = (item: any, idx: number, singleLine = false) => {
       const winners = getWinnersForItem(item);
-      const priceText = item.adminPrice ? `${formatPrice(item.adminPrice)} ₽` : 'Цена не указана';
+      // const priceText = item.adminPrice ? `${formatPrice(item.adminPrice)} ₽` : '-'; 
+      // В примере пользователя цены клиента в строке варианта нет, она есть в шапке?
+      // Пример: "Пылесос... | - | 100000..." (где "-" это цена клиента?)
+      // Я буду использовать "-" если цены нет.
       
-      let text = `${idx + 1}. Позиция: ${item.AdminName || item.name} | ${item.brand || '-'} | ${item.quantity} шт | ${priceText}\n`;
+      const base = `${item.AdminName || item.name} | ${item.brand || '-'} | ${item.article || '-'} | ${item.quantity} ${item.uom || 'шт'}`;
       
-      winners.forEach((win, wIdx) => {
-          const winPrice = formatPrice(win.adminPrice || win.sellerPrice);
-          text += `Вариант ${wIdx + 1}: ${winPrice} ₽, ${win.deliveryWeeks || '-'} нед.\n`;
-      });
-      
-      return text;
+      if (singleLine) {
+          let result = `Order #${order.id}\n`;
+          if (winners.length > 0) {
+              winners.forEach(w => {
+                  result += `${base} | - | ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
+              });
+          } else {
+              result += `${base} | - | -\n`;
+          }
+          return result.trim();
+      } else {
+          let text = `${idx + 1}. ${base}\n`;
+          winners.forEach((w, wIdx) => {
+              text += `Вариант №${wIdx + 1}: ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
+          });
+          return text;
+      }
   };
 
   const handleCopyItem = (e: React.MouseEvent, item: any, idx: number) => {
       e.stopPropagation();
-      const content = formatItemText(item, idx);
+      const content = formatItemText(item, idx, true);
       setCopyModal({ isOpen: true, title: 'Копирование позиции', content });
   };
 
   const handleCopyAll = () => {
-      let fullText = '';
+      let fullText = `Order #${order.id}\n\n`;
       order.items?.forEach((item, idx) => {
-          fullText += formatItemText(item, idx) + '\n';
+          fullText += formatItemText(item, idx, false) + '\n';
       });
       setCopyModal({ isOpen: true, title: 'Копирование всего заказа', content: fullText.trim() });
   };

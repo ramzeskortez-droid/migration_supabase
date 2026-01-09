@@ -60,12 +60,12 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   };
 
   const handleCopyItem = (item: any) => {
-      const content = formatItemText(item);
+      const content = `Order #${order.id}\n` + formatItemText(item);
       setCopyModal({ isOpen: true, title: 'Копирование позиции', content });
   };
 
   const handleCopyAll = () => {
-      let fullText = '';
+      let fullText = `Order #${order.id}\n\n`;
       editingItems.forEach((item, idx) => {
           fullText += formatItemText(item, idx);
       });

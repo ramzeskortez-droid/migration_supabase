@@ -74,7 +74,8 @@ export const AdminFinanceSettings: React.FC = () => {
         usd_rub: '0',
         cny_usd: '0',
         delivery_kg_usd: '0',
-        markup_percent: '0'
+        markup_percent: '0',
+        delivery_weeks_add: '0'
     });
 
     useEffect(() => {
@@ -92,10 +93,11 @@ export const AdminFinanceSettings: React.FC = () => {
                     setLocalRates({
                         date: todayStr,
                         cny_rub: String(data.cny_rub),
-                        usd_rub: String(data.usd_rub),
+                        usd_rub: String(data.usd_rub || 0),
                         cny_usd: String(data.cny_usd),
                         delivery_kg_usd: String(data.delivery_kg_usd),
-                        markup_percent: String(data.markup_percent)
+                        markup_percent: String(data.markup_percent),
+                        delivery_weeks_add: String(data.delivery_weeks_add || 0)
                     });
                 }
             } catch (e) {
@@ -164,15 +166,6 @@ export const AdminFinanceSettings: React.FC = () => {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Доллар → Рубль ($/₽)</label>
-                        <input 
-                            type="text" 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-black text-xl text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all"
-                            value={localRates.usd_rub}
-                            onChange={(e) => handleChange('usd_rub', e.target.value)}
-                        />
-                    </div>
-                    <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Доллар → Юань ($/¥)</label>
                         <input 
                             type="text" 
@@ -180,6 +173,18 @@ export const AdminFinanceSettings: React.FC = () => {
                             value={localRates.cny_usd}
                             onChange={(e) => handleChange('cny_usd', e.target.value)}
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">+ к сроку поставщика</label>
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-black text-xl text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all pr-12"
+                                value={localRates.delivery_weeks_add}
+                                onChange={(e) => handleChange('delivery_weeks_add', e.target.value)}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold text-[10px] uppercase">Нед.</span>
+                        </div>
                     </div>
                 </div>
 
@@ -239,13 +244,13 @@ export const AdminFinanceSettings: React.FC = () => {
             <div className="mt-12 p-6 rounded-2xl border-2 border-dashed border-slate-100">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Пример расчета для менеджера:</h4>
                 <div className="space-y-2 text-[11px] font-bold text-slate-600">
-                    <p>Формула: <span className="text-slate-900">(Цена Пост. * Курс ¥) + (Вес * Тариф $ * Курс $) + Наценка %</span></p>
+                    <p>Формула: <span className="text-slate-900">(Цена Пост. * Курс ¥) + (Вес * Тариф $ * Курс $/¥ * Курс ¥) + Наценка %</span></p>
                     <div className="p-3 bg-white rounded-lg border border-slate-100 flex justify-between items-center">
                         <span>Если цена 100 ¥, вес 2кг:</span>
                         <span className="text-indigo-600">
-                            (100 * {rates.cny_rub}) + (2 * {rates.delivery_kg_usd} * {rates.usd_rub}) + {rates.markup_percent}% 
+                            (100 * {rates.cny_rub}) + (2 * {rates.delivery_kg_usd} * {rates.cny_usd} * {rates.cny_rub}) + {rates.markup_percent}% 
                             = <span className="text-lg font-black ml-2">
-                                {Math.round(((100 * rates.cny_rub) + (2 * rates.delivery_kg_usd * rates.usd_rub)) * (1 + rates.markup_percent/100))} ₽
+                                {Math.round(((100 * rates.cny_rub) + (2 * rates.delivery_kg_usd * rates.cny_usd * rates.cny_rub)) * (1 + rates.markup_percent/100))} ₽
                             </span>
                         </span>
                     </div>

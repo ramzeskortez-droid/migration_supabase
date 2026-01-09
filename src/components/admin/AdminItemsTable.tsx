@@ -32,13 +32,26 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   const calculatePrice = (sellerPrice: number, sellerCurrency: Currency, weight: number) => {
     if (!exchangeRates) return 0;
     
-    let basePriceRub = 0;
-    if (sellerCurrency === 'CNY') basePriceRub = sellerPrice * exchangeRates.cny_rub;
-    else if (sellerCurrency === 'USD') basePriceRub = sellerPrice * exchangeRates.usd_rub;
-    else basePriceRub = sellerPrice;
+    // 1. Конвертация цены товара в рубли
+    let itemCostRub = 0;
+    if (sellerCurrency === 'CNY') itemCostRub = sellerPrice * exchangeRates.cny_rub;
+    else if (sellerCurrency === 'USD') itemCostRub = sellerPrice * (exchangeRates.cny_usd || 0) * exchangeRates.cny_rub; // Через кросс-курс? Или напрямую?
+    // Пользователь дал формулу для CNY: (100 * 12.146)
+    // Если цена в USD, нужно перевести в CNY сначала? Или сразу в RUB?
+    // Логично перевести в CNY, раз вся логика через CNY.
+    // Если цена в RUB, то itemCostRub = sellerPrice.
+    else itemCostRub = sellerPrice;
 
-    const deliveryCostRub = (weight || 0) * (exchangeRates.delivery_kg_usd || 0) * exchangeRates.usd_rub;
-    const totalCost = basePriceRub + deliveryCostRub;
+    // 2. Расчет доставки
+    // Формула: (Вес * Доставка$ * Курс_CNY_USD * Курс_CNY_RUB)
+    // Где Курс_CNY_USD - это "Доллар -> Юань" (0.14 или 7.2).
+    // Пользователь назвал поле "Доллар -> Юань ($/¥)". Обычно это значит 1$ = X¥.
+    // В примере: (2 * 6) * 0.14 * 12.146.
+    // Значит cny_usd используется как множитель.
+    
+    const deliveryCostRub = (weight || 0) * (exchangeRates.delivery_kg_usd || 0) * (exchangeRates.cny_usd || 0) * exchangeRates.cny_rub;
+    
+    const totalCost = itemCostRub + deliveryCostRub;
     const finalPrice = totalCost * (1 + (exchangeRates.markup_percent || 0) / 100);
     
     return Math.round(finalPrice);
@@ -199,7 +212,9 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
 
                                         // Срок
                                         const editedWeeks = offerEdits?.[off.item.id]?.deliveryWeeks;
-                                        const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.deliveryWeeks || 0);
+                                        // Базовый срок = Срок поставщика + Добавка из настроек
+                                        const baseWeeks = (off.item.deliveryWeeks || 0) + (exchangeRates?.delivery_weeks_add || 0);
+                                        const currentWeeks = editedWeeks !== undefined ? editedWeeks : baseWeeks;
 
                                         return (
                                             <div key={oIdx} className={`relative transition-all duration-300 border-l-4 ${isLeader ? "bg-emerald-50 border-l-emerald-500 shadow-inner" : "hover:bg-gray-50 border-l-transparent"}`}>
