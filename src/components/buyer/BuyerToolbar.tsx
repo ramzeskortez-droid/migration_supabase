@@ -156,74 +156,76 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
          </div>
       </div>
 
-      <div className="flex justify-between items-end border-b border-slate-200 mt-6 overflow-x-auto">
-         <div className="flex gap-6 min-w-max">
-            <button 
-                onClick={() => setActiveTab('new')} 
-                className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'new' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                Новые 
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'new' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    {counts.new}
-                </span>
-                {activeTab === 'new' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-slate-900 rounded-full"></span>}
-            </button>
+      <div className="flex justify-between items-end border-b border-slate-200 mt-6 relative">
+         <div className="flex-grow overflow-x-auto no-scrollbar mr-4">
+            <div className="flex gap-6 min-w-max">
+                <button 
+                    onClick={() => setActiveTab('new')} 
+                    className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'new' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    Новые 
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'new' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        {counts.new}
+                    </span>
+                    {activeTab === 'new' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-slate-900 rounded-full"></span>}
+                </button>
 
-            <button 
-                onClick={() => setActiveTab('hot')} 
-                className={`pb-3 text-[11px] font-black uppercase transition-all relative flex items-center gap-1.5 ${activeTab === 'hot' ? 'text-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                <Flame size={14} className={activeTab === 'hot' ? 'animate-pulse' : ''} />
-                Горящие 🔥
-                <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'hot' ? 'bg-orange-600 text-white' : 'bg-orange-50 text-orange-400'}`}>
-                    {counts.hot}
-                </span>
-                {activeTab === 'hot' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-orange-600 rounded-full"></span>}
-            </button>
+                <button 
+                    onClick={() => setActiveTab('hot')} 
+                    className={`pb-3 text-[11px] font-black uppercase transition-all relative flex items-center gap-1.5 ${activeTab === 'hot' ? 'text-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    <Flame size={14} className={activeTab === 'hot' ? 'animate-pulse' : ''} />
+                    Горящие 🔥
+                    <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'hot' ? 'bg-orange-600 text-white' : 'bg-orange-50 text-orange-400'}`}>
+                        {counts.hot}
+                    </span>
+                    {activeTab === 'hot' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-orange-600 rounded-full"></span>}
+                </button>
 
-            <button 
-                onClick={() => setActiveTab('history')} 
-                className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'history' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                В торгах 
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    {counts.history}
-                </span>
-                {activeTab === 'history' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-blue-600 rounded-full"></span>}
-            </button>
+                <button 
+                    onClick={() => setActiveTab('history')} 
+                    className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'history' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    В торгах 
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'history' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        {counts.history}
+                    </span>
+                    {activeTab === 'history' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-blue-600 rounded-full"></span>}
+                </button>
 
-            <button 
-                onClick={() => setActiveTab('won')} 
-                className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'won' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                Выигранные 
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'won' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    {counts.won}
-                </span>
-                {activeTab === 'won' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-emerald-600 rounded-full"></span>}
-            </button>
+                <button 
+                    onClick={() => setActiveTab('won')} 
+                    className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'won' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    Выигранные 
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'won' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        {counts.won}
+                    </span>
+                    {activeTab === 'won' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-emerald-600 rounded-full"></span>}
+                </button>
 
-            <button 
-                onClick={() => setActiveTab('lost')} 
-                className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'lost' ? 'text-slate-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                Проигранные 
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'lost' ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    {counts.lost}
-                </span>
-                {activeTab === 'lost' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-slate-600 rounded-full"></span>}
-            </button>
+                <button 
+                    onClick={() => setActiveTab('lost')} 
+                    className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'lost' ? 'text-slate-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    Проигранные 
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'lost' ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        {counts.lost}
+                    </span>
+                    {activeTab === 'lost' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-slate-600 rounded-full"></span>}
+                </button>
 
-            <button 
-                onClick={() => setActiveTab('cancelled')} 
-                className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'cancelled' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-                Отмененные 
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'cancelled' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    {counts.cancelled}
-                </span>
-                {activeTab === 'cancelled' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-red-500 rounded-full"></span>}
-            </button>
+                <button 
+                    onClick={() => setActiveTab('cancelled')} 
+                    className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'cancelled' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    Отмененные 
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'cancelled' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        {counts.cancelled}
+                    </span>
+                    {activeTab === 'cancelled' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-red-500 rounded-full"></span>}
+                </button>
+            </div>
          </div>
          <button 
             onClick={onRefresh} 
