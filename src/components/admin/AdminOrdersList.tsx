@@ -243,9 +243,9 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
         <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none shrink-0 z-[300] border-l-4 border-transparent`}>
              <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ ЗАКАЗА <SortIcon column="id"/></div>
              <div className="flex items-center">ТЕМА ПИСЬМА</div>
-             <div className="text-left">СРОК ДО</div>
-             <div className="text-left">ДАТА СОЗДАНИЯ</div>
-             <div className="text-left cursor-pointer group" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
+             <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('deadline')}>СРОК ДО <SortIcon column="deadline"/></div>
+             <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('date')}>ДАТА СОЗДАНИЯ <SortIcon column="date"/></div>
+             <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
              <div className="text-left">ОФФЕРЫ</div>
              <div className="text-left">ПОЗИЦИЙ</div>
              <div className="text-left">СТАТУС</div>

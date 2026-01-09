@@ -231,7 +231,7 @@ export const BuyerInterface: React.FC = () => {
     const isBiddingActive = order.statusAdmin === 'В обработке' || order.statusAdmin === 'ОТКРЫТ';
     if (isBiddingActive && !order.isProcessed) return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: null };
     
-    const winningItems = myOffer.items.filter((i: any) => i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
+    const winningItems = myOffer.items.filter((i: any) => i.is_winner || i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
     if (winningItems.length === myOffer.items.length) return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: null };
     else if (winningItems.length === 0) return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: null };
     else return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
