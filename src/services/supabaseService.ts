@@ -733,7 +733,7 @@ export class SupabaseService {
 
   static async searchBrands(query: string): Promise<string[]> {
       if (!query || query.length < 2) return [];
-      const { data, error } = await supabase.from('brands').select('name').ilike('name', `%${query}%`).order('name').limit(20);
+      const { data, error } = await supabase.from('brands').select('name').ilike('name', `%${query}%`).order('name').limit(50);
       if (error) throw error;
       return data?.map((b: any) => b.name) || [];
   }
@@ -746,7 +746,7 @@ export class SupabaseService {
   }
 
   static async getBrandsList(): Promise<string[]> {
-      const { data, error } = await supabase.from('brands').select('name').order('name');
+      const { data, error } = await supabase.from('brands').select('name').order('name').limit(10000);
       if (error) throw error;
       return data?.map((b: any) => b.name) || [];
   }

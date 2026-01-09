@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { SupabaseService } from '../../services/supabaseService';
 import { Search, RefreshCw, Car, Flame, X, Plus, Loader2, Check } from 'lucide-react';
 
 interface BuyerToolbarProps {
@@ -25,24 +26,34 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Серверный поиск брендов при вводе
+  // Комбинированный поиск: При вводе идем в базу, при пустоте показываем загруженные
   useEffect(() => {
-      if (!brandSearch || brandSearch.length < 2) {
-          setSearchResults([]);
+      if (!brandSearch) {
+          setSearchResults(availableBrands);
           return;
       }
+
+      // Если в локальном списке есть совпадение - показываем сразу (оптимизация)
+      // Но все равно делаем запрос для точности (вдруг новые появились)
+      const localMatches = availableBrands.filter(b => b.toLowerCase().includes(brandSearch.toLowerCase()));
+      setSearchResults(localMatches);
 
       const handler = setTimeout(async () => {
           setIsSearching(true);
           try {
               const results = await SupabaseService.searchBrands(brandSearch);
-              setSearchResults(results);
-          } catch (e) {}
-          finally { setIsSearching(false); }
+              // Объединяем локальные и серверные (убираем дубли)
+              const combined = Array.from(new Set([...localMatches, ...results]));
+              setSearchResults(combined);
+          } catch (e) {
+              console.error(e);
+          } finally { 
+              setIsSearching(false); 
+          }
       }, 300);
 
       return () => clearTimeout(handler);
-  }, [brandSearch]);
+  }, [brandSearch, availableBrands]);
 
   const toggleBrand = (brand: string) => {
       if (activeBrands.includes(brand)) {
@@ -87,17 +98,14 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
                                     autoFocus
                                     value={brandSearch}
                                     onChange={(e) => setBrandSearch(e.target.value)}
-                                    placeholder="Поиск по всей базе (3000+)..."
+                                    placeholder="Поиск в базе..."
                                     className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs outline-none mb-2 font-bold pr-8"
                                 />
                                 {isSearching && <Loader2 size={12} className="absolute right-2 top-2.5 animate-spin text-slate-400" />}
                             </div>
                             <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
-                                {searchResults.length === 0 && brandSearch.length >= 2 && !isSearching && (
+                                {searchResults.length === 0 && !isSearching && (
                                     <div className="p-2 text-center text-[10px] text-slate-400 font-bold">Ничего не найдено</div>
-                                )}
-                                {searchResults.length === 0 && brandSearch.length < 2 && (
-                                    <div className="p-2 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest italic opacity-50">Введите 2+ символа</div>
                                 )}
                                 {searchResults.map(brand => {
                                     const isSelected = activeBrands.includes(brand);
