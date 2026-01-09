@@ -280,17 +280,6 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                             </div>
                                                         </div>
                                                     )}
-
-                                                    <div className="col-span-full mt-2 relative">
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="Комментарий для поставщика (виден закупщику)..." 
-                                                            value={currentComment} 
-                                                            onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminComment', e.target.value)} 
-                                                            className={`w-full px-4 py-1.5 border rounded-xl text-[10px] font-bold text-gray-600 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner ${isEditing ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white' : (currentComment ? 'bg-white border-indigo-100' : 'bg-gray-50 border-gray-200')}`} 
-                                                        />
-                                                        <Edit2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
-                                                    </div>
                                                 </div>
                                             </div>
                                         );

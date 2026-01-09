@@ -117,7 +117,7 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
                 )}
                 {showStickerPicker && <div className="fixed inset-0 z-40" onClick={() => setShowStickerPicker(false)}></div>}
              </div>
-             <div onClick={onToggle} className="text-[11px] font-black font-mono text-indigo-600 truncate cursor-pointer">#{order.id}</div>
+             <div onClick={onToggle} className="text-[11px] font-black text-indigo-600 truncate cursor-pointer">#{order.id}</div>
           </div>
           
           {/* 2. Deadline */}

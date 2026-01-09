@@ -33,13 +33,47 @@ const MemoizedBuyerOrderRow = memo(({
     statusInfo, myOffer, buyerToken, onOpenChat
 }: any) => {
     
-    // Инициализация пустых полей для нового оффера
+    // Инициализация пустых полей для нового оффера или загрузка существующих
     const getInitialItems = () => {
         if (editingItemsMap[order.id]) return editingItemsMap[order.id];
+        
+        if (myOffer && myOffer.items) {
+             return order.items.map((oi: any) => {
+                 const offItem = myOffer.items.find((mi: any) => 
+                     String(mi.order_item_id) === String(oi.id) || 
+                     (!mi.order_item_id && mi.name?.trim() === oi.name?.trim())
+                 );
+
+                 if (offItem) {
+                     return {
+                         ...oi,
+                         comment: offItem.comment || '',
+                         originalComment: oi.comment,
+                         offeredQuantity: offItem.offeredQuantity ?? offItem.quantity,
+                         BuyerPrice: offItem.sellerPrice ?? offItem.price,
+                         BuyerCurrency: offItem.sellerCurrency ?? 'RUB',
+                         weight: offItem.weight || 0,
+                         deliveryWeeks: offItem.deliveryWeeks || 0,
+                         photoUrl: offItem.photoUrl
+                     };
+                 }
+                 
+                 return {
+                    ...oi,
+                    comment: '',
+                    originalComment: oi.comment,
+                    offeredQuantity: oi.quantity,
+                    BuyerPrice: 0,
+                    weight: 0,
+                    deliveryWeeks: 0
+                 };
+             });
+        }
+
         return order.items.map((i: any) => ({
             ...i,
-            comment: '', // Очищаем комментарий для ввода закупщика
-            originalComment: i.comment, // Сохраняем оригинал (тему) если нужно
+            comment: '', 
+            originalComment: i.comment, 
             offeredQuantity: i.quantity,
             BuyerPrice: 0,
             weight: 0,
