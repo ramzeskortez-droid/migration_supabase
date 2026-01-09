@@ -80,7 +80,11 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
             <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Почта клиента</label>
                 <input 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
+                    className={`w-full bg-slate-50 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-400 font-medium ${
+                        orderInfo.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orderInfo.clientEmail) 
+                        ? 'border-red-300 focus:border-red-500 text-red-600' 
+                        : 'border-slate-200 focus:border-indigo-500'
+                    }`}
                     placeholder="example@mail.com"
                     value={orderInfo.clientEmail}
                     onChange={(e) => handleChange('clientEmail', e.target.value)}

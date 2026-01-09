@@ -192,6 +192,11 @@ export const OperatorInterface: React.FC = () => {
   const handleCreateOrder = async () => {
     if (!currentUser) return;
 
+    if (orderInfo.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orderInfo.clientEmail)) {
+        setToast({ message: 'Некорректный формат почты клиента (требуется @ и .)', type: 'error' });
+        return;
+    }
+
     if (!isFormValid) {
         setToast({ message: 'Заполните обязательные поля: Бренд (должен быть зеленым) и Наименование', type: 'error' });
         return;

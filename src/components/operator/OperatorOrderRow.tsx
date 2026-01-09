@@ -105,14 +105,16 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
       <div 
         onClick={onToggle}
-        className={`p-3 grid grid-cols-[70px_1fr_1fr_90px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
+        className={`p-3 grid grid-cols-[70px_1fr_1fr_1fr_90px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
       >
-        <div className="text-[11px] font-black text-indigo-600">#{order.id}</div>
+        <div className="text-[11px] font-black font-mono text-indigo-600">#{order.id}</div>
         
         <div className="flex min-w-0 flex-col">
             <div className="text-[11px] font-bold text-slate-700 truncate">{order.clientName || 'Не указано'}</div>
             <div className="text-[9px] text-slate-400 font-medium">{order.clientPhone}</div>
         </div>
+
+        <div className="text-[10px] font-medium text-slate-500 truncate lowercase">{order.clientEmail || '-'}</div>
 
         <div className="text-[10px] font-medium text-slate-600 truncate" title={subject}>{subject}</div>
 
@@ -151,7 +153,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                         <span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span>
                     </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6 text-[10px]">
                     <div>
                         <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span>
                         <span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span>
@@ -159,6 +161,10 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                     <div>
                         <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span>
                         <span className="font-bold text-slate-700">{order.clientPhone || "-"}</span>
+                    </div>
+                    <div>
+                        <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span>
+                        <span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span>
                     </div>
                     <div>
                         <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span>

@@ -172,9 +172,10 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
           <div className="hidden md:block border-b border-slate-100 bg-slate-50 shrink-0">
-              <div className="p-3 grid grid-cols-[70px_1fr_1fr_90px_100px_140px_20px] gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left border-l-4 border-transparent">
+              <div className="p-3 grid grid-cols-[70px_1fr_1fr_1fr_90px_100px_140px_20px] gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left border-l-4 border-transparent">
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ Заказа <SortIcon field="id"/></div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('client_name')}>Клиент <SortIcon field="client_name"/></div>
+                  <div className="flex items-center">Почта</div>
                   <div className="flex items-center">Тема</div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('deadline')}>Срок до <SortIcon field="deadline"/></div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('created_at')}>Дата <SortIcon field="created_at"/></div>

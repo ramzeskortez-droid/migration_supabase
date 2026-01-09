@@ -98,7 +98,7 @@ const AdminOrderRow = memo(({
                 
                 {/* 1. ID + Sticker */}
                 <div className="flex items-center gap-2">
-                    <div className="font-mono font-bold text-slate-700">{order.id}</div>
+                    <div className="text-[11px] font-black font-mono text-indigo-600">#{order.id}</div>
                     {stickerColor && <div className={`w-2.5 h-2.5 rounded-full bg-${stickerColor}-500 shadow-sm`}></div>}
                 </div>
                 
