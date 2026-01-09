@@ -101,7 +101,7 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
         <div className="hidden md:block border-b border-slate-50 border-l-4 border-transparent shrink-0 z-20 bg-slate-50">
             <div className={`p-3 grid ${GRID_COLS} gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left select-none`}>
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('id')}>№ заказа <SortIcon column="id"/></div>
-               <div>Срок до</div>
+               <div className="cursor-pointer flex items-center group" onClick={() => onSort('deadline')}>Срок до <SortIcon column="deadline"/></div>
                <div>Тема письма</div>
                <div>Первая позиция</div>
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('status')}>Статус <SortIcon column="status"/></div>

@@ -204,7 +204,7 @@ export class SupabaseService {
     ownerToken?: string, 
     buyerToken?: string, 
     excludeOffersFrom?: string,
-    buyerTab?: 'new' | 'hot' | 'history'
+    buyerTab?: 'new' | 'hot' | 'history' | 'won' | 'lost' | 'cancelled'
   ): Promise<{ data: Order[], nextCursor?: number }> {
     
     let matchingIds: any[] = [];
@@ -251,10 +251,44 @@ export class SupabaseService {
 
         if (buyerTab === 'new') query = query.gte('created_at', isoDate);
         else query = query.lt('created_at', isoDate);
-    } else if (buyerTab === 'history' && onlyWithMyOffersName) {
-        const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
-        const ids = myOff?.map(o => o.order_id) || [];
-        query = query.in('id', ids.length > 0 ? ids : [0]);
+    } else if (onlyWithMyOffersName) {
+        if (buyerTab === 'history') {
+            // В торгах (активные, статус В обработке)
+            const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
+            const ids = myOff?.map(o => o.order_id) || [];
+            query = query.in('id', ids.length > 0 ? ids : [0]);
+            query = query.eq('status_admin', 'В обработке');
+        } 
+        else if (buyerTab === 'won') {
+            const { data: myWins } = await supabase.from('offer_items')
+                .select('offer_id, offers!inner(order_id, supplier_name)')
+                .eq('is_winner', true)
+                .eq('offers.supplier_name', onlyWithMyOffersName);
+            const ids = myWins?.map((w: any) => w.offers.order_id) || [];
+            query = query.in('id', ids.length > 0 ? ids : [0]);
+        }
+        else if (buyerTab === 'lost') {
+            const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
+            const allMyIds = myOff?.map(o => o.order_id) || [];
+            
+            const { data: myWins } = await supabase.from('offer_items')
+                .select('offer_id, offers!inner(order_id, supplier_name)')
+                .eq('is_winner', true)
+                .eq('offers.supplier_name', onlyWithMyOffersName);
+            const winIds = myWins?.map((w: any) => w.offers.order_id) || [];
+            
+            const lostIds = allMyIds.filter(id => !winIds.includes(id));
+            
+            query = query.in('id', lostIds.length > 0 ? lostIds : [0]);
+            query = query.neq('status_admin', 'В обработке');
+            query = query.not('status_admin', 'in', '("Аннулирован","Отказ")');
+        }
+        else if (buyerTab === 'cancelled') {
+            const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
+            const ids = myOff?.map(o => o.order_id) || [];
+            query = query.in('id', ids.length > 0 ? ids : [0]);
+            query = query.in('status_admin', ['Аннулирован', 'Отказ']);
+        }
     }
 
     // Изоляция для оператора
@@ -300,11 +334,27 @@ export class SupabaseService {
     }
 
     if (cursor) {
+        // Упрощенная пагинация по ID. Для полной поддержки пагинации по не-уникальным полям 
+        // (дата, дедлайн) потребовался бы составной курсор.
         if (sortDirection === 'desc') query = query.lt('id', cursor);
         else query = query.gt('id', cursor);
     }
 
-    const { data, error } = await query.order('id', { ascending: sortDirection === 'asc' }).limit(limit);
+    // Маппинг ключей сортировки на колонки БД
+    const columnMap: Record<string, string> = {
+        'id': 'id',
+        'date': 'created_at',
+        'deadline': 'deadline',
+        'status': 'status_admin'
+    };
+    const sortColumn = columnMap[sortBy] || 'id';
+
+    query = query.order(sortColumn, { ascending: sortDirection === 'asc', nullsFirst: false });
+    if (sortColumn !== 'id') {
+        query = query.order('id', { ascending: sortDirection === 'asc' });
+    }
+    
+    const { data, error } = await query.limit(limit);
     
     if (error) {
         console.error('getOrders ERROR:', error);
@@ -365,7 +415,7 @@ export class SupabaseService {
     return { data: mappedData, nextCursor };
   }
 
-  static async getBuyerTabCounts(supplierName: string): Promise<{ new: number, hot: number, history: number }> {
+  static async getBuyerTabCounts(supplierName: string): Promise<{ new: number, hot: number, history: number, won: number, lost: number, cancelled: number }> {
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       const isoDate = threeDaysAgo.toISOString();
@@ -382,16 +432,29 @@ export class SupabaseService {
           return q;
       };
 
-      const [resNew, resHot, resHistory] = await Promise.all([
+      const { data: myWins } = await supabase.from('offer_items')
+            .select('offer_id, offers!inner(order_id, supplier_name)')
+            .eq('is_winner', true)
+            .eq('offers.supplier_name', supplierName);
+      const winIds = Array.from(new Set(myWins?.map((w: any) => w.offers.order_id) || []));
+      const lostIds = myOfferIds.filter(id => !winIds.includes(id));
+
+      const [resNew, resHot, resHistory, resWon, resLost, resCancelled] = await Promise.all([
           getBaseQuery().gte('created_at', isoDate),
           getBaseQuery().lt('created_at', isoDate),
-          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', myOfferIds.length > 0 ? myOfferIds : [0])
+          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', myOfferIds.length > 0 ? myOfferIds : [0]).eq('status_admin', 'В обработке'),
+          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', winIds.length > 0 ? winIds : [0]),
+          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', lostIds.length > 0 ? lostIds : [0]).neq('status_admin', 'В обработке').not('status_admin', 'in', '("Аннулирован","Отказ")'),
+          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', myOfferIds.length > 0 ? myOfferIds : [0]).in('status_admin', ['Аннулирован', 'Отказ'])
       ]);
 
       return {
           new: resNew.count || 0,
           hot: resHot.count || 0,
-          history: resHistory.count || 0
+          history: resHistory.count || 0,
+          won: resWon.count || 0,
+          lost: resLost.count || 0,
+          cancelled: resCancelled.count || 0
       };
   }
 

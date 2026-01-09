@@ -22,7 +22,7 @@ export const BuyerInterface: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(!buyerAuth);
 
   // --- UI State ---
-  const [activeTab, setActiveTab] = useState<'new' | 'history' | 'hot'>('new');
+  const [activeTab, setActiveTab] = useState<'new' | 'history' | 'hot' | 'won' | 'lost' | 'cancelled'>('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeBrands, setActiveBrands] = useState<string[]>([]);
@@ -36,9 +36,14 @@ export const BuyerInterface: React.FC = () => {
   const [availableBrands, setAvailableBrands] = useState<string[]>([]); 
   const [historyBrands, setHistoryBrands] = useState<string[]>([]); 
   const [quickBrands, setQuickBrands] = useState<string[]>([]); 
-  const [tabCounts, setTabCounts] = useState({ new: 0, hot: 0, history: 0 });
+  const [tabCounts, setTabCounts] = useState({ new: 0, hot: 0, history: 0, won: 0, lost: 0, cancelled: 0 });
 
   const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
+
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ 
+    key: 'deadline', 
+    direction: 'asc' 
+  });
 
   // --- Realtime Notifications ---
   useEffect(() => {
@@ -56,6 +61,13 @@ export const BuyerInterface: React.FC = () => {
   }, [buyerAuth, isGlobalChatOpen]);
 
   // --- Handlers ---
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+        key,
+        direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
   const handleLogin = (user: AppUser) => {
       setBuyerAuth(user);
       localStorage.setItem('buyer_auth_token', JSON.stringify(user));
@@ -93,7 +105,8 @@ export const BuyerInterface: React.FC = () => {
       brandFilter: activeBrands.length > 0 ? activeBrands : null,
       onlyWithMyOffersName: buyerAuth?.name,
       excludeOffersFrom: buyerAuth?.name,
-      sortDirection: 'desc',
+      sortBy: sortConfig.key,
+      sortDirection: sortConfig.direction,
       limit: 20,
       buyerToken: buyerAuth?.token 
   });
@@ -102,10 +115,10 @@ export const BuyerInterface: React.FC = () => {
       return data?.pages.flatMap(page => page.data) || [];
   }, [data]);
 
-  // Принудительное обновление при смене таба
+  // Принудительное обновление при смене таба или сортировки
   useEffect(() => {
       refetch();
-  }, [activeTab, refetch]);
+  }, [activeTab, sortConfig, refetch]);
 
   // --- Effects ---
   const fetchCounts = useCallback(async () => {
@@ -224,8 +237,6 @@ export const BuyerInterface: React.FC = () => {
     else return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
   }, [getMyOffer]);
 
-  const sortConfig = { key: 'id', direction: 'desc' as const };
-
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
         {successToast && <Toast message={successToast.message} onClose={() => setSuccessToast(null)} />}
@@ -276,7 +287,7 @@ export const BuyerInterface: React.FC = () => {
                     isLoading={isFetchingNextPage}
                     editingItemsMap={editingItemsMap} setEditingItemsMap={setEditingItemsMap}
                     onSubmit={handleSubmitOffer} isSubmitting={isSubmitting}
-                    sortConfig={sortConfig} onSort={() => {}}
+                    sortConfig={sortConfig} onSort={handleSort}
                     getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
                     buyerToken={buyerAuth?.token}
                     onOpenChat={handleOpenChat}

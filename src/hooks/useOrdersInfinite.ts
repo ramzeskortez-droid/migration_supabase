@@ -7,12 +7,13 @@ interface UseOrdersInfiniteProps {
     clientPhone?: string;
     brandFilter?: string[] | null; 
     onlyWithMyOffersName?: string;
+    sortBy?: string;
     sortDirection: 'asc' | 'desc';
     limit?: number;
     ownerToken?: string;
     buyerToken?: string;
     excludeOffersFrom?: string;
-    buyerTab?: 'new' | 'hot' | 'history'; // Новый параметр
+    buyerTab?: 'new' | 'hot' | 'history' | 'won' | 'lost' | 'cancelled'; // Новый параметр
 }
 
 export const useOrdersInfinite = ({
@@ -21,6 +22,7 @@ export const useOrdersInfinite = ({
     clientPhone,
     brandFilter,
     onlyWithMyOffersName,
+    sortBy = 'id',
     sortDirection,
     limit = 50,
     ownerToken,
@@ -29,12 +31,12 @@ export const useOrdersInfinite = ({
     buyerTab
 }: UseOrdersInfiniteProps) => {
     return useInfiniteQuery({
-        queryKey: ['orders', { searchQuery, statusFilter, clientPhone, brandFilter, onlyWithMyOffersName, sortDirection, ownerToken, buyerToken, excludeOffersFrom, buyerTab }],
+        queryKey: ['orders', { searchQuery, statusFilter, clientPhone, brandFilter, onlyWithMyOffersName, sortBy, sortDirection, ownerToken, buyerToken, excludeOffersFrom, buyerTab }],
         queryFn: async ({ pageParam }: { pageParam?: number }) => {
             const result = await SupabaseService.getOrders(
                 pageParam,
                 limit,
-                'id',
+                sortBy,
                 sortDirection,
                 searchQuery,
                 statusFilter,
