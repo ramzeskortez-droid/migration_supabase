@@ -239,7 +239,7 @@ export class SupabaseService {
         owner_id,
         deadline,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price),
-        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url))
+        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, order_item_id))
     `);
 
     // Фильтрация по табам закупщика
@@ -405,10 +405,11 @@ export class SupabaseService {
             })) || [],
             offers: order.offers?.map((o: any) => ({
                 id: o.id, clientName: o.supplier_name, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
-                    id: oi.id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
+                    id: oi.id, order_item_id: oi.order_item_id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPrice: oi.admin_price,
-                    deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0
+                    deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
+                    photoUrl: oi.photo_url
                 })) || []
             })) || [],
             isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
