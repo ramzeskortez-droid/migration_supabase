@@ -551,6 +551,17 @@ export class SupabaseService {
   static async sendChatMessage(payload: any): Promise<any> {
       const { data, error } = await supabase.from('chat_messages').insert(payload).select().single();
       if (error) throw error;
+
+      // Unarchive thread
+      const supplierName = payload.sender_role === 'SUPPLIER' ? payload.sender_name : payload.recipient_name;
+      if (supplierName && supplierName !== 'ADMIN') {
+          const escapedName = supplierName.split('"').join('"');
+          await supabase.from('chat_messages')
+            .update({ is_archived: false })
+            .eq('order_id', payload.order_id)
+            .or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+      }
+
       return data;
   }
 
@@ -587,7 +598,7 @@ export class SupabaseService {
   }
 
   static async getGlobalChatThreads(filterBySupplierName?: string, isArchived: boolean = false): Promise<Record<string, Record<string, any>>> {
-      if (!isArchived) supabase.rpc('archive_old_chats').then(() => {});
+      if (!isArchived) supabase.rpc('auto_archive_chats').then(() => {});
       let query = supabase.from('chat_messages').select('*').eq('is_archived', isArchived).order('created_at', { ascending: false }).limit(500);
       if (filterBySupplierName) {
           const escapedName = filterBySupplierName.split('"').join('"');

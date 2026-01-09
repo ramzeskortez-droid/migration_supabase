@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MessageCircle, ChevronRight, User, Hash, Archive } from 'lucide-react';
+import { X, MessageCircle, ChevronRight, User, Hash, Archive, Search } from 'lucide-react';
 import { ChatWindow } from './ChatWindow';
 import { SupabaseService } from '../../services/supabaseService';
 
@@ -19,6 +19,7 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
+  const [searchQuery, setSearchQuery] = useState('');
   const processedIds = React.useRef(new Set<number>());
 
   const fetchThreads = async () => {
@@ -78,24 +79,6 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
       }
   }, [isOpen, activeTab]);
 
-    const handleArchive = async (e: React.MouseEvent, orderId: string, supplierName: string) => {
-      e.stopPropagation();
-      const confirmMsg = `Перенести переписку с ${supplierName} по заказу #${orderId} в архив для обоих участников?`;
-      
-      if (!confirm(confirmMsg)) return;
-
-      try {
-          await SupabaseService.archiveChat(orderId, supplierName);
-          fetchThreads();
-          if (selectedOrder === orderId && selectedSupplier === supplierName) {
-              setSelectedOrder(null);
-              setSelectedSupplier(null);
-          }
-      } catch (e) {
-          console.error(e);
-          alert('Ошибка архивации');
-      }
-  };
 
   const handleNavigate = React.useCallback((oid: string) => {
       if (onNavigateToOrder) {
@@ -140,6 +123,17 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                         </button>
                     </div>
 
+                    <div className="relative mb-3">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                        <input 
+                            type="text" 
+                            placeholder="Поиск по № заказа..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 border-transparent focus:bg-white focus:border-indigo-500 rounded-md transition-all outline-none"
+                        />
+                    </div>
+
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                         <button 
                             onClick={() => setActiveTab('active')}
@@ -161,7 +155,9 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                         <div className="text-center text-slate-400 text-xs font-bold mt-10">Нет активных чатов</div>
                     )}
 
-                    {Object.entries(threads).map(([orderId, suppliers]) => {
+                    {Object.entries(threads)
+                        .filter(([orderId]) => orderId.includes(searchQuery.trim()))
+                        .map(([orderId, suppliers]) => {
                         const totalUnread = Object.values(suppliers).reduce((acc: number, val: any) => acc + val.unread, 0);
                         const isExpanded = selectedOrder === orderId;
 
@@ -206,13 +202,6 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                                                             +{info.unread}
                                                         </span>
                                                     )}
-                                                    <button 
-                                                        onClick={(e) => handleArchive(e, orderId, supplier)}
-                                                        className={`opacity-0 group-hover/supplier:opacity-100 p-1 rounded transition-all ${selectedSupplier === supplier ? 'hover:bg-indigo-500 text-indigo-200 hover:text-white' : 'hover:bg-indigo-50 text-slate-300 hover:text-indigo-500'}`}
-                                                        title="В архив"
-                                                    >
-                                                        <Archive size={10}/>
-                                                    </button>
                                                 </div>
                                             </div>
                                         ))}

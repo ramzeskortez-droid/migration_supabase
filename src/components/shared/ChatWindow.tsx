@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
-import { Send, Link, Package, X, Archive, Paperclip, FileText, Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Send, Link, Package, X, Archive, Paperclip, FileText, Loader2, Trash2 } from 'lucide-react';
 import { SupabaseService } from '../../services/supabaseService';
 import { ConfirmationModal } from './ConfirmationModal';
 import { Toast } from './Toast';
@@ -211,7 +212,6 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   const [loading, setLoading] = useState(false);
   const [orderItems, setOrderItems] = useState<string[]>([]);
   
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [toast, setToast] = useState<{message: string} | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -276,6 +276,14 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleDelete = async () => {
+      try {
+          await SupabaseService.deleteChatHistory(orderId, supplierName);
+          if (onArchiveUpdate) onArchiveUpdate();
+          setToast({ message: 'Чат удален' });
+      } catch (e) { console.error(e); }
+  };
 
   const handleSend = useCallback(async (msgText: string, selectedItemNames?: string[], file?: File) => {
       const tempId = Date.now();
@@ -344,52 +352,35 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       }
   }, [orderId, offerId, supplierName, currentUserRole, currentUserName, isArchived, onArchiveUpdate]);
 
-  const confirmArchive = async () => {
-      try {
-          await SupabaseService.archiveChat(orderId, supplierName);
-          if (onArchiveUpdate) onArchiveUpdate();
-          setToast({ message: (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? 'Чат отправлен в архив' : 'Спасибо! Чат закрыт.' });
-          setShowArchiveConfirm(false);
-      } catch (e) { console.error(e); }
-  };
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden bg-slate-50 relative">
-        {toast && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[300]"><Toast message={toast.message} onClose={() => setToast(null)} duration={2000}/></div>}
-        
-        <ConfirmationModal 
-            isOpen={showArchiveConfirm}
-            title={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Закрыть вопрос"}
-            message={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "Перенести этот чат в архив?" : "Отметить вопрос как решенный и перенести в архив?"}
-            confirmLabel="Да"
-            variant="primary"
-            onConfirm={confirmArchive}
-            onCancel={() => setShowArchiveConfirm(false)}
-        />
-
-        <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center justify-between shadow-sm z-10 shrink-0">
-            <div 
+    return (
+      <div className="flex flex-col h-full overflow-hidden bg-slate-50 relative">
+          {toast && createPortal(
+              <div className="fixed top-4 right-4 z-[9999] animate-in slide-in-from-top-2 fade-in duration-300">
+                  <Toast message={toast.message} onClose={() => setToast(null)} duration={1000}/>
+              </div>,
+              document.body
+          )}
+          
+          <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center justify-between shadow-sm z-10 shrink-0">            <div 
                 className={`flex items-center gap-2 overflow-hidden ${onNavigateToOrder ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                 onClick={() => onNavigateToOrder && onNavigateToOrder(orderId)}
             >
                 <Link size={12} className="text-indigo-400 shrink-0"/>
                 <span className="text-[10px] font-bold text-indigo-700 truncate">
                     {(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') 
-                        ? `Поставщик инициировал диалог из заказа #${orderId}` 
+                        ? `Закупщик инициировал диалог из заказа #${orderId}` 
                         : `Чат по заказу #${orderId}`
                     }
                 </span>
             </div>
             <div className="flex items-center gap-2">
-                {!isArchived && (
-                    <button 
-                        onClick={() => setShowArchiveConfirm(true)}
-                        className="text-[9px] font-black uppercase text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors mr-2"
-                        title={(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
-                    >
-                        <Archive size={12}/> {(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? "В архив" : "Вопрос решен"}
-                    </button>
-                )}
+                <button 
+                    onClick={handleDelete}
+                    className="text-[9px] font-black uppercase text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors mr-2"
+                    title="Удалить чат"
+                >
+                    <Trash2 size={12}/> Удалить
+                </button>
                 {onNavigateToOrder && (
                     <button 
                         onClick={() => onNavigateToOrder(orderId)}
