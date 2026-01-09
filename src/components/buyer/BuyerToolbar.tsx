@@ -22,11 +22,19 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
   onRefresh, isSyncing
 }) => {
   const [brandSearch, setBrandSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState(searchQuery); 
+  
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Комбинированный поиск: При вводе идем в базу, при пустоте показываем загруженные
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setLocalSearch(val);
+      setSearchQuery(val);
+  };
+
+  // Комбинированный поиск брендов: При вводе идем в базу, при пустоте показываем загруженные
   useEffect(() => {
       if (!brandSearch) {
           setSearchResults(availableBrands);
@@ -70,8 +78,8 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
          <div className="relative group flex items-center">
             <Search className="absolute left-6 text-slate-400" size={20}/>
                       <input 
-                        value={searchQuery} 
-                        onChange={e => setSearchQuery(e.target.value)} 
+                        value={localSearch} 
+                        onChange={handleSearchChange} 
                         placeholder="Поиск по ID, теме, позиции, бренду или почте..." 
                         className="w-full pl-14 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-300 shadow-sm" 
                       />

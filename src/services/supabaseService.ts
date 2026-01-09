@@ -348,7 +348,8 @@ export class SupabaseService {
         'date': 'created_at',
         'deadline': 'deadline',
         'status': 'status_admin',
-        'statusUpdatedAt': 'status_updated_at'
+        'statusUpdatedAt': 'status_updated_at',
+        'client_name': 'client_name'
     };
     const sortColumn = columnMap[sortBy] || 'id';
 

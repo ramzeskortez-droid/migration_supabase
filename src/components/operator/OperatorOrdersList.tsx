@@ -15,7 +15,7 @@ interface OperatorOrdersListProps {
 }
 
 type TabType = 'processing' | 'processed' | 'completed' | 'rejected';
-type SortField = 'id' | 'client_name' | 'created_at' | 'status_admin';
+type SortField = 'id' | 'client_name' | 'created_at' | 'status_admin' | 'deadline';
 
 export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger, ownerId, searchQuery = '', activeTab, onTabChange, scrollToId }) => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -176,7 +176,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ Заказа <SortIcon field="id"/></div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('client_name')}>Клиент <SortIcon field="client_name"/></div>
                   <div className="flex items-center">Тема</div>
-                  <div className="flex items-center">Срок до</div>
+                  <div className="cursor-pointer flex items-center group" onClick={() => handleSort('deadline')}>Срок до <SortIcon field="deadline"/></div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('created_at')}>Дата <SortIcon field="created_at"/></div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('status_admin')}>Статус <SortIcon field="status_admin"/></div>
                   <div></div>
