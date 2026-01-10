@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ChevronRight, ChevronDown, FileImage, Camera, Check, Edit2, 
-  ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle
+  ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle, FileText, Paperclip, Folder
 } from 'lucide-react';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
 
@@ -35,20 +35,10 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
     // 1. Конвертация цены товара в рубли
     let itemCostRub = 0;
     if (sellerCurrency === 'CNY') itemCostRub = sellerPrice * exchangeRates.cny_rub;
-    else if (sellerCurrency === 'USD') itemCostRub = sellerPrice * (exchangeRates.cny_usd || 0) * exchangeRates.cny_rub; // Через кросс-курс? Или напрямую?
-    // Пользователь дал формулу для CNY: (100 * 12.146)
-    // Если цена в USD, нужно перевести в CNY сначала? Или сразу в RUB?
-    // Логично перевести в CNY, раз вся логика через CNY.
-    // Если цена в RUB, то itemCostRub = sellerPrice.
+    else if (sellerCurrency === 'USD') itemCostRub = sellerPrice * (exchangeRates.cny_usd || 0) * exchangeRates.cny_rub; 
     else itemCostRub = sellerPrice;
 
     // 2. Расчет доставки
-    // Формула: (Вес * Доставка$ * Курс_CNY_USD * Курс_CNY_RUB)
-    // Где Курс_CNY_USD - это "Доллар -> Юань" (0.14 или 7.2).
-    // Пользователь назвал поле "Доллар -> Юань ($/¥)". Обычно это значит 1$ = X¥.
-    // В примере: (2 * 6) * 0.14 * 12.146.
-    // Значит cny_usd используется как множитель.
-    
     const deliveryCostRub = (weight || 0) * (exchangeRates.delivery_kg_usd || 0) * (exchangeRates.cny_usd || 0) * exchangeRates.cny_rub;
     
     const totalCost = itemCostRub + deliveryCostRub;
@@ -70,6 +60,50 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   // Гибкая сетка для офферов (суммарно 100%)
   const PRODUCT_GRID = "grid-cols-[50px_1fr_120px_80px_80px_80px]";
   const OFFER_GRID = "grid-cols-[1.5fr_1fr_70px_70px_100px_80px_1.2fr_1fr_130px]";
+
+  const renderFilesIcon = (files: any[], photoUrl?: string) => {
+      // Совместимость: если есть photoUrl, но нет files, считаем это 1 картинкой
+      const allFiles = files && files.length > 0 ? files : (photoUrl ? [{url: photoUrl, type: 'image/jpeg'}] : []);
+      
+      if (allFiles.length === 0) return <span className="text-slate-300 text-[10px]">-</span>;
+
+      if (allFiles.length === 1) {
+          const file = allFiles[0];
+          if (file.type?.startsWith('image/') || file.url.match(/\.(jpeg|jpg|png|webp)$/i)) {
+              return (
+                  <a href={file.url} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity block w-8 h-8 rounded border border-gray-300 overflow-hidden shadow-sm">
+                      <img src={file.url} alt="Файл" className="w-full h-full object-cover" />
+                  </a>
+              );
+          } else {
+              return (
+                  <a href={file.url} target="_blank" rel="noreferrer" className="w-8 h-8 flex items-center justify-center bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 text-indigo-500 transition-colors" title={file.name}>
+                      <FileText size={16} />
+                  </a>
+              );
+          }
+      }
+
+      return (
+          <div className="relative group cursor-pointer">
+              <div className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded border border-slate-200 text-slate-600 font-bold text-[10px]">
+                  {allFiles.length}
+              </div>
+              {/* Dropdown list on hover */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
+                  <div className="text-[9px] font-black uppercase text-slate-400 mb-1 border-b border-slate-100 pb-1">Файлы ({allFiles.length})</div>
+                  <div className="space-y-1">
+                      {allFiles.map((f: any, i: number) => (
+                          <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded text-[10px] text-indigo-600 truncate">
+                              {f.type?.startsWith('image/') ? <FileImage size={12}/> : <FileText size={12}/>}
+                              <span className="truncate">{f.name || `Файл ${i+1}`}</span>
+                          </a>
+                      ))}
+                  </div>
+              </div>
+          </div>
+      );
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-4 overflow-hidden">
@@ -94,7 +128,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                         (!i.order_item_id && i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
                     ); 
                     if (matching) {
-                        itemOffers.push({ offerId: off.id, clientName: off.clientName, item: matching }); 
+                        itemOffers.push({ offerId: off.id, clientName: off.clientName, supplierFiles: off.supplier_files, item: matching }); 
                     }
                 } 
             }
@@ -154,7 +188,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <div className="text-center">Кол-во</div>
                                     <div className="text-center">Вес (кг)</div>
                                     <div className="text-center">Срок поставки</div>
-                                    <div className="text-center">Фото</div>
+                                    <div className="text-center">Файлы</div>
                                     <div className="flex items-center gap-1 group relative cursor-help">
                                         <span>Цена для клиента</span>
                                         <HelpCircle size={10} className="text-gray-400" />
@@ -200,28 +234,37 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     {itemOffers.map((off, oIdx) => {
                                         const isLeader = off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER';
                                         
-                                        // Расчет цены
                                         const autoPrice = calculatePrice(off.item.sellerPrice, off.item.sellerCurrency, off.item.weight);
-                                        // Приоритет: Правка в сессии > База данных > Авторасчет
                                         const editedPrice = offerEdits?.[off.item.id]?.adminPrice;
                                         const currentPriceRub = editedPrice !== undefined ? editedPrice : (off.item.adminPrice ?? autoPrice);
 
-                                        // Комментарий
                                         const editedComment = offerEdits?.[off.item.id]?.adminComment;
                                         const currentComment = editedComment !== undefined ? editedComment : (off.item.adminComment || "");
 
-                                        // Срок
                                         const editedWeeks = offerEdits?.[off.item.id]?.deliveryWeeks;
-                                        // Базовый срок = Срок поставщика + Добавка из настроек
                                         const baseWeeks = (off.item.deliveryWeeks || 0) + (exchangeRates?.delivery_weeks_add || 0);
                                         const currentWeeks = editedWeeks !== undefined ? editedWeeks : baseWeeks;
 
                                         return (
                                             <div key={oIdx} className={`relative transition-all duration-300 border-l-4 ${isLeader ? "bg-emerald-50 border-l-emerald-500 shadow-inner" : "hover:bg-gray-50 border-l-transparent"}`}>
                                                 <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-black text-gray-900 uppercase text-[10px] truncate" title={off.clientName}>{off.clientName}</span>
-                                                        {isLeader && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>}
+                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="font-black text-gray-900 uppercase text-[10px] truncate" title={off.clientName}>{off.clientName}</span>
+                                                            {/* Отображение общих файлов поставщика */}
+                                                            {off.supplierFiles && off.supplierFiles.length > 0 && (
+                                                                <div className="flex items-center gap-1 text-[8px] text-indigo-500 mt-0.5 group/files cursor-help relative">
+                                                                    <Folder size={10} />
+                                                                    <span className="font-bold underline decoration-dotted">{off.supplierFiles.length} общ. файл(а)</span>
+                                                                    <div className="absolute left-0 top-full mt-1 bg-white border border-slate-200 shadow-xl rounded-lg p-2 z-50 w-40 opacity-0 group-hover/files:opacity-100 pointer-events-none group-hover/files:pointer-events-auto transition-opacity">
+                                                                        {off.supplierFiles.map((sf: any, si: number) => (
+                                                                            <a key={si} href={sf.url} target="_blank" rel="noreferrer" className="block text-[9px] text-indigo-600 hover:underline truncate mb-1 last:mb-0">{sf.name}</a>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {isLeader && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>}
                                                     </div>
                                                     <div className="text-gray-700 font-bold">
                                                         <span className="text-xs">{off.item.sellerPrice}</span>
@@ -232,12 +275,10 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         <span className="text-purple-600 font-black text-[10px] bg-purple-50 px-2 py-0.5 rounded-md">{off.item.weight ? `${off.item.weight} кг` : '-'}</span>
                                                     </div>
                                                     <div className="text-orange-500 text-center font-bold text-[10px]">{off.item.deliveryWeeks ? `${off.item.deliveryWeeks} нед.` : '-'}</div>
+                                                    
+                                                    {/* ФАЙЛЫ / ФОТО ПОЗИЦИИ */}
                                                     <div className="flex items-center justify-center">
-                                                        {off.item.photoUrl ? (
-                                                            <a href={off.item.photoUrl} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity">
-                                                                <img src={off.item.photoUrl} alt="Фото" className="w-10 h-8 object-cover rounded border border-gray-300 shadow-sm" />
-                                                            </a>
-                                                        ) : ( <Camera className="w-4 h-4 text-gray-200" /> )}
+                                                        {renderFilesIcon(off.item.itemFiles, off.item.photoUrl)}
                                                     </div>
 
                                                     <div className="relative group/price">
@@ -304,8 +345,6 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         )}
                                                     </div>
                                                 )}
-
-                                                {/* Edit Admin Comment & Price */}
                                                 </div>
                                             </div>
                                         );

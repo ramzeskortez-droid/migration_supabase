@@ -266,7 +266,7 @@ export class SupabaseService {
         deadline,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price),
-        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, order_item_id, supplier_sku, admin_comment))
+        offers (id, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment))
     `);
 
     // Фильтрация по табам закупщика
@@ -429,12 +429,12 @@ export class SupabaseService {
                 id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url, adminPrice: i.admin_price
             })) || [],
             offers: order.offers?.map((o: any) => ({
-                id: o.id, clientName: o.supplier_name, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
+                id: o.id, clientName: o.supplier_name, supplier_files: o.supplier_files, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
                     id: oi.id, order_item_id: oi.order_item_id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPrice: oi.admin_price,
                     deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
-                    photoUrl: oi.photo_url, supplierSku: oi.supplier_sku, adminComment: oi.admin_comment
+                    photoUrl: oi.photo_url, itemFiles: oi.item_files, supplierSku: oi.supplier_sku, adminComment: oi.admin_comment
                 })) || []
             })) || [],
             isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
@@ -516,7 +516,7 @@ export class SupabaseService {
           .from('orders')
           .select(`
             id, order_files, order_items (*),
-            offers (*, offer_items (*, supplier_sku))
+            offers (id, created_at, supplier_name, supplier_phone, supplier_files, offer_items (*))
           `)
           .eq('id', orderId)
           .single();
@@ -534,13 +534,14 @@ export class SupabaseService {
       const offers: Order[] = data.offers.map((offer: any) => ({
         id: String(offer.id), parentId: String(data.id), type: RowType.OFFER,
         clientName: offer.supplier_name, clientPhone: offer.supplier_phone,
+        supplier_files: offer.supplier_files,
         createdAt: new Date(offer.created_at).toLocaleString('ru-RU'),
         items: offer.offer_items.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
           id: oi.id, order_item_id: oi.order_item_id, name: oi.name, quantity: oi.quantity,
           offeredQuantity: oi.quantity, sellerPrice: oi.price, sellerCurrency: oi.currency as Currency,
           adminPrice: oi.admin_price, rank: oi.is_winner ? 'ЛИДЕР' : 'РЕЗЕРВ',
           deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
-          weight: oi.weight, photoUrl: oi.photo_url, adminComment: oi.admin_comment, supplierSku: oi.supplier_sku,
+          weight: oi.weight, photoUrl: oi.photo_url, itemFiles: oi.item_files, adminComment: oi.admin_comment, supplierSku: oi.supplier_sku,
           comment: oi.comment, totalCost: oi.total_cost, goodsCost: oi.goods_cost
         }))
       } as any));
@@ -622,18 +623,27 @@ export class SupabaseService {
     return String(orderData.id);
   }
 
-  static async createOffer(orderId: string, sellerName: string, items: any[], sellerPhone?: string, userId?: string): Promise<void> {
+  static async createOffer(orderId: string, sellerName: string, items: any[], sellerPhone?: string, userId?: string, supplierFiles?: any[]): Promise<void> {
     const { data: existing } = await supabase.from('offers').select('id').eq('order_id', orderId).eq('supplier_name', sellerName).maybeSingle();
     if (existing) throw new Error('Вы уже отправили предложение по этому заказу.');
 
-    const { data: offerData, error: offerError } = await supabase.from('offers').insert({ order_id: orderId, supplier_name: sellerName, supplier_phone: sellerPhone, created_by: userId }).select().single();
+    const { data: offerData, error: offerError } = await supabase.from('offers').insert({ 
+        order_id: orderId, 
+        supplier_name: sellerName, 
+        supplier_phone: sellerPhone, 
+        created_by: userId,
+        supplier_files: supplierFiles || [] 
+    }).select().single();
+    
     if (offerError) throw offerError;
 
     const offerItemsToInsert = items.map(item => ({
       offer_id: offerData.id, name: item.name, quantity: item.offeredQuantity || item.quantity || 1,
       price: item.sellerPrice || item.BuyerPrice || 0, currency: item.sellerCurrency || item.BuyerCurrency || 'RUB',
       delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
-      weight: item.weight || 0, photo_url: item.photoUrl || '', comment: item.comment || '', order_item_id: item.id,
+      weight: item.weight || 0, photo_url: item.photoUrl || '', 
+      item_files: item.itemFiles || [], // New
+      comment: item.comment || '', order_item_id: item.id,
       supplier_sku: item.supplierSku || ''
     }));
 

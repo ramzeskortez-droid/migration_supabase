@@ -79,7 +79,8 @@ export interface OrderItem {
   weight?: number;
   deliveryWeeks?: number;
   deliveryRate?: number;
-  photoUrl?: string;
+  photoUrl?: string; // Deprecated, use itemFiles
+  itemFiles?: { name: string; url: string; size?: number; type?: string }[];
   opPhotoUrl?: string;
   supplierSku?: string; // Название и Номер поставщика
   clientPhone?: string;
@@ -115,6 +116,7 @@ export interface Order {
   deadline?: string;
   buyerLabels?: BuyerLabel[];
   order_files?: { name: string; url: string; size?: number; type?: string }[];
+  supplier_files?: { name: string; url: string; size?: number; type?: string }[]; // Файлы поставщика (общие)
   
   statusAdmin?: string;
   statusClient?: string;
