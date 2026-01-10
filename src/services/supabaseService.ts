@@ -6,123 +6,23 @@ import * as settingsApi from './api/finance/settings';
 import * as uploadApi from './api/storage/upload';
 import * as brandsReadApi from './api/brands/read';
 import * as brandsWriteApi from './api/brands/write';
+import * as loginApi from './api/auth/login';
+import * as registrationApi from './api/auth/registration';
+import * as usersApi from './api/auth/users';
+import * as buyerDashboardApi from './api/buyer/dashboard';
+import * as buyerLabelsApi from './api/buyer/labels';
+import * as buyerUtilsApi from './api/buyer/utils';
 
 export class SupabaseService {
   
   // --- AUTH & ROLES ---
 
-  static async loginWithToken(token: string): Promise<AppUser | null> {
-    const { data, error } = await supabase
-      .from('app_users')
-      .select('*')
-      .eq('token', token)
-      .maybeSingle();
-    
-    if (error) throw error;
-    if (!data) return null;
-
-    if (data.status === 'pending') {
-        throw new Error('Ваш аккаунт находится на проверке. Ожидайте подтверждения менеджера.');
-    }
-
-    if (data.status === 'rejected') {
-        throw new Error('Доступ запрещен. Ваш аккаунт был отклонен.');
-    }
-
-    if (data.status !== 'approved') {
-         throw new Error('Статус аккаунта не подтвержден.');
-    }
-
-    return {
-      id: data.id,
-      name: data.name,
-      token: data.token,
-      role: data.role,
-      phone: data.phone,
-      status: data.status
-    };
-  }
-
-  static async generateInviteCode(role: 'operator' | 'buyer'): Promise<string> {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const { error } = await supabase.rpc('create_invite_code', { p_code: code, p_role: role });
-      if (error) throw error;
-      return code;
-  }
-
-  static async getActiveInvites(): Promise<any[]> {
-      const { data, error } = await supabase
-        .from('invite_codes')
-        .select('*')
-        .eq('is_used', false)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-  }
-
-  static async registerUser(name: string, token: string, phone: string, role: 'operator' | 'buyer', inviteCode: string): Promise<AppUser> {
-      // 1. Создаем пользователя (pending)
-      const { data: user, error: userError } = await supabase
-          .from('app_users')
-          .insert({ name, token, role, phone, status: 'pending' }) 
-          .select()
-          .single();
-      
-      if (userError) throw userError;
-
-      // 2. Активируем инвайт
-      const { data: success, error: inviteError } = await supabase.rpc('use_invite_code', {
-          p_code: inviteCode,
-          p_role: role,
-          p_user_id: user.id
-      });
-
-      if (inviteError || !success) {
-          // Если инвайт недействителен, удаляем пользователя (rollback вручную)
-          await supabase.from('app_users').delete().eq('id', user.id);
-          throw new Error('Неверный или использованный инвайт-код');
-      }
-
-      return {
-          id: user.id,
-          name: user.name,
-          token: user.token,
-          role: user.role,
-          phone: user.phone,
-          status: user.status
-      };
-  }
-
-  static async getAppUsers(status: 'pending' | 'approved'): Promise<AppUser[]> {
-      const { data, error } = await supabase
-          .from('app_users')
-          .select('*')
-          .eq('status', status)
-          .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data.map((u: any) => ({
-          id: u.id,
-          name: u.name,
-          token: u.token,
-          role: u.role,
-          phone: u.phone,
-          status: u.status,
-          createdAt: u.created_at
-      }));
-  }
-
-  static async updateUserStatus(userId: string, status: 'approved' | 'rejected'): Promise<void> {
-      if (status === 'rejected') {
-          const { error, count } = await supabase.from('app_users').delete({ count: 'exact' }).eq('id', userId);
-          if (error) throw error;
-          if (count === 0) throw new Error('Пользователь не найден или нет прав на удаление');
-      } else {
-          const { data, error } = await supabase.from('app_users').update({ status }).eq('id', userId).select();
-          if (error) throw error;
-          if (!data || data.length === 0) throw new Error('Пользователь не найден или нет прав на обновление (RLS)');
-      }
-  }
+  static loginWithToken = loginApi.loginWithToken;
+  static generateInviteCode = registrationApi.generateInviteCode;
+  static getActiveInvites = registrationApi.getActiveInvites;
+  static registerUser = registrationApi.registerUser;
+  static getAppUsers = usersApi.getAppUsers;
+  static updateUserStatus = usersApi.updateUserStatus;
 
   // --- FINANCE (Exchange Rates) ---
 
@@ -169,43 +69,11 @@ export class SupabaseService {
 
   // --- BUYER TOOLS (Labels & Filters) ---
 
-  static async toggleOrderLabel(userToken: string, orderId: string, color: string): Promise<void> {
-    const { data: existing } = await supabase
-      .from('buyer_order_labels')
-      .select('id, color')
-      .eq('user_token', userToken)
-      .eq('order_id', orderId)
-      .maybeSingle();
-
-    if (existing) {
-        if (existing.color === color) {
-            await supabase.from('buyer_order_labels').delete().eq('id', existing.id);
-        } else {
-            await supabase.from('buyer_order_labels').update({ color }).eq('id', existing.id);
-        }
-    } else {
-        await supabase.from('buyer_order_labels').insert({
-            user_token: userToken,
-            order_id: orderId,
-            color
-        });
-    }
-  }
-
-  static async getBuyerLabels(userToken: string): Promise<BuyerLabel[]> {
-    const { data, error } = await supabase
-      .from('buyer_order_labels')
-      .select('id, order_id, color, label_text')
-      .eq('user_token', userToken);
-
-    if (error) throw error;
-    return data.map((l: any) => ({
-      id: l.id,
-      orderId: l.order_id,
-      color: l.color,
-      text: l.label_text
-    }));
-  }
+  static toggleOrderLabel = buyerLabelsApi.toggleOrderLabel;
+  static getBuyerLabels = buyerLabelsApi.getBuyerLabels;
+  static getBuyerDashboardStats = buyerDashboardApi.getBuyerDashboardStats;
+  static getBuyerTabCounts = buyerDashboardApi.getBuyerTabCounts;
+  static getBuyerQuickBrands = buyerUtilsApi.getBuyerQuickBrands;
 
   static async getOrders(
     cursor?: number, 
@@ -433,72 +301,6 @@ export class SupabaseService {
     return { data: mappedData, nextCursor };
   }
 
-  static async getBuyerTabCounts(supplierName: string): Promise<{ new: number, hot: number, history: number, won: number, lost: number, cancelled: number }> {
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-      const isoDate = threeDaysAgo.toISOString();
-
-      const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', supplierName);
-      const myOfferIds = myOff?.map(o => o.order_id) || [];
-
-      // Функция для создания базового запроса
-      const getBaseQuery = () => {
-          let q = supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status_admin', 'В обработке');
-          if (myOfferIds.length > 0) {
-              q = q.not('id', 'in', `(${myOfferIds.join(',')})`);
-          }
-          return q;
-      };
-
-      const { data: myWins } = await supabase.from('offer_items')
-            .select('offer_id, offers!inner(order_id, supplier_name)')
-            .eq('is_winner', true)
-            .eq('offers.supplier_name', supplierName);
-      const winIds = Array.from(new Set(myWins?.map((w: any) => w.offers.order_id) || []));
-      const lostIds = myOfferIds.filter(id => !winIds.includes(id));
-
-      const [resNew, resHot, resHistory, resWon, resLost, resCancelled] = await Promise.all([
-          getBaseQuery().gte('created_at', isoDate),
-          getBaseQuery().lt('created_at', isoDate),
-          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', myOfferIds.length > 0 ? myOfferIds : [0]).eq('status_admin', 'В обработке'),
-          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', winIds.length > 0 ? winIds : [0]),
-          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', lostIds.length > 0 ? lostIds : [0]).neq('status_admin', 'В обработке').not('status_admin', 'in', '("Аннулирован","Отказ")'),
-          supabase.from('orders').select('id', { count: 'exact', head: true }).in('id', myOfferIds.length > 0 ? myOfferIds : [0]).in('status_admin', ['Аннулирован', 'Отказ'])
-      ]);
-
-      return {
-          new: resNew.count || 0,
-          hot: resHot.count || 0,
-          history: resHistory.count || 0,
-          won: resWon.count || 0,
-          lost: resLost.count || 0,
-          cancelled: resCancelled.count || 0
-      };
-  }
-
-  static async getBuyerQuickBrands(supplierName: string): Promise<string[]> {
-      const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', supplierName);
-      const excludedIds = myOff?.map(o => o.order_id) || [];
-
-      // Берем все бренды из заказов "В обработке", где я еще не участвую
-      let query = supabase.from('order_items').select('brand, orders!inner(id, status_admin)');
-      query = query.eq('orders.status_admin', 'В обработке');
-      if (excludedIds.length > 0) query = query.not('orders.id', 'in', `(${excludedIds.join(',')})`);
-
-      const { data } = await query;
-      if (!data) return [];
-
-      const brandCounts: Record<string, number> = {};
-      data.forEach((i: any) => {
-          if (i.brand) brandCounts[i.brand] = (brandCounts[i.brand] || 0) + 1;
-      });
-
-      return Object.entries(brandCounts)
-          .sort((a, b) => b[1] - a[1]) // Сортировка по упоминаниям
-          .slice(0, 7) // ТОП-7
-          .map(entry => entry[0]);
-  }
-
   static async getOrderDetails(orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[] }> {
       const { data, error } = await supabase
           .from('orders')
@@ -535,22 +337,6 @@ export class SupabaseService {
       } as any));
 
       return { items, offers, orderFiles: data.order_files };
-  }
-
-  static async getBuyerDashboardStats(userId: string): Promise<any> {
-    const { data, error } = await supabase.rpc('get_buyer_dashboard_stats', { 
-        p_user_id: userId
-    });
-    
-    if (error || !data) {
-        if (error) console.error('getBuyerDashboardStats ERROR:', error);
-        return {
-            department: { turnover: 0 },
-            personal: { kp_count: 0, kp_sum: 0, won_count: 0, won_sum: 0 },
-            leaders: { quantity_leader: '-', quantity_val: 0, sum_leader: '-', sum_val: 0 }
-        };
-    }
-    return data;
   }
 
   static async generateTestOffers(orderId: string): Promise<void> {

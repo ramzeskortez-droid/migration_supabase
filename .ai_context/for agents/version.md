@@ -1,5 +1,14 @@
 # Version History
 
+## 1.18.40 - Модуларизация сервисов: Авторизация и Закупщик
+- **Refactoring (SupabaseService):**
+  - **Auth Module:** Логика авторизации вынесена в `src/services/api/auth/` (`login.ts`, `registration.ts`, `users.ts`).
+  - **Buyer Module:** Инструменты закупщика вынесены в `src/services/api/buyer/` (`dashboard.ts`, `labels.ts`, `utils.ts`).
+  - Основной класс `SupabaseService` очищен от ~150 строк кода реализации, теперь он только импортирует методы.
+- **Architecture:**
+  - Улучшена читаемость и поддерживаемость кода.
+  - Исправлены пути импортов в новых модулях.
+
 ## 1.18.39 - Рефакторинг Сервисов и Улучшение Файлов
 - **Refactoring:**
   - Начата модуларизация `SupabaseService`. Логика вынесена в подмодули: `finance`, `storage`, `brands`, `settings`.

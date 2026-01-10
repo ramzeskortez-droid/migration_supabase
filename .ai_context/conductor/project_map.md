@@ -32,6 +32,20 @@
 
 ## 2. Service Layer (`services/supabaseService.ts`)
 
+`SupabaseService` acts as a facade, delegating functionality to specialized modules in `services/api/`.
+
+### Auth & User Management (`services/api/auth/`)
+- `loginWithToken(token)`: Authenticates user by token.
+- `registerUser(...)`: Registers new user with invite code.
+- `generateInviteCode(role)`: Creates secure invite code.
+- `getAppUsers(status)`: Lists users for moderation.
+
+### Buyer Tools (`services/api/buyer/`)
+- `getBuyerDashboardStats(userId)`: Fetches KPI metrics.
+- `getBuyerTabCounts(supplierName)`: Counts orders for tabs (New, Hot, Won, etc).
+- `toggleOrderLabel(...)`: Manages colored labels for orders.
+- `getBuyerQuickBrands(...)`: Helper for fast brand filtering.
+
 ### Order Management
 - `getOrders(...)`: Fetches paginated list of orders with filters (status, phone, brand, search). Used by Admin and Operator.
 - `getOrderDetails(orderId)`: Fetches full order details including items and offers.
