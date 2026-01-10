@@ -81,6 +81,7 @@ export interface OrderItem {
   deliveryRate?: number;
   photoUrl?: string;
   opPhotoUrl?: string;
+  supplierSku?: string; // Название и Номер поставщика
   clientPhone?: string;
   sellerPhone?: string;
   

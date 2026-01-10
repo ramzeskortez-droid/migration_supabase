@@ -1,9 +1,9 @@
 import React from 'react';
-import { LayoutDashboard, ClipboardList, Settings, Banknote, Tag, Users } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Settings, Banknote, Tag, Users, Sliders } from 'lucide-react';
 
 interface AdminSidebarProps {
-  currentView: 'listing' | 'statuses' | 'finance' | 'brands' | 'users';
-  setCurrentView: (view: 'listing' | 'statuses' | 'finance' | 'brands' | 'users') => void;
+  currentView: 'listing' | 'statuses' | 'finance' | 'brands' | 'users' | 'settings';
+  setCurrentView: (view: 'listing' | 'statuses' | 'finance' | 'brands' | 'users' | 'settings') => void;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setCurrentView }) => {
@@ -48,6 +48,14 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setCurr
         <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">Финансы</span>
       </button>
       
+      <button 
+        onClick={() => setCurrentView('settings')}
+        className={`flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap ${currentView === 'settings' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+      >
+        <div className="shrink-0"><Sliders size={18} /></div>
+        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">Настройки</span>
+      </button>
+
       <button 
         onClick={() => setCurrentView('statuses')}
         className={`flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap ${currentView === 'statuses' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}

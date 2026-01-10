@@ -287,14 +287,25 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         )}
                                                     </div>
                                                     
-                                                    {off.item.comment && (
-                                                        <div className="col-span-full px-2 pb-1">
-                                                            <div className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg text-[9px] font-medium text-amber-800 flex items-start gap-2">
-                                                                <MessageCircle size={12} className="mt-0.5 text-amber-500 shrink-0" />
-                                                                <span><span className="font-bold">Поставщик:</span> {off.item.comment}</span>
+                                                {/* Комментарий поставщика */}
+                                                {(off.comment || off.supplierSku) && (
+                                                    <div className="md:col-span-6 bg-yellow-50/50 border border-yellow-100 rounded-lg p-2 mt-2 text-[10px] text-yellow-700 flex flex-col gap-1">
+                                                        {off.comment && (
+                                                            <div className="flex gap-2">
+                                                                <span className="font-bold uppercase text-yellow-600/70 shrink-0">Коммент:</span>
+                                                                <span>{off.comment}</span>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                        {off.supplierSku && (
+                                                            <div className="flex gap-2 border-t border-yellow-200/50 pt-1 mt-1">
+                                                                <span className="font-bold uppercase text-yellow-600/70 shrink-0">Поставщик:</span>
+                                                                <span className="font-mono font-bold select-all">{off.supplierSku}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Edit Admin Comment & Price */}
                                                 </div>
                                             </div>
                                         );

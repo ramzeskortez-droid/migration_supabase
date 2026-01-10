@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SupabaseService } from '../services/supabaseService';
-import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab, ExchangeRates } from '../types';
+import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab, ExchangeRates, WorkflowStatus, AppUser } from '../types';
 import { CheckCircle2, AlertCircle, Settings, FileText, Send, ShoppingCart, CreditCard, Truck, PackageCheck } from 'lucide-react';
 import { AdminSidebar } from './admin/AdminSidebar';
 import { AdminHeader } from './admin/AdminHeader';
 import { AdminToolbar } from './admin/AdminToolbar';
 import { AdminOrdersList } from './admin/AdminOrdersList';
 import { AdminFinanceSettings } from './admin/AdminFinanceSettings';
-import { AdminBrands } from './admin/AdminBrands';
 import { AdminUsers } from './admin/AdminUsers';
+import { AdminBrands } from './admin/AdminBrands';
+import { AdminSettings } from './admin/AdminSettings';
 import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -28,7 +29,7 @@ const TAB_MAPPING: Record<string, AdminTab> = {
 
 export const AdminInterface: React.FC = () => {
   const queryClient = useQueryClient();
-  const [currentView, setCurrentView] = useState<'listing' | 'statuses' | 'finance' | 'brands' | 'users'>('listing');
+  const [currentView, setCurrentView] = useState<'listing' | 'statuses' | 'finance' | 'brands' | 'users' | 'settings'>('listing');
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('new');
@@ -176,8 +177,6 @@ export const AdminInterface: React.FC = () => {
               } 
           }
           
-          console.log('APPROVING ORDER:', orderId, 'WINNERS:', winnersPayload);
-
           if (winnersPayload.length === 0) {
               if(!confirm('Нет победителей. Утвердить пустое КП?')) return;
           }
@@ -326,7 +325,7 @@ export const AdminInterface: React.FC = () => {
           <AdminSidebar currentView={currentView} setCurrentView={setCurrentView} />
 
           <main className="flex-grow p-4 overflow-y-auto">
-              {currentView === 'users' ? <AdminUsers /> : currentView === 'brands' ? <AdminBrands /> : currentView === 'statuses' ? renderStatusSettings() : currentView === 'finance' ? <AdminFinanceSettings /> : (
+              {currentView === 'users' ? <AdminUsers /> : currentView === 'brands' ? <AdminBrands /> : currentView === 'settings' ? <AdminSettings /> : currentView === 'statuses' ? renderStatusSettings() : currentView === 'finance' ? <AdminFinanceSettings /> : (
                   <div className="max-w-6xl mx-auto space-y-4">
                       {successToast && (
                          <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 border border-slate-700">

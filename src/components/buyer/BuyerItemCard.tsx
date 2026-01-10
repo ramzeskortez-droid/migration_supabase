@@ -10,9 +10,10 @@ interface BuyerItemCardProps {
   orderId: string;
   bestStats?: { bestPrice: number | null, bestWeeks: number | null } | null;
   onCopy?: (item: any, index: number) => void;
+  isRequired?: boolean;
 }
 
-export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpdate, isDisabled, orderId, bestStats, onCopy }) => {
+export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpdate, isDisabled, orderId, bestStats, onCopy, isRequired }) => {
   
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
@@ -200,17 +201,35 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             </div>
         </div>
 
-        {/* Комментарий поставщика */}
-        <div className="space-y-1 px-2 pb-1">
-            <input 
-                type="text" 
-                disabled={isDisabled || isUnavailable} 
-                value={isUnavailable ? '' : item.comment || ''} 
-                onChange={e => onUpdate(index, 'comment', e.target.value)} 
-                className="w-full px-0 border-b border-dashed border-slate-300 py-1 bg-transparent outline-none focus:border-indigo-500 transition-all text-[10px] text-slate-600 placeholder:text-slate-300" 
-                placeholder="Добавить комментарий для менеджера..."
-                maxLength={100}
-            />
+        {/* Комментарий и Поставщик */}
+        <div className="space-y-2 px-2 pb-1">
+            <div>
+                <input 
+                    type="text" 
+                    disabled={isDisabled || isUnavailable} 
+                    value={isUnavailable ? '' : item.comment || ''} 
+                    onChange={e => onUpdate(index, 'comment', e.target.value)} 
+                    className="w-full px-0 border-b border-dashed border-slate-300 py-1 bg-transparent outline-none focus:border-indigo-500 transition-all text-[10px] text-slate-600 placeholder:text-slate-300" 
+                    placeholder="Добавить комментарий для менеджера..."
+                    maxLength={100}
+                />
+            </div>
+            
+            <div>
+                <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">
+                    Поставщик (Название/№)
+                    {isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                </label>
+                <input 
+                    type="text" 
+                    disabled={isDisabled || isUnavailable} 
+                    value={isUnavailable ? '' : item.supplierSku || ''} 
+                    onChange={e => onUpdate(index, 'supplierSku', e.target.value)} 
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all placeholder:font-normal" 
+                    placeholder="Вася / #123"
+                    maxLength={100}
+                />
+            </div>
         </div>
     </div>
   );

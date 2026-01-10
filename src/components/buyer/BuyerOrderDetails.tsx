@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle } from 'lucide-react';
 import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
 import { DebugCopyModal } from '../shared/DebugCopyModal';
+import { SupabaseService } from '../../services/supabaseService';
 
 interface BuyerOrderDetailsProps {
   order: Order;
@@ -22,6 +23,15 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
       isOpen: false, title: '', content: ''
   });
+  
+  const [requiredFields, setRequiredFields] = useState<any>({}); 
+  const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
+
+  useEffect(() => {
+      SupabaseService.getSystemSettings('buyer_required_fields').then(res => {
+          if (res) setRequiredFields(res);
+      });
+  }, []);
 
   const BuyerAuth = useMemo(() => {
       try { return JSON.parse(localStorage.getItem('Buyer_auth') || 'null'); } catch { return null; }
@@ -30,8 +40,31 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   // Валидация
   const isValid = editingItems.every(item => {
       if (item.offeredQuantity === 0) return true;
-      return (item.BuyerPrice > 0) && (item.weight > 0) && (item.deliveryWeeks >= 4);
+      
+      const basicValid = (item.BuyerPrice > 0) && (item.weight > 0) && (item.deliveryWeeks >= 4);
+      
+      if (requiredFields.supplier_sku) {
+          return basicValid && (item.supplierSku && item.supplierSku.trim().length > 0);
+      }
+      
+      return basicValid;
   });
+
+  const handlePreSubmit = async () => {
+      // Проверка обязательных полей
+      if (requiredFields.supplier_sku) {
+          const missingSku = editingItems.some(item => {
+              const isMissing = item.offeredQuantity > 0 && (!item.supplierSku || item.supplierSku.trim() === '');
+              return isMissing;
+          });
+          
+          if (missingSku) {
+              setToast({ message: 'Заполните поле "Поставщик" для всех позиций!', type: 'error' });
+              return;
+          }
+      }
+      await onSubmit(order.id, editingItems);
+  };
 
   const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
   const isDisabled = order.isProcessed === true || !!myOffer;
@@ -100,6 +133,12 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
 
   return (
     <div className="p-4 bg-white border-t border-slate-100 animate-in fade-in duration-200 relative">
+        {toast && (
+            <div className="fixed top-4 right-4 z-50">
+                <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+            </div>
+        )}
+
         <DebugCopyModal 
             isOpen={copyModal.isOpen}
             title={copyModal.title}
@@ -140,8 +179,9 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     onUpdate={handleUpdateItem}
                     isDisabled={isDisabled}
                     orderId={order.id}
-                    bestStats={!myOffer ? getBestStats(item.name) : null} // Показываем статистику только если мы еще не отправили офер
+                    bestStats={!myOffer ? getBestStats(item.name) : null} 
                     onCopy={handleCopyItem}
+                    isRequired={requiredFields.supplier_sku}
                 />
             ))}
             
@@ -166,10 +206,10 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 {!myOffer && !order.isProcessed && (
                     <button 
                         disabled={!isValid || isSubmitting} 
-                        onClick={() => onSubmit(order.id, editingItems)} 
+                        onClick={handlePreSubmit} 
                         className={`px-8 py-2.5 rounded-xl font-black text-[10px] uppercase shadow-lg transition-all flex items-center gap-2 ${isValid && !isSubmitting ? (isAllDeclined ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-900 text-white hover:bg-slate-800') : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'}`}
                     >
-                        {isValid ? (isAllDeclined ? 'Отказаться' : 'Отправить предложение') : 'Заполните цены'} 
+                        {isValid ? (isAllDeclined ? 'Отказаться' : 'Отправить предложение') : 'Заполните все поля'} 
                         {isAllDeclined ? <XCircle size={14}/> : <CheckCircle size={14}/>}
                     </button>
                 )}

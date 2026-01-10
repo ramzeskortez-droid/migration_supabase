@@ -129,7 +129,33 @@ export class SupabaseService {
     if (error) throw error;
   }
 
-  static async updateOfferItem(itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number }): Promise<void> {
+  // --- SYSTEM SETTINGS ---
+
+  static async getSystemSettings(key: string): Promise<any> {
+    const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', key)
+        .maybeSingle();
+    
+    if (error) {
+        console.error('Error fetching settings:', error);
+        return null;
+    }
+    return data?.value || null;
+  }
+
+  static async updateSystemSettings(key: string, value: any, updatedBy: string): Promise<void> {
+      const { error } = await supabase.from('system_settings').upsert({
+          key,
+          value,
+          updated_by: updatedBy,
+          updated_at: new Date().toISOString()
+      });
+      if (error) throw error;
+  }
+
+  static async updateOfferItem(itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number, supplier_sku?: string }): Promise<void> {
       const { error } = await supabase.from('offer_items').update(updates).eq('id', itemId);
       if (error) throw error;
   }
@@ -240,7 +266,7 @@ export class SupabaseService {
         deadline,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price),
-        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, order_item_id))
+        offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, order_item_id, supplier_sku, admin_comment))
     `);
 
     // Фильтрация по табам закупщика
@@ -366,9 +392,6 @@ export class SupabaseService {
         throw error;
     }
 
-    // Лог для отладки
-    console.log(`FETCHED ORDERS for tab: ${buyerTab}, search: "${q}", count: ${data.length}`);
-
     let labelsMap: Record<string, any> = {};
     if (buyerToken) {
         const { data: labels } = await supabase.from('buyer_order_labels').select('order_id, color, label_text').eq('user_token', buyerToken);
@@ -411,7 +434,7 @@ export class SupabaseService {
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPrice: oi.admin_price,
                     deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
-                    photoUrl: oi.photo_url
+                    photoUrl: oi.photo_url, supplierSku: oi.supplier_sku, adminComment: oi.admin_comment
                 })) || []
             })) || [],
             isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
@@ -493,7 +516,7 @@ export class SupabaseService {
           .from('orders')
           .select(`
             id, order_files, order_items (*),
-            offers (*, offer_items (*))
+            offers (*, offer_items (*, supplier_sku))
           `)
           .eq('id', orderId)
           .single();
@@ -517,7 +540,7 @@ export class SupabaseService {
           offeredQuantity: oi.quantity, sellerPrice: oi.price, sellerCurrency: oi.currency as Currency,
           adminPrice: oi.admin_price, rank: oi.is_winner ? 'ЛИДЕР' : 'РЕЗЕРВ',
           deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
-          weight: oi.weight, photoUrl: oi.photo_url, adminComment: oi.admin_comment,
+          weight: oi.weight, photoUrl: oi.photo_url, adminComment: oi.admin_comment, supplierSku: oi.supplier_sku,
           comment: oi.comment, totalCost: oi.total_cost, goodsCost: oi.goods_cost
         }))
       } as any));
@@ -610,7 +633,8 @@ export class SupabaseService {
       offer_id: offerData.id, name: item.name, quantity: item.offeredQuantity || item.quantity || 1,
       price: item.sellerPrice || item.BuyerPrice || 0, currency: item.sellerCurrency || item.BuyerCurrency || 'RUB',
       delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
-      weight: item.weight || 0, photo_url: item.photoUrl || '', comment: item.comment || '', order_item_id: item.id
+      weight: item.weight || 0, photo_url: item.photoUrl || '', comment: item.comment || '', order_item_id: item.id,
+      supplier_sku: item.supplierSku || ''
     }));
 
     const { error: oiError } = await supabase.from('offer_items').insert(offerItemsToInsert);
