@@ -158,28 +158,90 @@ const AdminOrderRow = memo(({
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
                                     
-                                    {/* Новая широкая строка: Файлы по заявке */}
-                                    {order.order_files && order.order_files.length > 0 && (
-                                        <div className="md:col-span-4 pt-3 border-t border-slate-100 mt-1">
-                                            <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы по заявке</span>
-                                            <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] font-bold text-indigo-600">
-                                                {order.order_files.map((file, fidx) => (
-                                                    <React.Fragment key={fidx}>
-                                                        <a 
-                                                            href={file.url} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="hover:underline"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            {file.name}
-                                                        </a>
-                                                        {fidx < order.order_files.length - 1 && <span className="text-slate-300">,</span>}
-                                                    </React.Fragment>
-                                                ))}
+                                    {/* БЛОК ФАЙЛОВ */}
+                                    <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 mt-1">
+                                        {/* Файлы от Оператора */}
+                                        {order.order_files && order.order_files.length > 0 ? (
+                                            <div>
+                                                <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от оператора</span>
+                                                <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] font-bold text-indigo-600">
+                                                    {order.order_files.map((file, fidx) => (
+                                                        <React.Fragment key={fidx}>
+                                                            <a 
+                                                                href={file.url} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="hover:underline"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                {file.name}
+                                                            </a>
+                                                            {fidx < order.order_files!.length - 1 && <span className="text-slate-300">,</span>}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от оператора</span><span className="text-[10px] text-slate-300 italic">-</span></div>
+                                        )}
+
+                                        {/* Файлы от Поставщиков (Агрегация: Общие + Позиционные) */}
+                                        {(() => {
+                                            const allSupplierFiles: any[] = [];
+                                            
+                                            order.offers?.forEach(o => {
+                                                // 1. Общие файлы
+                                                if (o.supplier_files) {
+                                                    o.supplier_files.forEach(f => {
+                                                        allSupplierFiles.push({ ...f, supplierName: o.clientName, typeLabel: 'Общий' });
+                                                    });
+                                                }
+                                                // 2. Файлы позиций
+                                                if (o.items) {
+                                                    o.items.forEach((item: any) => {
+                                                        if (item.itemFiles) {
+                                                            item.itemFiles.forEach((f: any) => {
+                                                                allSupplierFiles.push({ ...f, supplierName: o.clientName, typeLabel: `Поз. ${item.name}` });
+                                                            });
+                                                        }
+                                                        // Старая совместимость (photoUrl)
+                                                        else if (item.photoUrl) {
+                                                            allSupplierFiles.push({ name: 'Фото', url: item.photoUrl, supplierName: o.clientName, typeLabel: `Поз. ${item.name}` });
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                            
+                                            return (
+                                                <div>
+                                                    <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от поставщиков</span>
+                                                    {allSupplierFiles.length > 0 ? (
+                                                        <div className="flex flex-col gap-1 text-[10px] font-bold text-emerald-600 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                                                            {allSupplierFiles.map((file, fidx) => (
+                                                                <div key={fidx} className="flex gap-1 items-center whitespace-nowrap">
+                                                                    <span className="text-slate-400 font-medium text-[9px] uppercase shrink-0">
+                                                                        {file.supplierName} ({file.typeLabel}):
+                                                                    </span>
+                                                                    <a 
+                                                                        href={file.url} 
+                                                                        target="_blank" 
+                                                                        rel="noopener noreferrer"
+                                                                        className="hover:underline truncate"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        title={file.name}
+                                                                    >
+                                                                        {file.name}
+                                                                    </a>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] text-slate-300 italic">-</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
 

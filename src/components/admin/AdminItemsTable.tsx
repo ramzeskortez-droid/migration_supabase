@@ -90,15 +90,17 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                   {allFiles.length}
               </div>
               {/* Dropdown list on hover */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
-                  <div className="text-[9px] font-black uppercase text-slate-400 mb-1 border-b border-slate-100 pb-1">Файлы ({allFiles.length})</div>
-                  <div className="space-y-1">
-                      {allFiles.map((f: any, i: number) => (
-                          <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded text-[10px] text-indigo-600 truncate">
-                              {f.type?.startsWith('image/') ? <FileImage size={12}/> : <FileText size={12}/>}
-                              <span className="truncate">{f.name || `Файл ${i+1}`}</span>
-                          </a>
-                      ))}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
+                  <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-2">
+                      <div className="text-[9px] font-black uppercase text-slate-400 mb-1 border-b border-slate-100 pb-1">Файлы ({allFiles.length})</div>
+                      <div className="space-y-1">
+                          {allFiles.map((f: any, i: number) => (
+                              <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded text-[10px] text-indigo-600 truncate block">
+                                  {f.type?.startsWith('image/') ? <FileImage size={12}/> : <FileText size={12}/>}
+                                  <span className="truncate">{f.name || `Файл ${i+1}`}</span>
+                              </a>
+                          ))}
+                      </div>
                   </div>
               </div>
           </div>
@@ -180,8 +182,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                     </div>
 
                     {isExpanded && (
-                        <div className="bg-white animate-in slide-in-from-top-1 duration-200 overflow-x-auto">
-                            <div className="bg-slate-800 text-white hidden md:block min-w-[1000px]">
+                        <div className="bg-white animate-in slide-in-from-top-1 duration-200">
+                            <div className="bg-slate-800 text-white hidden md:block">
                                 <div className={`grid ${OFFER_GRID} gap-4 px-6 py-2 text-[8px] font-black uppercase tracking-widest`}>
                                     <div>Поставщик</div>
                                     <div>Цена закупщика</div>
@@ -230,7 +232,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     </button>
                                 </div>
                             ) : (
-                                <div className="min-w-[1000px] divide-y divide-gray-100">
+                                <div className="divide-y divide-gray-100">
                                     {itemOffers.map((off, oIdx) => {
                                         const isLeader = off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER';
                                         
