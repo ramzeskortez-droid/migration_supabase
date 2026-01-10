@@ -237,7 +237,8 @@ export const OperatorInterface: React.FC = () => {
                 brand: p.brand,
                 article: p.article,
                 uom: p.uom,
-                photoUrl: p.photoUrl
+                photoUrl: p.photoUrl,
+                itemFiles: p.itemFiles
             };
         });
 
