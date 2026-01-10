@@ -244,8 +244,10 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         const editedComment = offerEdits?.[off.item.id]?.adminComment;
                                         const currentComment = editedComment !== undefined ? editedComment : (off.item.adminComment || "");
 
+                                        // Срок
                                         const editedWeeks = offerEdits?.[off.item.id]?.deliveryWeeks;
-                                        const baseWeeks = (off.item.deliveryWeeks || 0) + (exchangeRates?.delivery_weeks_add || 0);
+                                        // Базовый срок = Срок поставщика + 4 недели (по требованию бизнеса)
+                                        const baseWeeks = (off.item.deliveryWeeks || 0) + 4;
                                         const currentWeeks = editedWeeks !== undefined ? editedWeeks : baseWeeks;
 
                                         return (
