@@ -70,7 +70,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
               <div className="w-8 h-8 flex items-center justify-center bg-indigo-50 rounded border border-indigo-200 text-indigo-600 font-black text-[10px] shadow-sm">
                   +{allFiles.length}
               </div>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[999]">
                   <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-2">
                       <div className="text-[9px] font-black uppercase text-slate-400 mb-1 border-b border-slate-100 pb-1">Файлы ({allFiles.length})</div>
                       <div className="space-y-1">
@@ -98,10 +98,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
   };
 
   return (
-    <div className={`mb-6 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm transition-all relative ${isWinner ? 'ring-2 ring-emerald-500 shadow-md' : ''} ${isUnavailable ? 'border-red-200' : ''}`}>
+    <div className={`mb-6 bg-white border border-gray-200 rounded-xl shadow-sm transition-all relative ${isWinner ? 'ring-2 ring-emerald-500 shadow-md' : ''} ${isUnavailable ? 'border-red-200' : ''}`}>
         
         {/* 1. ИНФО ОПЕРАТОРА */}
-        <div className="grid grid-cols-[40px_1fr_100px_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100">
+        <div className="grid grid-cols-[40px_1fr_100px_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100 rounded-t-xl">
             <div className={`text-sm font-mono font-bold text-center ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>#{index + 1}</div>
             
             <div className="flex flex-col">

@@ -181,8 +181,8 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
         </div>
 
         {/* 2. ТАБЛИЦА ТОВАРОВ */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-            <div className="hidden md:grid grid-cols-[40px_1fr_100px_100px_60px_60px_60px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[10px] font-black text-gray-500 uppercase tracking-wider">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+            <div className="hidden md:grid grid-cols-[40px_1fr_100px_100px_60px_60px_60px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[10px] font-black text-gray-500 uppercase tracking-wider rounded-t-xl">
                 <div className="text-center">№</div>
                 <div>Наименование</div>
                 <div>Бренд</div>
