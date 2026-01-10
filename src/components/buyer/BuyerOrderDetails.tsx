@@ -220,78 +220,124 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             </div>
         )}
 
-        {/* 4. СПИСОК ФАЙЛОВ (Строки с удалением) */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 space-y-3">
-            <div className="flex items-center gap-3 mb-2 pb-2 border-b border-gray-100">
+        {/* 4. СПИСОК ФАЙЛОВ (1-в-1 как у Менеджера) */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center gap-3 mb-4 pb-2 border-b border-gray-100">
                 <Paperclip size={16} className="text-slate-400"/>
                 <h3 className="text-xs font-black uppercase text-slate-500 tracking-tight">Вложения</h3>
             </div>
 
-            {/* Файлы от Оператора */}
-            <div className="flex items-start gap-2 text-xs">
-                <span className="font-bold text-slate-400 uppercase shrink-0 mt-0.5 min-w-[120px]">От оператора:</span>
-                <div className="font-medium text-indigo-600 flex flex-wrap gap-x-3 gap-y-2">
-                    {/* Общие файлы */}
-                    {order.order_files && order.order_files.map((file, idx) => (
-                        <div key={`op-gen-${idx}`} className="flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                            <a href={file.url} target="_blank" rel="noreferrer" className="hover:underline">{file.name}</a>
-                        </div>
-                    ))}
-
-                    {/* Файлы позиций */}
-                    {order.items?.flatMap((item, itemIdx) => {
-                        const files = item.itemFiles || [];
-                        // Также учитываем старое поле opPhotoUrl, если нет itemFiles
-                        if (files.length === 0 && item.opPhotoUrl) {
-                            return [{ url: item.opPhotoUrl, name: 'Фото', type: 'image/jpeg', sourceItemIdx: itemIdx }];
-                        }
-                        return files.map((f: any, fIdx: number) => ({ ...f, sourceItemIdx: itemIdx, sourceFileIdx: fIdx }));
-                    }).map((file, idx) => (
-                        <div key={`op-item-${idx}`} className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
-                            <span className="text-[8px] font-bold text-slate-400 mr-1">#{file.sourceItemIdx + 1}</span>
-                            <a href={file.url} target="_blank" rel="noreferrer" className="hover:underline">{file.name}</a>
-                        </div>
-                    ))}
-
-                    {(!order.order_files?.length && !order.items?.some(i => i.itemFiles?.length || i.opPhotoUrl)) && (
-                        <span className="text-slate-300 italic">—</span>
-                    )}
-                </div>
-            </div>
-
-            {/* Файлы от Закупщика */}
-            <div className="flex items-start gap-2 text-xs pt-3 border-t border-slate-50">
-                <span className="font-bold text-slate-400 uppercase shrink-0 mt-0.5 min-w-[120px]">От закупщика:</span>
-                <div className="font-medium text-emerald-600 flex flex-wrap gap-x-3 gap-y-2">
-                    {/* Общие файлы */}
-                    {supplierFiles.map((file, idx) => (
-                        <div key={`sup-${idx}`} className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                            <a href={file.url} target="_blank" rel="noreferrer" className="hover:underline">{file.name}</a>
-                            {!isDisabled && (
-                                <button onClick={() => removeGeneralFile(idx)} className="text-emerald-400 hover:text-red-500 transition-colors">
-                                    <X size={10} />
-                                </button>
-                            )}
-                        </div>
-                    ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Файлы от Оператора */}
+                {(() => {
+                    const allOpFiles: any[] = [];
                     
-                    {/* Файлы позиций */}
-                    {allItemFiles.map((file, idx) => (
-                        <div key={`item-${idx}`} className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
-                            <span className="text-[8px] font-bold text-slate-400 mr-1">#{file.sourceItemIdx + 1}</span>
-                            <a href={file.url} target="_blank" rel="noreferrer" className="hover:underline">{file.name}</a>
-                            {!isDisabled && (
-                                <button onClick={() => removeFileFromItem(file.sourceItemIdx, file.sourceFileIdx)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                    <X size={10} />
-                                </button>
+                    // 1. Общие файлы заказа
+                    if (order.order_files) {
+                        order.order_files.forEach(f => allOpFiles.push({...f, typeLabel: 'Общий'}));
+                    }
+
+                    // 2. Файлы позиций
+                    order.items?.forEach((item, idx) => {
+                        let currentFiles = item.itemFiles || [];
+                        // Fallback
+                        if (currentFiles.length === 0 && item.opPhotoUrl) {
+                            currentFiles = [{ name: 'Фото', url: item.opPhotoUrl, type: 'image/jpeg' }];
+                        }
+
+                        currentFiles.forEach(f => {
+                            allOpFiles.push({ ...f, typeLabel: `Поз. ${item.AdminName || item.name}` });
+                        });
+                    });
+
+                    return (
+                        <div>
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Файлы от оператора</span>
+                            {allOpFiles.length > 0 ? (
+                                <div className="flex flex-col gap-2 text-xs font-bold text-indigo-600 max-h-40 overflow-y-auto pr-2 custom-scrollbar bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    {allOpFiles.map((file, fidx) => (
+                                        <div key={fidx} className="flex gap-2 items-start">
+                                            <span className="text-slate-400 font-medium text-[10px] uppercase shrink-0 mt-0.5 bg-white px-1.5 rounded border border-slate-200">
+                                                {file.typeLabel}
+                                            </span>
+                                            <a 
+                                                href={file.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="hover:underline break-all leading-tight"
+                                                title={file.name}
+                                            >
+                                                {file.name}
+                                            </a>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <span className="text-xs text-slate-300 italic pl-2">— нет файлов —</span>
                             )}
                         </div>
-                    ))}
+                    );
+                })()}
 
-                    {supplierFiles.length === 0 && allItemFiles.length === 0 && (
-                        <span className="text-slate-300 italic">нет загруженных файлов</span>
-                    )}
-                </div>
+                {/* Файлы от Закупщика (Ваши файлы) */}
+                {(() => {
+                    const allMyFiles: any[] = [];
+                    
+                    // 1. Общие файлы (из стейта supplierFiles)
+                    supplierFiles.forEach((f, idx) => {
+                        allMyFiles.push({ ...f, typeLabel: 'Общий', source: 'general', idx });
+                    });
+
+                    // 2. Файлы позиций (из стейта editingItems)
+                    editingItems.forEach((item, itemIdx) => {
+                        const files = item.itemFiles || [];
+                        files.forEach((f: any, fIdx: number) => {
+                            allMyFiles.push({ ...f, typeLabel: `Поз. ${item.name}`, source: 'item', itemIdx, fIdx });
+                        });
+                    });
+                    
+                    return (
+                        <div>
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Ваши файлы (К отправке)</span>
+                            {allMyFiles.length > 0 ? (
+                                <div className="flex flex-col gap-2 text-xs font-bold text-emerald-600 max-h-40 overflow-y-auto pr-2 custom-scrollbar bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                                    {allMyFiles.map((file, i) => (
+                                        <div key={i} className="flex gap-2 items-start justify-between group">
+                                            <div className="flex gap-2 items-start">
+                                                <span className="text-emerald-400/80 font-medium text-[10px] uppercase shrink-0 mt-0.5 bg-white px-1.5 rounded border border-emerald-100">
+                                                    {file.typeLabel}
+                                                </span>
+                                                <a 
+                                                    href={file.url} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="hover:underline break-all leading-tight"
+                                                    title={file.name}
+                                                >
+                                                    {file.name}
+                                                </a>
+                                            </div>
+                                            {!isDisabled && (
+                                                <button 
+                                                    onClick={() => {
+                                                        if (file.source === 'general') removeGeneralFile(file.idx);
+                                                        else removeFileFromItem(file.itemIdx, file.fIdx);
+                                                    }}
+                                                    className="text-emerald-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1"
+                                                    title="Удалить"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <span className="text-xs text-slate-300 italic pl-2">— добавьте файлы в позиции или ниже —</span>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
         </div>
 

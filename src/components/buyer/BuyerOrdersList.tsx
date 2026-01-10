@@ -77,7 +77,8 @@ const MemoizedBuyerOrderRow = memo(({
             offeredQuantity: i.quantity,
             BuyerPrice: 0,
             weight: 0,
-            deliveryWeeks: 0
+            deliveryWeeks: 0,
+            itemFiles: []
         }));
     };
 
