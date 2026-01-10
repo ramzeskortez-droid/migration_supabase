@@ -11,9 +11,11 @@ interface GlobalChatWindowProps {
   currentUserRole: 'ADMIN' | 'SUPPLIER' | 'OPERATOR';
   currentUserName?: string;
   onMessageRead?: (count: number) => void;
+  initialOrderId?: string;
+  initialSupplierFilter?: string;
 }
 
-export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, onMessageRead }) => {
+export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, onMessageRead, initialOrderId, initialSupplierFilter }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
@@ -26,8 +28,17 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
       setLoading(true);
       try {
           const isArchived = activeTab === 'archive';
+          // Если есть initialSupplierFilter, загружаем только его (или фильтруем)
+          // Но лучше загрузить всё, а потом выбрать
           const data = await SupabaseService.getGlobalChatThreads(undefined, isArchived);
           setThreads(data);
+          
+          if (initialOrderId) {
+              setSelectedOrder(initialOrderId);
+              if (initialSupplierFilter) {
+                  setSelectedSupplier(initialSupplierFilter);
+              }
+          }
       } catch (e) {
           console.error(e);
       } finally {
@@ -37,25 +48,22 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
 
   useEffect(() => {
       if (isOpen) {
+          if (initialOrderId) setSearchQuery(initialOrderId);
           fetchThreads();
           
-          // Realtime updates for threads list
           const channel = SupabaseService.subscribeToUserChats((payload) => {
               const msg = payload.new;
               if (processedIds.current.has(msg.id)) return;
               processedIds.current.add(msg.id);
-
-              // Check if we should update threads
-              // For Operator (Global): we care about ALL messages to/from ADMIN
-              // But we group by [orderId][supplier]
               
               const orderId = String(msg.order_id);
               let supplier = '';
               
-              if (msg.sender_role === 'SUPPLIER') supplier = msg.sender_name?.trim();
-              else if (msg.sender_role === 'ADMIN') supplier = msg.recipient_name?.trim();
               
-              if (!supplier || supplier === 'ADMIN') return; // Should not happen
+              if (msg.sender_role === 'SUPPLIER') supplier = msg.sender_name?.trim();
+              else if (['ADMIN', 'MANAGER', 'OPERATOR'].includes(msg.sender_role)) supplier = msg.recipient_name?.trim();
+              
+              if (!supplier || supplier === 'ADMIN' || supplier === 'MANAGER') return;
 
               setThreads(prev => {
                   const newThreads = { ...prev };
@@ -77,7 +85,7 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
               SupabaseService.unsubscribeFromChat(channel);
           };
       }
-  }, [isOpen, activeTab]);
+  }, [isOpen, activeTab, initialOrderId, initialSupplierFilter]);
 
 
   const handleNavigate = React.useCallback((oid: string) => {
@@ -108,7 +116,7 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[80vh] flex overflow-hidden animate-in zoom-in-95 duration-200">
             
             {/* Sidebar: Orders List */}

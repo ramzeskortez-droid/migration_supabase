@@ -138,10 +138,7 @@ export class SupabaseService {
         .eq('key', key)
         .maybeSingle();
     
-    if (error) {
-        console.error('Error fetching settings:', error);
-        return null;
-    }
+    if (error) return null;
     return data?.value || null;
   }
 
@@ -755,7 +752,10 @@ export class SupabaseService {
           if (!threads[oid][supplierKey]) {
               threads[oid][supplierKey] = { lastMessage: msg.message, lastAuthorName: msg.sender_name, time: msg.created_at, unread: 0 };
           }
-          const isMsgFromOther = filterBySupplierName ? (msg.sender_role === 'ADMIN') : (msg.sender_role === 'SUPPLIER');
+          const isMsgFromOther = filterBySupplierName 
+            ? ['ADMIN', 'MANAGER', 'OPERATOR'].includes(msg.sender_role) 
+            : (msg.sender_role === 'SUPPLIER');
+            
           if (!msg.is_read && isMsgFromOther) threads[oid][supplierKey].unread++;
       });
       return threads;

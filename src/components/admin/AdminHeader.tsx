@@ -22,6 +22,22 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
       <div className="flex items-center gap-4">
         <h1 className="text-lg font-black uppercase text-slate-800">Панель Менеджера</h1>
         
+        {/* Кнопка Чата */}
+        {onOpenGlobalChat && (
+            <button 
+                onClick={onOpenGlobalChat}
+                className="relative p-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border border-slate-100 group"
+                title="Глобальный чат"
+            >
+                <MessageCircle size={20} className="text-slate-600 group-hover:text-indigo-600"/>
+                {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white ring-2 ring-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                )}
+            </button>
+        )}
+
         <div className="flex items-center gap-2">
             <button onClick={() => setShowLogs(!showLogs)} className={`p-2 rounded-lg ${showLogs ? 'bg-slate-200' : 'bg-slate-50'} hover:bg-slate-200 transition-colors`}>
                 <History size={18} className="text-slate-600"/>

@@ -17,12 +17,9 @@ export const AdminSettings: React.FC = () => {
         setLoading(true);
         try {
             const val = await SupabaseService.getSystemSettings('buyer_required_fields');
-            // Если в БД пусто, используем дефолт
             setSettings(val || { supplier_sku: false });
         } catch (e) {
-            console.error('Error loading settings:', e);
-            setToast({ message: 'Ошибка загрузки настроек (проверьте консоль)', type: 'error' });
-            // Fallback
+            setToast({ message: 'Ошибка загрузки настроек', type: 'error' });
             setSettings({ supplier_sku: false });
         } finally {
             setLoading(false);

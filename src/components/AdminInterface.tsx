@@ -12,6 +12,7 @@ import { AdminBrands } from './admin/AdminBrands';
 import { AdminSettings } from './admin/AdminSettings';
 import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
 import { useQueryClient } from '@tanstack/react-query';
+import { GlobalChatWindow } from './shared/GlobalChatWindow';
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -46,6 +47,32 @@ export const AdminInterface: React.FC = () => {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
   const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>>({});
+  
+  // Чат
+  const [chatTarget, setChatTarget] = useState<{ isOpen: boolean, orderId: string, supplierName?: string } | null>(null);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+
+  // Загрузка счетчика непрочитанных
+  const fetchUnreadCount = async () => {
+      try {
+          const count = await SupabaseService.getUnreadChatCount();
+          setUnreadChatCount(count);
+      } catch (e) {}
+  };
+
+  useEffect(() => {
+      fetchUnreadCount();
+      // Подписка на новые сообщения (глобально)
+      const channel = SupabaseService.subscribeToUserChats((payload) => {
+          const msg = payload.new;
+          if (msg.sender_role === 'SUPPLIER') {
+              setUnreadChatCount(prev => prev + 1);
+          }
+      }, 'admin-global-notifications');
+
+      return () => { SupabaseService.unsubscribeFromChat(channel); };
+  }, []);
   
   // Сортировка
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
@@ -206,7 +233,22 @@ export const AdminInterface: React.FC = () => {
 
   const handleNextStep = (order: Order) => { const currentIdx = STATUS_STEPS.findIndex(s => s.id === (order.workflowStatus || 'В обработке')); if (currentIdx < STATUS_STEPS.length - 1) handleStatusChange(order.id, STATUS_STEPS[currentIdx + 1].id); };
 
-  const handleRefuse = async () => { if (!adminModal?.orderId) return; setIsSubmitting(adminModal.orderId); try { await SupabaseService.refuseOrder(adminModal.orderId, refusalReason, 'ADMIN'); setAdminModal(null); setRefusalReason(""); refetch(); } catch (e) {} finally { setIsSubmitting(null); } };
+  const handleRefuse = async () => {
+      if (!adminModal?.orderId) return;
+      setIsSubmitting(adminModal.orderId);
+      try {
+          await SupabaseService.refuseOrder(adminModal.orderId, refusalReason || 'Отказано менеджером');
+          showToast("Заказ аннулирован");
+          setAdminModal(null);
+          setRefusalReason("");
+          refetch();
+      } catch (e: any) {
+          console.error(e);
+          showToast("Ошибка: " + e.message);
+      } finally {
+          setIsSubmitting(null);
+      }
+  };
 
   const startEditing = (order: Order) => { 
       setEditingOrderId(order.id); 
@@ -342,6 +384,8 @@ export const AdminInterface: React.FC = () => {
                         onClearDB={async () => { if(!confirm('Удалить все?')) return; setIsDbLoading(true); try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setIsDbLoading(false); } }}
                         onSeed={async (count) => { setIsDbLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c), 'op1'); refetch(); } catch(e) {} finally { setIsDbLoading(false); setSeedProgress(null); } }}
                         seedProgress={seedProgress}
+                        unreadCount={unreadChatCount}
+                        onOpenGlobalChat={() => setIsGlobalChatOpen(true)}
                       />
 
                       <AdminToolbar 
@@ -380,10 +424,33 @@ export const AdminInterface: React.FC = () => {
                         toggleRegistry={toggleRegistry}
                         exchangeRates={exchangeRates}
                         offerEdits={offerEdits}
+                        onOpenChat={(orderId, supplierName) => setChatTarget({ isOpen: true, orderId, supplierName })}
                       />
                   </div>
               )}
           </main>
+
+          {chatTarget && (
+              <GlobalChatWindow 
+                  isOpen={chatTarget.isOpen}
+                  onClose={() => setChatTarget(null)}
+                  currentUserRole="ADMIN"
+                  currentUserName="Manager"
+                  initialOrderId={chatTarget.orderId}
+                  initialSupplierFilter={chatTarget.supplierName}
+                  onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
+              />
+          )}
+
+          {isGlobalChatOpen && (
+              <GlobalChatWindow 
+                  isOpen={isGlobalChatOpen}
+                  onClose={() => setIsGlobalChatOpen(false)}
+                  currentUserRole="ADMIN"
+                  currentUserName="Manager"
+                  onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
+              />
+          )}
 
           {adminModal && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">

@@ -17,6 +17,7 @@ interface AdminItemsTableProps {
   toggleRegistry: (id: string) => void;
   exchangeRates: ExchangeRates | null;
   offerEdits: Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>;
+  onOpenChat: (orderId: string, supplierName?: string) => void;
 }
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -24,7 +25,7 @@ import { SupabaseService } from '../../services/supabaseService';
 
 export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   order, isEditing, editForm, setEditForm, handleItemChange, handleLocalUpdateRank, 
-  currentStatus, openRegistry, toggleRegistry, exchangeRates, offerEdits
+  currentStatus, openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat
 }) => {
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
@@ -252,7 +253,16 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                 <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
                                                     <div className="flex items-center gap-2 overflow-hidden">
                                                         <div className="flex flex-col min-w-0">
-                                                            <span className="font-black text-gray-900 uppercase text-[10px] truncate" title={off.clientName}>{off.clientName}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-black text-gray-900 uppercase text-[10px] truncate" title={off.clientName}>{off.clientName}</span>
+                                                                <button 
+                                                                    onClick={() => onOpenChat(order.id, off.clientName)}
+                                                                    className="text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                                    title="Чат с поставщиком"
+                                                                >
+                                                                    <MessageCircle size={12}/>
+                                                                </button>
+                                                            </div>
                                                             {/* Отображение общих файлов поставщика */}
                                                             {off.supplierFiles && off.supplierFiles.length > 0 && (
                                                                 <div className="flex items-center gap-1 text-[8px] text-indigo-500 mt-0.5 group/files cursor-help relative">

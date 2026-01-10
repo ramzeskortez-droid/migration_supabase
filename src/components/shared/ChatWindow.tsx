@@ -14,11 +14,9 @@ interface ChatWindowProps {
   itemName?: string;
   onNavigateToOrder?: (orderId: string) => void;
   onRead?: (orderId: string, supplierName: string) => void;
-  isArchived?: boolean; // Новый проп
-  onArchiveUpdate?: () => void; // Колбэк для мгновенного обновления списка
+  isArchived?: boolean;
+  onArchiveUpdate?: () => void;
 }
-
-// -- Sub-components for Optimization --
 
 const ChatImage = ({ src }: { src: string }) => {
     const [isLoaded, setIsLoaded] = useState(false);
@@ -49,21 +47,34 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
             )}
 
             {messages.map((msg) => {
+                // Определение "Я" или "Собеседник" для позиционирования
                 let isMe = false;
-                if (currentUserRole === 'SUPPLIER') {
-                    isMe = msg.sender_role === 'SUPPLIER';
-                } else {
-                    isMe = msg.sender_role === 'ADMIN';
-                }
+                if (currentUserRole === 'SUPPLIER') isMe = msg.sender_role === 'SUPPLIER';
+                else if (currentUserRole === 'OPERATOR') isMe = msg.sender_role === 'OPERATOR' || (msg.sender_role === 'ADMIN' && msg.sender_name.includes('Оператор')); // Fallback для старых
+                else if (currentUserRole === 'ADMIN') isMe = msg.sender_role === 'ADMIN' || msg.sender_role === 'MANAGER';
 
+                // Определение цвета и имени на основе роли
+                let bubbleClass = 'bg-white text-slate-700 border border-slate-200';
                 let displayName = msg.sender_name;
-                if (msg.sender_role === 'ADMIN') {
+
+                if (msg.sender_role === 'SUPPLIER') {
+                    // Закупщик - Желтый
+                    bubbleClass = 'bg-amber-100 text-slate-800 border-amber-200';
+                } else if (msg.sender_role === 'OPERATOR') {
+                    // Оператор - Синий
+                    bubbleClass = 'bg-indigo-600 text-white border-indigo-600';
+                } else if (msg.sender_role === 'ADMIN' || msg.sender_role === 'MANAGER') {
+                    // Менеджер - Зеленый
+                    bubbleClass = 'bg-emerald-600 text-white border-emerald-600';
                     if (msg.sender_name === 'ADMIN') displayName = 'Менеджер';
                 }
 
+                // Коррекция углов для "пузырька"
+                const roundedClass = isMe ? 'rounded-tr-none' : 'rounded-tl-none';
+
                 return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] p-3 rounded-2xl text-xs font-medium shadow-sm ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-200 rounded-tl-none'}`}>
+                        <div className={`max-w-[85%] p-3 rounded-2xl text-xs font-medium shadow-sm ${bubbleClass} ${roundedClass}`}>
                             <div className="mb-1 text-[8px] font-black uppercase opacity-70 flex justify-between gap-4">
                                 <span>{displayName}</span>
                                 <span>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -134,7 +145,6 @@ const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (ms
 
     return (
         <div className="bg-white border-t border-slate-100 shrink-0">
-            {/* Item & File Selection Bar */}
             <div className="px-3 pt-2 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                 <button 
                     onClick={() => setShowItemSelector(!showItemSelector)}
@@ -240,18 +250,31 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   useEffect(() => {
       if (!messages.length) return;
 
-      const hasUnread = messages.some(m => !m.is_read && m.sender_role !== currentUserRole);
-      const hasUnreadForOperator = currentUserRole === 'OPERATOR' && messages.some(m => !m.is_read && m.sender_role === 'SUPPLIER');
+      // Mark Read logic
+      // Operator reads SUPPLIER msg (ADMIN role reads SUPPLIER)
+      // Manager reads SUPPLIER msg (ADMIN role reads SUPPLIER)
+      // Supplier reads ADMIN/OPERATOR/MANAGER msg (SUPPLIER reads ADMIN/OPERATOR/MANAGER)
+      
+      const hasUnread = messages.some(m => !m.is_read && m.sender_role !== currentUserRole); // Simplified check
+      // More strict:
+      // If I am ADMIN/OPERATOR, I read SUPPLIER messages
+      // If I am SUPPLIER, I read ADMIN/OPERATOR/MANAGER messages
+      
+      let shouldMark = false;
+      if (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') {
+          shouldMark = messages.some(m => !m.is_read && m.sender_role === 'SUPPLIER');
+      } else if (currentUserRole === 'SUPPLIER') {
+          shouldMark = messages.some(m => !m.is_read && ['ADMIN', 'MANAGER', 'OPERATOR'].includes(m.sender_role));
+      }
 
-      if (hasUnread || hasUnreadForOperator) {
+      if (shouldMark) {
           const markRead = async () => {
               if (onRead) onRead(orderId, supplierName);
-              if (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') {
-                 await SupabaseService.markChatAsRead(orderId, supplierName, 'ADMIN');
-              } else {
-                 await SupabaseService.markChatAsRead(orderId, supplierName, 'SUPPLIER');
-              }
-              setMessages(prev => prev.map(m => (!m.is_read && m.sender_role !== currentUserRole) ? { ...m, is_read: true } : m));
+              // Pass role to service
+              const myRoleGroup = (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? 'ADMIN' : 'SUPPLIER';
+              await SupabaseService.markChatAsRead(orderId, supplierName, myRoleGroup);
+              
+              setMessages(prev => prev.map(m => (!m.is_read) ? { ...m, is_read: true } : m));
           };
           markRead();
       }
@@ -260,7 +283,12 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   useEffect(() => {
       fetchMessages();
       const channel = SupabaseService.subscribeToChatMessages(orderId, (newMsg) => {
+          // Check if relevant
           const isRelevant = newMsg.sender_name === supplierName || newMsg.recipient_name === supplierName;
+          
+          // Special case for Operator/Manager chatting with each other? No, chat is always with Supplier.
+          // So Operator/Manager messages have recipient=SupplierName.
+          
           if (isRelevant) {
               setMessages(prev => {
                   if (prev.find(m => m.id === newMsg.id)) return prev;
@@ -282,31 +310,36 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           await SupabaseService.deleteChatHistory(orderId, supplierName);
           if (onArchiveUpdate) onArchiveUpdate();
           setToast({ message: 'Чат удален' });
-      } catch (e) { console.error(e); }
+          setMessages([]);
+      } catch (e) { }
   };
 
   const handleSend = useCallback(async (msgText: string, selectedItemNames?: string[], file?: File) => {
       const tempId = Date.now();
-      let senderName = 'ADMIN';
-      let dbRole: 'ADMIN' | 'SUPPLIER' = 'ADMIN';
+      let senderName = 'Менеджер';
+      let dbRole: 'MANAGER' | 'OPERATOR' | 'SUPPLIER' | 'ADMIN' = 'MANAGER';
 
       if (currentUserRole === 'OPERATOR') {
-          senderName = currentUserName ? `Оператор - ${currentUserName}` : 'Оператор';
-          dbRole = 'ADMIN';
+          senderName = currentUserName ? `${currentUserName}` : 'Оператор'; // Убрал префикс "Оператор -", оставил имя или "Оператор"
+          dbRole = 'OPERATOR';
       } else if (currentUserRole === 'ADMIN') {
-          senderName = 'ADMIN';
-          dbRole = 'ADMIN';
+          senderName = 'Менеджер';
+          dbRole = 'MANAGER';
       } else {
           senderName = supplierName;
           dbRole = 'SUPPLIER';
       }
+
+      // Recipient is always Supplier (if I am Admin/Op) OR Admin (if I am Supplier)
+      // We use 'ADMIN' as a generic recipient for Supplier messages
+      const recipientName = (currentUserRole === 'SUPPLIER') ? 'ADMIN' : supplierName;
 
       const optimisticMsg = {
           id: tempId,
           order_id: Number(orderId),
           sender_role: dbRole,
           sender_name: senderName,
-          recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
+          recipient_name: recipientName,
           message: msgText,
           item_name: selectedItemNames?.join(', '), 
           file_url: file ? URL.createObjectURL(file) : undefined,
@@ -331,12 +364,12 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               offer_id: offerId || null,
               sender_role: dbRole,
               sender_name: senderName,
-              recipient_name: dbRole === 'ADMIN' ? supplierName : 'ADMIN',
+              recipient_name: recipientName,
               message: msgText,
               item_name: selectedItemNames?.join(', '),
               file_url: fileUrl || undefined,
               file_type: fileType || undefined,
-              is_archived: false // Automatically restore if was archived
+              is_archived: false
           });
           
           setMessages(prev => {
@@ -361,16 +394,14 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               document.body
           )}
           
-          <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center justify-between shadow-sm z-10 shrink-0">            <div 
+          <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex items-center justify-between shadow-sm z-10 shrink-0">
+            <div 
                 className={`flex items-center gap-2 overflow-hidden ${onNavigateToOrder ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                 onClick={() => onNavigateToOrder && onNavigateToOrder(orderId)}
             >
                 <Link size={12} className="text-indigo-400 shrink-0"/>
                 <span className="text-[10px] font-bold text-indigo-700 truncate">
-                    {(currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') 
-                        ? `Закупщик инициировал диалог из заказа #${orderId}` 
-                        : `Чат по заказу #${orderId}`
-                    }
+                    Чат по заказу #{orderId} ({supplierName})
                 </span>
             </div>
             <div className="flex items-center gap-2">

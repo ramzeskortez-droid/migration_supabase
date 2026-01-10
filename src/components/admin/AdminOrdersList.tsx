@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronRight, TrendingUp, 
   FileText, Send, ShoppingCart, CheckCircle2, CreditCard, Truck, PackageCheck, Ban, 
-  Edit2, Loader2, Check, Tag
+  Edit2, Loader2, Check, Tag, MessageCircle
 } from 'lucide-react';
 import { Order, OrderStatus, RankType, Currency } from '../../types';
 import { AdminItemsTable } from './AdminItemsTable';
@@ -34,7 +34,7 @@ const AdminOrderRow = memo(({
     handleStatusChange, handleNextStep, setAdminModal,
     startEditing, saveEditing, handleFormCP, isSubmitting,
     editForm, setEditForm, handleItemChange, handleLocalUpdateRank,
-    openRegistry, toggleRegistry, exchangeRates, offerEdits
+    openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat
 }: any) => {
     const isEditing = editingOrderId === order.id;
     // Removed carBrand logic as car fields are dropped
@@ -257,6 +257,7 @@ const AdminOrderRow = memo(({
                                 toggleRegistry={toggleRegistry}
                                 exchangeRates={exchangeRates}
                                 offerEdits={offerEdits}
+                                onOpenChat={onOpenChat}
                             />
 
                             <div className="flex flex-wrap md:flex-nowrap justify-end gap-2 md:gap-3 mt-6 pt-4 border-t border-slate-200">
@@ -271,6 +272,12 @@ const AdminOrderRow = memo(({
                                         </button>
                                     )}</>
                                 )}
+                                <button 
+                                    onClick={() => onOpenChat(order.id, 'OPERATOR')}
+                                    className="px-4 py-3 rounded-xl border border-indigo-100 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase flex items-center gap-2 hover:bg-indigo-100 transition-colors"
+                                >
+                                    <MessageCircle size={14}/> Чат с оператором
+                                </button>
                             </div>
                         </>
                     )}
@@ -310,11 +317,12 @@ interface AdminOrdersListProps {
   toggleRegistry: (id: string) => void;
   exchangeRates: any;
   offerEdits: any;
+  onOpenChat: (orderId: string, supplierName?: string) => void;
 }
 
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   orders, sortConfig, handleSort, expandedId, setExpandedId,
-  onLoadMore, hasMore, isLoading, exchangeRates, offerEdits,
+  onLoadMore, hasMore, isLoading, exchangeRates, offerEdits, onOpenChat,
   ...rowProps
 }) => {
 
@@ -360,6 +368,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                         onToggle={toggleExpand}
                         exchangeRates={exchangeRates}
                         offerEdits={offerEdits}
+                        onOpenChat={onOpenChat}
                         {...rowProps}
                     />
                 )}
