@@ -29,8 +29,9 @@
     *   **Действие:** Вызов `SupabaseService.createOrder`.
     *   **Валидация:** Проверка существования бренда в таблице `brands`. Если бренда нет — блокировка или запрос на создание (в зависимости от настроек UI).
     *   **SQL:**
-        *   `INSERT INTO orders` (status_admin='В обработке', owner_token='op1').
+        *   `INSERT INTO orders` (status_admin='В обработке', owner_token='op1', order_files='[{...}]').
         *   `INSERT INTO order_items` (массив позиций).
+    *   **Файлы:** Если оператор прикрепил файлы (PDF, Excel, Фото), их метаданные (имя, URL, тип) сохраняются в JSONB-поле `order_files`. Сами файлы загружаются в Supabase Storage (бакет `attachments`).
     *   **Изоляция:** Полю `owner_token` присваивается токен текущего оператора. Это включает RLS-политику, делающую заказ невидимым для других операторов.
 
 ### ЭТАП 2: Торги (Sourcing)
