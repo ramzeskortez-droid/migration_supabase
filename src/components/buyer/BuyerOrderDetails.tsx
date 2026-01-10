@@ -230,15 +230,30 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             {/* Файлы от Оператора */}
             <div className="flex items-start gap-2 text-xs">
                 <span className="font-bold text-slate-400 uppercase shrink-0 mt-0.5 min-w-[120px]">От оператора:</span>
-                <div className="font-medium text-indigo-600 flex flex-wrap gap-x-2">
-                    {order.order_files && order.order_files.length > 0 ? (
-                        order.order_files.map((file, idx) => (
-                            <React.Fragment key={idx}>
-                                <a href={file.url} target="_blank" rel="noreferrer" className="hover:underline">{file.name}</a>
-                                {idx < order.order_files!.length - 1 && <span className="text-slate-300">,</span>}
-                            </React.Fragment>
-                        ))
-                    ) : (
+                <div className="font-medium text-indigo-600 flex flex-wrap gap-x-3 gap-y-2">
+                    {/* Общие файлы */}
+                    {order.order_files && order.order_files.map((file, idx) => (
+                        <div key={`op-gen-${idx}`} className="flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                            <a href={file.url} target="_blank" rel="noreferrer" className="hover:underline">{file.name}</a>
+                        </div>
+                    ))}
+
+                    {/* Файлы позиций */}
+                    {order.items?.flatMap((item, itemIdx) => {
+                        const files = item.itemFiles || [];
+                        // Также учитываем старое поле opPhotoUrl, если нет itemFiles
+                        if (files.length === 0 && item.opPhotoUrl) {
+                            return [{ url: item.opPhotoUrl, name: 'Фото', type: 'image/jpeg', sourceItemIdx: itemIdx }];
+                        }
+                        return files.map((f: any, fIdx: number) => ({ ...f, sourceItemIdx: itemIdx, sourceFileIdx: fIdx }));
+                    }).map((file, idx) => (
+                        <div key={`op-item-${idx}`} className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
+                            <span className="text-[8px] font-bold text-slate-400 mr-1">#{file.sourceItemIdx + 1}</span>
+                            <a href={file.url} target="_blank" rel="noreferrer" className="hover:underline">{file.name}</a>
+                        </div>
+                    ))}
+
+                    {(!order.order_files?.length && !order.items?.some(i => i.itemFiles?.length || i.opPhotoUrl)) && (
                         <span className="text-slate-300 italic">—</span>
                     )}
                 </div>

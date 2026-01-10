@@ -71,25 +71,22 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
 
       if (allFiles.length === 1) {
           const file = allFiles[0];
-          if (file.type?.startsWith('image/') || file.url.match(/\.(jpeg|jpg|png|webp)$/i)) {
-              return (
-                  <a href={file.url} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity block w-8 h-8 rounded border border-gray-300 overflow-hidden shadow-sm">
+          const isImage = file.type?.startsWith('image/') || file.url.match(/\.(jpeg|jpg|png|webp)$/i);
+          return (
+              <a href={file.url} target="_blank" rel="noreferrer" className={`hover:opacity-80 transition-opacity block w-8 h-8 rounded border border-gray-300 overflow-hidden shadow-sm flex items-center justify-center ${!isImage ? 'bg-slate-50 text-indigo-500' : ''}`} title={file.name}>
+                  {isImage ? (
                       <img src={file.url} alt="Файл" className="w-full h-full object-cover" />
-                  </a>
-              );
-          } else {
-              return (
-                  <a href={file.url} target="_blank" rel="noreferrer" className="w-8 h-8 flex items-center justify-center bg-slate-50 rounded border border-slate-200 hover:bg-slate-100 text-indigo-500 transition-colors" title={file.name}>
+                  ) : (
                       <FileText size={16} />
-                  </a>
-              );
-          }
+                  )}
+              </a>
+          );
       }
 
       return (
           <div className="relative group cursor-pointer">
-              <div className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded border border-slate-200 text-slate-600 font-bold text-[10px]">
-                  {allFiles.length}
+              <div className="w-8 h-8 flex items-center justify-center bg-indigo-50 rounded border border-indigo-200 text-indigo-600 font-black text-[10px] shadow-sm">
+                  +{allFiles.length}
               </div>
               {/* Dropdown list on hover */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
@@ -98,7 +95,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                       <div className="space-y-1">
                           {allFiles.map((f: any, i: number) => (
                               <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded text-[10px] text-indigo-600 truncate block">
-                                  {f.type?.startsWith('image/') ? <FileImage size={12}/> : <FileText size={12}/>}
+                                  {f.type?.startsWith('image/') || f.url.match(/\.(jpeg|jpg|png|webp)$/i) ? <FileImage size={12}/> : <FileText size={12}/>}
                                   <span className="truncate">{f.name || `Файл ${i+1}`}</span>
                               </a>
                           ))}
