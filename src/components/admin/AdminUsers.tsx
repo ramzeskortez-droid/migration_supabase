@@ -3,18 +3,43 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
 import { AppUser } from '../../types';
 import { Toast } from '../shared/Toast';
-import { UserCheck, UserX, Clock, Users as UsersIcon, Phone, Shield, Calendar, Search } from 'lucide-react';
+import { UserCheck, UserX, Clock, Users as UsersIcon, Phone, Shield, Calendar, Search, Key, Copy, Check } from 'lucide-react';
 
 export const AdminUsers: React.FC = () => {
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+    const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'invites'>('pending');
     const [searchTerm, setSearchTerm] = useState('');
     const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+    const [inviteRole, setInviteRole] = useState<'operator' | 'buyer'>('buyer');
+    const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
 
     const { data: users, isLoading } = useQuery({
         queryKey: ['admin_users', activeTab],
-        queryFn: () => SupabaseService.getAppUsers(activeTab)
+        queryFn: () => activeTab === 'invites' ? [] : SupabaseService.getAppUsers(activeTab as any),
+        enabled: activeTab !== 'invites'
     });
+
+    const { data: invites, refetch: refetchInvites } = useQuery({
+        queryKey: ['admin_invites'],
+        queryFn: () => SupabaseService.getActiveInvites(),
+        enabled: activeTab === 'invites'
+    });
+
+    const handleGenerateInvite = async () => {
+        try {
+            const code = await SupabaseService.generateInviteCode(inviteRole);
+            setGeneratedInvite(code);
+            refetchInvites();
+            setToast({ message: 'Инвайт-код создан', type: 'success' });
+        } catch (e: any) {
+            setToast({ message: e.message, type: 'error' });
+        }
+    };
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setToast({ message: 'Скопировано', type: 'success' });
+    };
 
     const { data: pendingUsers } = useQuery({
         queryKey: ['admin_users_pending_count'],
@@ -179,6 +204,13 @@ export const AdminUsers: React.FC = () => {
                         <UserCheck size={14} />
                         Список пользователей
                     </button>
+                    <button 
+                        onClick={() => setActiveTab('invites')}
+                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${activeTab === 'invites' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Key size={14} />
+                        Инвайты
+                    </button>
                 </div>
             </div>
 
@@ -193,7 +225,78 @@ export const AdminUsers: React.FC = () => {
                 />
             </div>
 
-            {isLoading ? (
+            {activeTab === 'invites' ? (
+                <div className="flex flex-col h-full gap-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 className="text-sm font-black uppercase text-slate-800 mb-4">Генерация нового кода</h3>
+                        <div className="flex items-end gap-4">
+                            <div className="flex-1">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Для кого:</label>
+                                <div className="flex bg-slate-50 p-1 rounded-xl">
+                                    <button 
+                                        onClick={() => setInviteRole('buyer')}
+                                        className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${inviteRole === 'buyer' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}
+                                    >
+                                        Закупщик
+                                    </button>
+                                    <button 
+                                        onClick={() => setInviteRole('operator')}
+                                        className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${inviteRole === 'operator' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                    >
+                                        Оператор
+                                    </button>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={handleGenerateInvite}
+                                className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                            >
+                                Сгенерировать код
+                            </button>
+                        </div>
+
+                        {generatedInvite && (
+                            <div className="mt-6 p-4 bg-slate-50 rounded-xl border-2 border-dashed border-indigo-200 flex items-center justify-between animate-in zoom-in-95">
+                                <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Ваш код:</div>
+                                    <div className="text-3xl font-black text-indigo-600 tracking-widest">{generatedInvite}</div>
+                                </div>
+                                <button 
+                                    onClick={() => copyToClipboard(generatedInvite)}
+                                    className="p-3 bg-white rounded-xl text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm border border-indigo-100"
+                                >
+                                    <Copy size={20} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex-grow bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-100 font-black text-xs uppercase text-slate-500">Активные инвайты ({invites?.length || 0})</div>
+                        <div className="flex-grow overflow-y-auto p-4 space-y-2">
+                            {invites?.map((invite: any) => (
+                                <div key={invite.code} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-mono font-black text-lg ${invite.role === 'buyer' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                                            {invite.role === 'buyer' ? 'B' : 'O'}
+                                        </div>
+                                        <div>
+                                            <div className="font-black text-slate-800 text-lg tracking-widest">{invite.code}</div>
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase">{new Date(invite.created_at).toLocaleString('ru-RU')}</div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => copyToClipboard(invite.code)}
+                                        className="text-slate-400 hover:text-indigo-600 transition-colors"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ) : isLoading ? (
                 <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full"/></div>
             ) : filteredUsers?.length === 0 ? (
                 <div className="py-20 text-center">

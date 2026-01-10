@@ -19,6 +19,7 @@ export const BuyerAuthModal: React.FC<BuyerAuthModalProps> = ({ isOpen, onLogin 
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -46,11 +47,8 @@ export const BuyerAuthModal: React.FC<BuyerAuthModalProps> = ({ isOpen, onLogin 
 
   const handleRegister = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (regData.invite.toLowerCase() !== 'china-nai') {
-          setError('Неверный инвайт-код');
-          return;
-      }
-      if (!regData.name || !regData.token || !regData.phone) {
+      // Проверка на china-nai убрана, теперь проверяем на сервере
+      if (!regData.invite || !regData.name || !regData.token || !regData.phone) {
           setError('Заполните все поля');
           return;
       }
@@ -63,8 +61,12 @@ export const BuyerAuthModal: React.FC<BuyerAuthModalProps> = ({ isOpen, onLogin 
       setError(null);
 
       try {
-          const user = await SupabaseService.registerUser(regData.name, regData.token, regData.phone, 'buyer');
-          onLogin(user);
+          // Передаем inviteCode
+          await SupabaseService.registerUser(regData.name, regData.token, regData.phone, 'buyer', regData.invite);
+          setMode('login');
+          setToken(regData.token); 
+          setSuccessMsg('Заявка отправлена! Ожидайте подтверждения менеджера. После одобрения войдите с вашим токеном.');
+          setError(null);
       } catch (err: any) {
           if (err.code === '23505') setError('Такой токен уже занят, придумайте другой');
           else setError(err.message || 'Ошибка регистрации');
@@ -84,18 +86,24 @@ export const BuyerAuthModal: React.FC<BuyerAuthModalProps> = ({ isOpen, onLogin 
          {/* Tabs */}
          <div className="flex p-1 bg-slate-100 rounded-xl w-full">
              <button 
-                onClick={() => { setMode('login'); setError(null); }}
+                onClick={() => { setMode('login'); setError(null); setSuccessMsg(null); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-black uppercase transition-all ${mode === 'login' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
              >
                  Вход
              </button>
              <button 
-                onClick={() => { setMode('register'); setError(null); }}
+                onClick={() => { setMode('register'); setError(null); setSuccessMsg(null); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-black uppercase transition-all ${mode === 'register' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
              >
                  Регистрация
              </button>
          </div>
+
+         {successMsg && (
+             <div className="w-full bg-emerald-50 text-emerald-600 px-4 py-3 rounded-xl text-[10px] font-bold text-center border border-emerald-100 animate-in slide-in-from-top-2">
+                 {successMsg}
+             </div>
+         )}
 
          {error && (
              <div className="w-full bg-red-50 text-red-600 px-4 py-3 rounded-xl text-[10px] font-bold text-center border border-red-100 animate-in slide-in-from-top-2">

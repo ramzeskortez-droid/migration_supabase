@@ -16,7 +16,7 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
   const [token, setToken] = useState('');
   
   // Register State
-  const [masterPassword, setMasterPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [newName, setNewName] = useState('');
   const [newToken, setNewToken] = useState('');
   
@@ -45,32 +45,22 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
         setError('Неверный токен доступа');
       }
     } catch (err: any) {
-      setError(err.message); // Используем сообщение из сервиса (там уже есть "на проверке")
+      setError(err.message); 
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMasterCheck = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (masterPassword === 'china-nai') {
-          setMode('register');
-          setError(null);
-      } else {
-          setError('Неверный мастер-пароль');
-      }
-  };
-
   const handleRegister = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!newName.trim() || !newToken.trim()) return;
+      if (!newName.trim() || !newToken.trim() || !inviteCode.trim()) return;
       
       setLoading(true);
       try {
-          await SupabaseService.registerUser(newName, newToken, 'operator');
-          setRegSuccess(true); // Показываем сообщение об ожидании
+          await SupabaseService.registerUser(newName, newToken, '', 'operator', inviteCode);
+          setRegSuccess(true); 
       } catch (err: any) {
-          setError('Ошибка регистрации: ' + (err.message.includes('unique constraint') ? 'Такой токен уже занят' : err.message));
+          setError(err.message.includes('unique constraint') ? 'Такой токен уже занят' : err.message);
       } finally {
           setLoading(false);
       }
@@ -140,49 +130,13 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
                 </form>
 
                 <button 
-                    onClick={() => { setMode('master_check'); setError(null); setMasterPassword(''); }}
+                    onClick={() => { setMode('register'); setError(null); setInviteCode(''); }}
                     className="mt-6 w-full py-2 flex items-center justify-center gap-2 text-slate-400 hover:text-indigo-600 text-sm font-bold transition-colors"
                 >
                     <PlusCircle size={16} />
-                    <span>Создать оператора</span>
+                    <span>У меня есть инвайт-код</span>
                 </button>
             </>
-          );
-      }
-
-      if (mode === 'master_check') {
-          return (
-              <form onSubmit={handleMasterCheck} className="flex flex-col gap-4 animate-in slide-in-from-right-8 fade-in duration-300">
-                  <div className="text-center mb-2">
-                      <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                      <h3 className="font-bold text-slate-700">Проверка прав</h3>
-                      <p className="text-xs text-slate-500">Введите мастер-пароль администратора</p>
-                  </div>
-                  
-                  <input 
-                        type="password" 
-                        placeholder="Мастер-пароль..." 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono text-center text-lg tracking-widest text-slate-700 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all"
-                        value={masterPassword}
-                        onChange={(e) => { setMasterPassword(e.target.value); setError(null); }}
-                        autoFocus
-                  />
-
-                  <button 
-                        type="submit"
-                        className="bg-indigo-600 text-white p-3.5 rounded-xl hover:bg-indigo-700 font-bold"
-                  >
-                        Продолжить
-                  </button>
-
-                  <button 
-                        type="button"
-                        onClick={() => { setMode('login'); setError(null); }}
-                        className="text-slate-400 hover:text-slate-600 text-sm font-bold flex items-center justify-center gap-1"
-                  >
-                        <ArrowLeft size={14} /> Отмена
-                  </button>
-              </form>
           );
       }
 
@@ -195,6 +149,17 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
                   </div>
 
                   <div className="space-y-3">
+                      <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase ml-1">Инвайт-код</label>
+                          <input 
+                                type="text" 
+                                placeholder="Получите у менеджера" 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 transition-all uppercase"
+                                value={inviteCode}
+                                onChange={(e) => setInviteCode(e.target.value)}
+                                autoFocus
+                          />
+                      </div>
                       <div>
                           <label className="text-xs font-bold text-slate-500 uppercase ml-1">Имя</label>
                           <input 
@@ -219,7 +184,7 @@ export const OperatorAuthModal: React.FC<OperatorAuthModalProps> = ({ onLogin })
 
                   <button 
                         type="submit"
-                        disabled={loading || !newName || !newToken}
+                        disabled={loading || !newName || !newToken || !inviteCode}
                         className="bg-indigo-600 text-white p-3.5 rounded-xl hover:bg-indigo-700 font-bold mt-2 flex items-center justify-center gap-2"
                   >
                         {loading ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : <span>Подать заявку</span>}
