@@ -42,8 +42,8 @@ export const BuyerInterface: React.FC = () => {
   const listRef = React.useRef<HTMLDivElement>(null);
 
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ 
-    key: 'deadline', 
-    direction: 'asc' 
+    key: 'id', 
+    direction: 'desc' 
   });
 
   // --- Realtime Notifications ---
