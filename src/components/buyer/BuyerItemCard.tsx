@@ -121,7 +121,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             <div className={`text-[10px] font-bold text-center uppercase ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>{opUom}</div>
             
             <div className="flex justify-center">
-                {renderFilesIcon(item.itemFiles, opPhoto)}
+                {renderFilesIcon(item.operatorItemFiles || item.itemFiles, opPhoto)}
             </div>
         </div>
 

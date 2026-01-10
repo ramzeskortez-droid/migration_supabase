@@ -78,7 +78,8 @@ const MemoizedBuyerOrderRow = memo(({
             BuyerPrice: 0,
             weight: 0,
             deliveryWeeks: 0,
-            itemFiles: []
+            itemFiles: [],
+            operatorItemFiles: i.itemFiles || []
         }));
     };
 
