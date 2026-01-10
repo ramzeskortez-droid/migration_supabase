@@ -165,12 +165,12 @@ export const BuyerInterface: React.FC = () => {
       loadInitialData();
   }, [buyerAuth]);
 
-  const handleSubmitOffer = async (orderId: string, items: any[]) => {
+  const handleSubmitOffer = async (orderId: string, items: any[], supplierFiles?: any[]) => {
       if (!buyerAuth) return;
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
-          await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id);
+          await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id, supplierFiles);
           setExpandedId(null);
           setSuccessToast({ message: `Предложение к заказу № ${orderId} отправлено!`, id: Date.now().toString() });
           refetch();

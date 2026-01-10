@@ -253,7 +253,7 @@ const AdminOrderRow = memo(({
                                             
                                             return (
                                                 <div>
-                                                    <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от поставщиков</span>
+                                                    <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от закупщиков</span>
                                                     {allSupplierFiles.length > 0 ? (
                                                         <div className="flex flex-col gap-1 text-[10px] font-bold text-emerald-600 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
                                                             {allSupplierFiles.map((file, fidx) => (
