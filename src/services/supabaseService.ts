@@ -238,6 +238,7 @@ export class SupabaseService {
         visible_to_client, location, status_updated_at,
         owner_id,
         deadline,
+        order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price),
         offers (id, supplier_name, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, order_item_id))
     `);
@@ -399,6 +400,7 @@ export class SupabaseService {
             visibleToClient: order.visible_to_client ? 'Y' : 'N',
             ownerId: order.owner_id,
             deadline: order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : undefined,
+            order_files: order.order_files,
             buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: (order.order_items as any[])?.sort((a, b) => a.id - b.id).map((i: any) => ({
                 id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url, adminPrice: i.admin_price
@@ -486,11 +488,11 @@ export class SupabaseService {
           .map(entry => entry[0]);
   }
 
-  static async getOrderDetails(orderId: string): Promise<{ items: OrderItem[], offers: Order[] }> {
+  static async getOrderDetails(orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[] }> {
       const { data, error } = await supabase
           .from('orders')
           .select(`
-            id, order_items (*),
+            id, order_files, order_items (*),
             offers (*, offer_items (*))
           `)
           .eq('id', orderId)
@@ -520,7 +522,7 @@ export class SupabaseService {
         }))
       } as any));
 
-      return { items, offers };
+      return { items, offers, orderFiles: data.order_files };
   }
 
   static async getBuyerDashboardStats(userId: string): Promise<any> {
@@ -574,12 +576,13 @@ export class SupabaseService {
       await supabase.from('orders').update({ status_supplier: 'Идут торги' }).eq('id', orderId);
   }
 
-  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string, clientEmail?: string, location?: string): Promise<string> {
+  static async createOrder(items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string, clientEmail?: string, location?: string, orderFiles?: any[]): Promise<string> {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         client_name: clientName, client_phone: clientPhone, client_email: clientEmail,
-        location: location || 'РФ', owner_id: ownerId, deadline: deadline || null
+        location: location || 'РФ', owner_id: ownerId, deadline: deadline || null,
+        order_files: orderFiles || []
       })
       .select().single();
 

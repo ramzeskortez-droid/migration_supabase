@@ -108,6 +108,29 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             onConfirm={() => setCopyModal({...copyModal, isOpen: false})}
         />
 
+        {order.order_files && order.order_files.length > 0 && (
+            <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы по заявке</span>
+                <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] font-bold text-indigo-600">
+                    {order.order_files.map((file, fidx) => (
+                        <React.Fragment key={fidx}>
+                            <a 
+                                href={file.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="hover:underline flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <FileText size={12} className="text-slate-400" />
+                                {file.name}
+                            </a>
+                            {fidx < order.order_files.length - 1 && <span className="text-slate-300">,</span>}
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
+        )}
+
         <div className="space-y-3">
             {editingItems.map((item, idx) => (
                 <BuyerItemCard 

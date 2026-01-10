@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { OperatorHeader } from './operator/OperatorHeader';
 import { SystemStatusSidebar } from './operator/SystemStatusSidebar';
 import { OrderInfoForm } from './operator/OrderInfoForm';
+import { OrderFilesUpload } from './operator/OrderFilesUpload';
 import { PartsList } from './operator/PartsList';
 import { AiAssistant } from './operator/AiAssistant';
 import { SystemStatusHorizontal } from './operator/SystemStatusHorizontal';
@@ -38,6 +39,8 @@ export const OperatorInterface: React.FC = () => {
     clientPhone: ''
   });
 
+  const [orderFiles, setOrderFiles] = useState<{name: string, url: string, size?: number, type?: string}[]>([]);
+
   const [requestHistory, setRequestHistory] = useState<LogHistory[]>([]);
   const [displayStats, setDisplayStats] = useState<DisplayStats>({
     rpm: 0,
@@ -58,6 +61,8 @@ export const OperatorInterface: React.FC = () => {
   
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  
+  const listRef = React.useRef<HTMLDivElement>(null);
 
   const handleMessageRead = useCallback((count: number) => {
       setUnreadChatCount(prev => Math.max(0, prev - count));
@@ -250,7 +255,8 @@ export const OperatorInterface: React.FC = () => {
                 return `${year}-${month}-${day}`;
             })(),
             orderInfo.clientEmail,
-            orderInfo.city 
+            orderInfo.city,
+            orderFiles
         );
 
         setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });
@@ -259,6 +265,7 @@ export const OperatorInterface: React.FC = () => {
         
         // Reset form
         setParts([{ id: Date.now(), name: '', article: '', brand: '', uom: 'шт', quantity: 1 }]);
+        setOrderFiles([]);
         setOrderInfo({
             deadline: '',
             region: '', city: '', email: '', clientEmail: '', emailSubject: '', clientName: '', clientPhone: ''
@@ -291,7 +298,10 @@ export const OperatorInterface: React.FC = () => {
           setScrollToId(orderId);
           addLog(`Переход к заказу #${orderId}`);
           
-          setTimeout(() => setScrollToId(null), 1000);
+          setTimeout(() => {
+              setScrollToId(null);
+              listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 500);
       } catch (e) {
           setSearchQuery(orderId);
       }
@@ -395,6 +405,7 @@ export const OperatorInterface: React.FC = () => {
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
                 <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} onQuickFill={handleQuickFill} />
+                <OrderFilesUpload files={orderFiles} setFiles={setOrderFiles} onLog={addLog} />
                 <PartsList 
                     parts={parts} 
                     setParts={setParts} 
@@ -422,7 +433,7 @@ export const OperatorInterface: React.FC = () => {
                 <SystemStatusHorizontal displayStats={displayStats} />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4" ref={listRef}>
                 <div className="relative group flex items-center">
                     <Search className="absolute left-6 text-slate-400" size={20}/>
                     <input 

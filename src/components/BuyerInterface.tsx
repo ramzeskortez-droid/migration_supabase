@@ -39,6 +39,7 @@ export const BuyerInterface: React.FC = () => {
   const [tabCounts, setTabCounts] = useState({ new: 0, hot: 0, history: 0, won: 0, lost: 0, cancelled: 0 });
 
   const [editingItemsMap, setEditingItemsMap] = useState<Record<string, any[]>>({});
+  const listRef = React.useRef<HTMLDivElement>(null);
 
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ 
     key: 'deadline', 
@@ -212,7 +213,10 @@ export const BuyerInterface: React.FC = () => {
           setSearchQuery(orderId);
           setExpandedId(orderId);
           setScrollToId(orderId);
-          setTimeout(() => setScrollToId(null), 1000);
+          setTimeout(() => {
+              setScrollToId(null);
+              listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 500);
       } catch (e) {
           setSearchQuery(orderId);
           setExpandedId(orderId);
@@ -265,34 +269,36 @@ export const BuyerInterface: React.FC = () => {
                 
                 <BuyerDashboard userId={buyerAuth.id} />
 
-                <BuyerToolbar 
-                    activeTab={activeTab} setActiveTab={setActiveTab}
-                    searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-                    activeBrands={activeBrands} setActiveBrands={setActiveBrands}
-                    availableBrands={availableBrands}
-                    historyBrands={quickBrands} 
-                    counts={tabCounts} 
-                    onRefresh={() => {
-                        refetch();
-                        fetchCounts();
-                        queryClient.invalidateQueries({ queryKey: ['buyerStats'] });
-                    }} 
-                    isSyncing={isLoading || isFetchingNextPage}
-                />
-                <BuyerOrdersList 
-                    orders={orders}
-                    expandedId={expandedId} onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
-                    onLoadMore={() => fetchNextPage()}
-                    hasMore={!!hasNextPage}
-                    isLoading={isFetchingNextPage}
-                    editingItemsMap={editingItemsMap} setEditingItemsMap={setEditingItemsMap}
-                    onSubmit={handleSubmitOffer} isSubmitting={isSubmitting}
-                    sortConfig={sortConfig} onSort={handleSort}
-                    getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
-                    buyerToken={buyerAuth?.token}
-                    onOpenChat={handleOpenChat}
-                    scrollToId={scrollToId}
-                />
+                <div ref={listRef}>
+                    <BuyerToolbar 
+                        activeTab={activeTab} setActiveTab={setActiveTab}
+                        searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+                        activeBrands={activeBrands} setActiveBrands={setActiveBrands}
+                        availableBrands={availableBrands}
+                        historyBrands={quickBrands} 
+                        counts={tabCounts} 
+                        onRefresh={() => {
+                            refetch();
+                            fetchCounts();
+                            queryClient.invalidateQueries({ queryKey: ['buyerStats'] });
+                        }} 
+                        isSyncing={isLoading || isFetchingNextPage}
+                    />
+                    <BuyerOrdersList 
+                        orders={orders}
+                        expandedId={expandedId} onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
+                        onLoadMore={() => fetchNextPage()}
+                        hasMore={!!hasNextPage}
+                        isLoading={isFetchingNextPage}
+                        editingItemsMap={editingItemsMap} setEditingItemsMap={setEditingItemsMap}
+                        onSubmit={handleSubmitOffer} isSubmitting={isSubmitting}
+                        sortConfig={sortConfig} onSort={handleSort}
+                        getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
+                        buyerToken={buyerAuth?.token}
+                        onOpenChat={handleOpenChat}
+                        scrollToId={scrollToId}
+                    />
+                </div>
                 <BuyerGlobalChat 
                     isOpen={isGlobalChatOpen}
                     onClose={() => setIsGlobalChatOpen(false)}

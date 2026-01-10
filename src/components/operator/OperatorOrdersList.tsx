@@ -127,7 +127,8 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
                   setOrders(prev => prev.map(o => o.id === id ? { 
                       ...o, 
                       items: details.items as any,
-                      offers: details.offers as any 
+                      offers: details.offers as any,
+                      order_files: details.orderFiles
                   } : o));
               } catch (e) { console.error(e); }
           }

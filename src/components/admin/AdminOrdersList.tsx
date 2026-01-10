@@ -49,7 +49,12 @@ const AdminOrderRow = memo(({
         staleTime: 0
     });
 
-    const fullOrder = { ...order, items: details?.items || order.items || [], offers: details?.offers || order.offers || [] };
+    const fullOrder = { 
+        ...order, 
+        items: details?.items || order.items || [], 
+        offers: details?.offers || order.offers || [],
+        order_files: details?.orderFiles || order.order_files
+    };
     const offersCount = order.offers?.length || 0; 
 
     // Stats: Total Items / Covered (Has at least one offer)
@@ -152,6 +157,29 @@ const AdminOrderRow = memo(({
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span><span className="font-bold text-slate-700">{order.clientPhone || "-"}</span></div>
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
+                                    
+                                    {/* Новая широкая строка: Файлы по заявке */}
+                                    {order.order_files && order.order_files.length > 0 && (
+                                        <div className="md:col-span-4 pt-3 border-t border-slate-100 mt-1">
+                                            <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы по заявке</span>
+                                            <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] font-bold text-indigo-600">
+                                                {order.order_files.map((file, fidx) => (
+                                                    <React.Fragment key={fidx}>
+                                                        <a 
+                                                            href={file.url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="hover:underline"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {file.name}
+                                                        </a>
+                                                        {fidx < order.order_files.length - 1 && <span className="text-slate-300">,</span>}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

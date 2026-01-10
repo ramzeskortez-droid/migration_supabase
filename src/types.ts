@@ -113,6 +113,7 @@ export interface Order {
   ownerToken?: string; // Legacy support (optional)
   deadline?: string;
   buyerLabels?: BuyerLabel[];
+  order_files?: { name: string; url: string; size?: number; type?: string }[];
   
   statusAdmin?: string;
   statusClient?: string;
