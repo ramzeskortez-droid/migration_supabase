@@ -247,7 +247,6 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                                              onUpdate={(files) => {
                                                  updatePartFields(part.id, {
                                                      itemFiles: files,
-                                                     // Для совместимости обновляем photoUrl первым файлом
                                                      photoUrl: files.length > 0 ? files[0].url : ''
                                                  });
                                              }} 
