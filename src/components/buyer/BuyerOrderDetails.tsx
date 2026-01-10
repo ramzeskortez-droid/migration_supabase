@@ -196,7 +196,8 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 {editingItems.map((item, idx) => (
                     <BuyerItemCard 
                         key={idx} 
-                        item={item} 
+                        item={item}
+                        sourceItem={order.items?.[idx]} // Данные из order (который включает details)
                         index={idx} 
                         onUpdate={handleUpdateItem}
                         isDisabled={isDisabled}

@@ -3,8 +3,8 @@ import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage } from 'lucide-rea
 import { FileDropzone } from '../shared/FileDropzone';
 
 interface BuyerItemCardProps {
-// ... (остальные пропсы)
   item: any;
+  sourceItem?: any; // Данные из БД (readonly)
   index: number;
   onUpdate: (index: number, field: string, value: any) => void;
   isDisabled: boolean;
@@ -14,11 +14,14 @@ interface BuyerItemCardProps {
   isRequired?: boolean;
 }
 
-export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpdate, isDisabled, orderId, bestStats, onCopy, isRequired }) => {
+export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, index, onUpdate, isDisabled, orderId, bestStats, onCopy, isRequired }) => {
   
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
   
+  // Используем sourceItem для данных оператора, если он есть (приоритет), иначе item
+  const displayItem = sourceItem || item;
+
   const handleNumInput = (raw: string, field: string, max?: number) => {
       if (isDisabled) return;
       const digits = raw.replace(/[^\d.]/g, ''); 
@@ -41,10 +44,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
       onUpdate(index, 'offeredQuantity', newVal);
   };
 
-  const opBrand = item.brand || '-';
-  const opArticle = item.article || '-';
-  const opUom = item.uom || 'шт';
-  const opPhoto = item.opPhotoUrl;
+  const opBrand = displayItem.brand || '-';
+  const opArticle = displayItem.article || '-';
+  const opUom = displayItem.uom || 'шт';
+  const opPhoto = displayItem.opPhotoUrl || displayItem.photoUrl;
 
   const renderFilesIcon = (files: any[], photoUrl?: string) => {
       const allFiles = files && files.length > 0 ? files : (photoUrl ? [{url: photoUrl, type: 'image/jpeg'}] : []);
@@ -121,7 +124,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             <div className={`text-[10px] font-bold text-center uppercase ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>{opUom}</div>
             
             <div className="flex justify-center">
-                {renderFilesIcon(item.operatorItemFiles || item.itemFiles, opPhoto)}
+                {renderFilesIcon(displayItem.itemFiles, opPhoto)}
             </div>
         </div>
 
