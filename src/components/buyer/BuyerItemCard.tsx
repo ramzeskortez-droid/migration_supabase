@@ -1,8 +1,9 @@
 import React from 'react';
-import { Ban, AlertCircle, Copy, XCircle } from 'lucide-react';
+import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage } from 'lucide-react';
 import { FileDropzone } from '../shared/FileDropzone';
 
 interface BuyerItemCardProps {
+// ... (остальные пропсы)
   item: any;
   index: number;
   onUpdate: (index: number, field: string, value: any) => void;
@@ -45,6 +46,47 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
   const opUom = item.uom || 'шт';
   const opPhoto = item.opPhotoUrl;
 
+  const renderFilesIcon = (files: any[], photoUrl?: string) => {
+      const allFiles = files && files.length > 0 ? files : (photoUrl ? [{url: photoUrl, type: 'image/jpeg'}] : []);
+      
+      if (allFiles.length === 0) return <span className="text-slate-300 text-[10px]">-</span>;
+
+      if (allFiles.length === 1) {
+          const file = allFiles[0];
+          const isImage = file.type?.startsWith('image/') || file.url.match(/\.(jpeg|jpg|png|webp)$/i);
+          return (
+              <a href={file.url} target="_blank" rel="noreferrer" className={`hover:opacity-80 transition-opacity block w-8 h-8 rounded border border-gray-300 overflow-hidden shadow-sm flex items-center justify-center ${!isImage ? 'bg-slate-50 text-indigo-500' : ''}`} title={file.name}>
+                  {isImage ? (
+                      <img src={file.url} alt="Файл" className="w-full h-full object-cover" />
+                  ) : (
+                      <FileText size={16} />
+                  )}
+              </a>
+          );
+      }
+
+      return (
+          <div className="relative group cursor-pointer">
+              <div className="w-8 h-8 flex items-center justify-center bg-indigo-50 rounded border border-indigo-200 text-indigo-600 font-black text-[10px] shadow-sm">
+                  +{allFiles.length}
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
+                  <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-2">
+                      <div className="text-[9px] font-black uppercase text-slate-400 mb-1 border-b border-slate-100 pb-1">Файлы ({allFiles.length})</div>
+                      <div className="space-y-1">
+                          {allFiles.map((f: any, i: number) => (
+                              <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded text-[10px] text-indigo-600 truncate block text-left">
+                                  {f.type?.startsWith('image/') || f.url.match(/\.(jpeg|jpg|png|webp)$/i) ? <FileImage size={12}/> : <FileText size={12}/>}
+                                  <span className="truncate">{f.name || `Файл ${i+1}`}</span>
+                              </a>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          </div>
+      );
+  };
+
   const getInputClass = (field: string) => {
       const base = "w-full text-center font-bold text-xs bg-white border border-gray-200 rounded md:rounded-lg py-1.5 md:py-2 px-1 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all";
       if (isDisabled) return `${base} bg-gray-100 text-gray-500 border-gray-200`;
@@ -79,13 +121,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, index, onUpd
             <div className={`text-[10px] font-bold text-center uppercase ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>{opUom}</div>
             
             <div className="flex justify-center">
-                {opPhoto ? (
-                    <a href={opPhoto} target="_blank" rel="noreferrer" className={`w-10 h-8 rounded border overflow-hidden hover:opacity-80 block shadow-sm transition-all ${isUnavailable ? 'grayscale opacity-40 border-red-200' : 'border-gray-200'}`}>
-                        <img src={opPhoto} className="w-full h-full object-cover" alt="" />
-                    </a>
-                ) : (
-                    <span className="text-gray-200 text-[10px]">-</span>
-                )}
+                {renderFilesIcon(item.itemFiles, opPhoto)}
             </div>
         </div>
 
