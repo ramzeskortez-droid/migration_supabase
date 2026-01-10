@@ -237,7 +237,7 @@ export const AdminInterface: React.FC = () => {
       if (!adminModal?.orderId) return;
       setIsSubmitting(adminModal.orderId);
       try {
-          await SupabaseService.refuseOrder(adminModal.orderId, refusalReason || 'Отказано менеджером');
+          await SupabaseService.refuseOrder(adminModal.orderId, refusalReason || 'Отказано менеджером', 'ADMIN');
           showToast("Заказ аннулирован");
           setAdminModal(null);
           setRefusalReason("");
@@ -453,7 +453,7 @@ export const AdminInterface: React.FC = () => {
           )}
 
           {adminModal && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                   <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200">
                       {adminModal.type === 'VALIDATION' ? (
                           <div className="text-center space-y-4">

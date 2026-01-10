@@ -880,6 +880,23 @@ export class SupabaseService {
     await supabase.from('orders').update({ status_client: status, status_admin: status, status_updated_at: new Date().toISOString() }).eq('id', orderId);
   }
 
+  static async refuseOrder(orderId: string, reason: string, userRole: 'ADMIN' | 'OPERATOR'): Promise<void> {
+      const status = userRole === 'ADMIN' ? 'Аннулирован' : 'Отказ';
+      // В реальности, если отказывается оператор, статус 'Отказ', если менеджер - 'Аннулирован'.
+      // Но в ТЗ: "Менеджер -> Аннулирован".
+      // Причина отказа может храниться в поле refusal_reason (если оно есть) или просто в логах/комментарии.
+      // Проверим types.ts: есть refusalReason.
+      
+      const { error } = await supabase.from('orders').update({
+          status_admin: status,
+          status_client: status,
+          status_updated_at: new Date().toISOString(),
+          refusal_reason: reason
+      }).eq('id', orderId);
+
+      if (error) throw error;
+  }
+
   static async seedOrders(count: number, onProgress?: (current: number) => void, ownerToken: string = 'op1'): Promise<void> {
       const brands = await this.getBrandsList();
       const safeBrands = brands.length > 0 ? brands : ['Toyota', 'BMW', 'Mercedes', 'Audi', 'Lexus'];
