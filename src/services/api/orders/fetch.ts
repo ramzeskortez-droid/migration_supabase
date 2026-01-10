@@ -44,7 +44,7 @@ export const getOrders = async (
         owner_id,
         deadline,
         order_files,
-        order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price),
+        order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
         offers (id, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment))
     `);
 
@@ -190,7 +190,8 @@ export const getOrders = async (
             order_files: order.order_files,
             buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: (order.order_items as any[])?.sort((a, b) => a.id - b.id).map((i: any) => ({
-                id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url, adminPrice: i.admin_price
+                id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url, adminPrice: i.admin_price,
+                itemFiles: i.item_files || []
             })) || [],
             offers: order.offers?.map((o: any) => ({
                 id: o.id, clientName: o.supplier_name, supplier_files: o.supplier_files, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({

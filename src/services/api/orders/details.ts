@@ -18,7 +18,8 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
     const items: OrderItem[] = sortedOrderItems.map((item: any) => ({
       id: item.id, name: item.name, quantity: item.quantity, comment: item.comment,
       category: item.category, opPhotoUrl: item.photo_url, adminPrice: item.admin_price,
-      brand: item.brand, article: item.article, uom: item.uom
+      brand: item.brand, article: item.article, uom: item.uom,
+      itemFiles: item.item_files || []
     }));
 
     const offers: Order[] = data.offers.map((offer: any) => ({
