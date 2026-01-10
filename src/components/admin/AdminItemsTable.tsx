@@ -4,6 +4,7 @@ import {
   ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle, FileText, Paperclip, Folder
 } from 'lucide-react';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
+import { FileDropzone } from '../shared/FileDropzone';
 
 interface AdminItemsTableProps {
   order: Order;
@@ -59,7 +60,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   };
 
   // Гибкая сетка для офферов (суммарно 100%)
-  const PRODUCT_GRID = "grid-cols-[50px_1fr_120px_80px_80px_80px]";
+  const PRODUCT_GRID = "grid-cols-[40px_1.5fr_100px_60px_50px_120px]";
   const OFFER_GRID = "grid-cols-[1.5fr_1fr_70px_70px_100px_80px_1.2fr_1fr_130px]";
 
   const renderFilesIcon = (files: any[], photoUrl?: string) => {
@@ -172,12 +173,18 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                 ) : ( item.quantity )}
                             </div>
                             <div className="text-gray-600 text-center text-[10px] font-bold uppercase">{item.uom || 'шт'}</div>
-                            <div className="flex justify-center">
-                                {item.opPhotoUrl ? (
-                                    <a href={item.opPhotoUrl} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity">
-                                        <img src={item.opPhotoUrl} alt="Заявка" className="w-10 h-8 object-cover rounded border border-gray-300 shadow-sm" />
-                                    </a>
-                                ) : ( <span className="text-gray-300 text-[10px]">-</span> )}
+                            <div className="flex justify-center px-2">
+                                {isEditing ? (
+                                    <div className="h-[34px] w-full flex items-center justify-center bg-white rounded border border-gray-300 overflow-hidden">
+                                        <FileDropzone 
+                                            files={(() => { try { return JSON.parse(editForm[`item_${idx}_files`] || '[]'); } catch(e) { return []; } })()}
+                                            onUpdate={(files) => setEditForm({...editForm, [`item_${idx}_files`]: JSON.stringify(files)})}
+                                            compact
+                                        />
+                                    </div>
+                                ) : (
+                                    renderFilesIcon(item.itemFiles, item.opPhotoUrl)
+                                )}
                             </div>
                         </div>
                     </div>

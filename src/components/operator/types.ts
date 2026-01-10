@@ -6,6 +6,7 @@ export interface Part {
   uom: string;
   quantity: number;
   photoUrl?: string; 
+  itemFiles?: { name: string; url: string; size?: number; type?: string }[];
   isNewBrand?: boolean; // Флаг нового бренда
 }
 

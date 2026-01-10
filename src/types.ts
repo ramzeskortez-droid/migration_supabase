@@ -19,6 +19,7 @@ export interface AppUser {
   token: string;
   role: UserRole;
   phone?: string;
+  status?: string;
 }
 
 export interface ExchangeRates {

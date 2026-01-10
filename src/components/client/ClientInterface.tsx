@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { SupabaseService } from '../services/supabaseService';
-import { Order } from '../types';
-import { ClientAuthModal } from './client/ClientAuthModal';
-import { ClientProfileHeader } from './client/ClientProfileHeader';
-import { NewOrderForm } from './client/NewOrderForm';
-import { ClientOrdersList } from './client/ClientOrdersList';
-import { Toast } from './shared/Toast';
-import { ConfirmationModal } from './shared/ConfirmationModal';
-import { useClientOrders } from '../hooks/useClientOrders';
+import { SupabaseService } from '../../services/supabaseService';
+import { Order } from '../../types';
+import { ClientAuthModal } from './ClientAuthModal';
+import { ClientProfileHeader } from './ClientProfileHeader';
+import { NewOrderForm } from './NewOrderForm';
+import { ClientOrdersList } from './ClientOrdersList';
+import { Toast } from '../shared/Toast';
+import { ConfirmationModal } from '../shared/ConfirmationModal';
+import { useClientOrders } from '../../hooks/useClientOrders';
 
 export const ClientInterface: React.FC = () => {
   // --- Auth State ---
@@ -59,8 +59,8 @@ export const ClientInterface: React.FC = () => {
     
     try {
       const newOrderId = await SupabaseService.createOrder(items, clientAuth.name, clientAuth.phone);
-      addLog(`Создан новый заказ #${newOrderId}`);
-      await fetchOrders();
+      showToast(`Создан новый заказ #${newOrderId}`);
+      await refresh();
     } catch (e) {
       console.error(e);
       alert('Ошибка при создании заказа');

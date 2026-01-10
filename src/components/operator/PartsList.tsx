@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Part } from './types';
-import { ImageUploader } from '../shared/ImageUploader';
+import { FileDropzone } from '../shared/FileDropzone';
 import { SupabaseService } from '../../services/supabaseService';
 
 interface PartsListProps {
@@ -45,6 +45,10 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
 
   const updatePart = (id: number, field: keyof Part, value: any) => {
     setParts(parts.map(part => part.id === id ? { ...part, [field]: value } : part));
+  };
+
+  const updatePartFields = (id: number, updates: Partial<Part>) => {
+    setParts(parts.map(part => part.id === id ? { ...part, ...updates } : part));
   };
 
   // Эффект 1: Динамические подсказки при вводе (только для активного поля)
@@ -236,12 +240,21 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                   />
                </div>
 
-               <div className="flex justify-center">
-                   <ImageUploader 
-                       currentUrl={part.photoUrl} 
-                       onUpload={(url) => updatePart(part.id, 'photoUrl', url)} 
-                       compact
-                   />
+               <div className="flex justify-center px-2">
+                                     <div className="h-[34px] w-full flex items-center justify-center bg-white rounded border border-gray-300 overflow-hidden">
+                                         <FileDropzone 
+                                             files={part.itemFiles || (part.photoUrl ? [{name: 'Фото', url: part.photoUrl, type: 'image/jpeg'}] : [])} 
+                                             onUpdate={(files) => {
+                                                 updatePartFields(part.id, {
+                                                     itemFiles: files,
+                                                     // Для совместимости обновляем photoUrl первым файлом
+                                                     photoUrl: files.length > 0 ? files[0].url : ''
+                                                 });
+                                             }} 
+                                             compact
+                                         />
+                                     </div>
+                  
                </div>
                
                <button 

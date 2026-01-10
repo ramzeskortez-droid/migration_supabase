@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
-import { Order, OrderStatus, RowType, OrderItem, WorkflowStatus, Currency, RankType, AppUser, ExchangeRates, BuyerLabel } from '../types';
+import { Order, OrderStatus, RowType, OrderItem, WorkflowStatus, Currency, RankType, AppUser, ExchangeRates, BuyerLabel, Brand } from '../types';
+
+import * as ratesApi from './api/finance/rates';
+import * as settingsApi from './api/finance/settings';
+import * as uploadApi from './api/storage/upload';
+import * as brandsReadApi from './api/brands/read';
+import * as brandsWriteApi from './api/brands/write';
 
 export class SupabaseService {
   
@@ -120,29 +126,15 @@ export class SupabaseService {
 
   // --- FINANCE (Exchange Rates) ---
 
-  static async getExchangeRates(date?: string): Promise<ExchangeRates | null> {
-    let query = supabase.from('exchange_rates').select('*');
-    if (date) {
-      query = query.eq('date', date);
-    } else {
-      query = query.order('date', { ascending: false }).limit(1);
-    }
-    
-    const { data, error } = await query.maybeSingle();
-    if (error) throw error;
-    return data as ExchangeRates;
-  }
-
-  static async upsertExchangeRates(rates: ExchangeRates): Promise<void> {
-    const { error } = await supabase.from('exchange_rates').upsert(rates);
-    if (error) throw error;
-  }
+  static getExchangeRates = ratesApi.getExchangeRates;
+  static upsertExchangeRates = ratesApi.upsertExchangeRates;
 
   static async updateOrderJson(orderId: string, newItems: any[]): Promise<void> {
     const itemsToInsert = newItems.map(item => ({
       order_id: Number(orderId), name: item.AdminName || item.name, quantity: item.AdminQuantity || item.quantity,
       comment: item.comment, category: item.category, photo_url: item.photo_url,
-      brand: item.brand, article: item.article, uom: item.uom
+      brand: item.brand, article: item.article, uom: item.uom,
+      item_files: item.itemFiles || []
     }));
     await supabase.from('order_items').delete().eq('order_id', orderId);
     await supabase.from('order_items').insert(itemsToInsert);
@@ -163,50 +155,17 @@ export class SupabaseService {
 
   // --- SYSTEM SETTINGS ---
 
-  static async getSystemSettings(key: string): Promise<any> {
-    const { data, error } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', key)
-        .maybeSingle();
-    
-    if (error) return null;
-    return data?.value || null;
-  }
-
-  static async updateSystemSettings(key: string, value: any, updatedBy: string): Promise<void> {
-      const { error } = await supabase.from('system_settings').upsert({
-          key,
-          value,
-          updated_by: updatedBy,
-          updated_at: new Date().toISOString()
-      });
-      if (error) throw error;
-  }
+  static getSystemSettings = settingsApi.getSystemSettings;
+  static updateSystemSettings = settingsApi.updateSystemSettings;
 
   static async updateOfferItem(itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number, supplier_sku?: string }): Promise<void> {
-      const { error } = await supabase.from('offer_items').update(updates).eq('id', itemId);
-      if (error) throw error;
+    const { error } = await supabase.from('offer_items').update(updates).eq('id', itemId);
+    if (error) throw error;
   }
 
   // --- FILE STORAGE ---
 
-  static async uploadFile(file: File, folder: 'orders' | 'offers' | 'chat'): Promise<string> {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-
-      const { error } = await supabase.storage
-          .from('attachments')
-          .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data } = supabase.storage
-          .from('attachments')
-          .getPublicUrl(fileName);
-      
-      return data.publicUrl;
-  }
+  static uploadFile = uploadApi.uploadFile;
 
   // --- BUYER TOOLS (Labels & Filters) ---
 
@@ -644,7 +603,8 @@ export class SupabaseService {
     const itemsToInsert = items.map(item => ({
       order_id: orderData.id, name: item.name, quantity: item.quantity || 1,
       comment: item.comment, category: item.category, photo_url: item.photoUrl || null,
-      brand: item.brand || null, article: item.article || null, uom: item.uom || 'шт'
+      brand: item.brand || null, article: item.article || null, uom: item.uom || 'шт',
+      item_files: item.itemFiles || []
     }));
 
     const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
@@ -831,64 +791,15 @@ export class SupabaseService {
       return counts;
   }
   
-  static async getSellerBrands(sellerName: string): Promise<string[]> {
-      const { data, error } = await supabase.rpc('get_seller_brands', { p_seller_name: sellerName });
-      if (error) throw error;
-      return data?.map((d: any) => d.brand) || [];
-  }
-
-  static async searchBrands(query: string): Promise<string[]> {
-      if (!query || query.length < 2) return [];
-      const { data, error } = await supabase.from('brands').select('name').ilike('name', `%${query}%`).order('name').limit(50);
-      if (error) throw error;
-      return data?.map((b: any) => b.name) || [];
-  }
-
-  static async checkBrandExists(name: string): Promise<string | null> {
-      if (!name) return null;
-      const { data, error } = await supabase.from('brands').select('name').ilike('name', name).maybeSingle();
-      if (error) return null;
-      return data ? data.name : null;
-  }
-
-  static async getBrandsList(): Promise<string[]> {
-      const { data, error } = await supabase.from('brands').select('name').order('name').limit(10000);
-      if (error) throw error;
-      return data?.map((b: any) => b.name) || [];
-  }
-
-  static async getBrandsFull(page: number = 1, limit: number = 100, search: string = '', sortField: string = 'id', sortDirection: 'asc' | 'desc' = 'desc'): Promise<{ data: Brand[], count: number }> {
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-      let query = supabase.from('brands').select('*', { count: 'exact' });
-      if (search) query = query.ilike('name', `%${search}%`);
-      const { data, error, count } = await query.order(sortField, { ascending: sortDirection === 'asc' }).range(from, to);
-      if (error) throw error;
-      return { data: data || [], count: count || 0 };
-  }
-
-  static async getSupplierUsedBrands(supplierName: string): Promise<string[]> {
-      const { data, error } = await supabase.from('offers').select(`order_id, orders (order_items (brand))`).ilike('supplier_name', supplierName).limit(100);
-      if (error || !data) return [];
-      const brands: string[] = [];
-      data.forEach(offer => { offer.orders?.order_items?.forEach((item: any) => { if (item.brand) brands.push(item.brand); }); });
-      return Array.from(new Set(brands)).sort().slice(0, 10);
-  }
-
-  static async addBrand(name: string, createdBy: string = 'Admin'): Promise<void> {
-      const { error } = await supabase.from('brands').insert({ name, created_by: createdBy });
-      if (error) throw error;
-  }
-
-  static async updateBrand(id: number, name: string): Promise<void> {
-      const { error } = await supabase.from('brands').update({ name }).eq('id', id);
-      if (error) throw error;
-  }
-
-  static async deleteBrand(id: number): Promise<void> {
-      const { error } = await supabase.from('brands').delete().eq('id', id);
-      if (error) throw error;
-  }
+  static getSellerBrands = brandsReadApi.getSellerBrands;
+  static searchBrands = brandsReadApi.searchBrands;
+  static checkBrandExists = brandsReadApi.checkBrandExists;
+  static getBrandsList = brandsReadApi.getBrandsList;
+  static getBrandsFull = brandsReadApi.getBrandsFull;
+  static getSupplierUsedBrands = brandsReadApi.getSupplierUsedBrands;
+  static addBrand = brandsWriteApi.addBrand;
+  static updateBrand = brandsWriteApi.updateBrand;
+  static deleteBrand = brandsWriteApi.deleteBrand;
 
   static async deleteAllOrders(): Promise<void> {
     const { error } = await supabase.rpc('reset_db');

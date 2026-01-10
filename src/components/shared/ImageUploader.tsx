@@ -5,7 +5,7 @@ import { SupabaseService } from '../../services/supabaseService';
 interface ImageUploaderProps {
   currentUrl?: string;
   onUpload: (url: string) => void;
-  folder?: 'orders' | 'offers';
+  folder?: 'orders' | 'offers' | 'chat';
   compact?: boolean;
 }
 

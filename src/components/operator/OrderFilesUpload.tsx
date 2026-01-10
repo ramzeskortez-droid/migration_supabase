@@ -13,9 +13,11 @@ interface OrderFilesUploadProps {
   files: UploadedFile[];
   setFiles: (files: UploadedFile[]) => void;
   onLog?: (message: string) => void;
+  itemFiles?: { file: UploadedFile, label: string }[];
+  onRemoveItemFile?: (url: string) => void; // Добавлено: коллбэк для удаления файла позиции
 }
 
-export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFiles, onLog }) => {
+export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFiles, onLog, itemFiles = [], onRemoveItemFile }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +82,8 @@ export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFi
     setFiles(newFiles);
   };
 
+  const hasAnyFiles = files.length > 0 || itemFiles.length > 0;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -88,13 +92,14 @@ export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFi
       </div>
 
       {/* Отображение загруженных файлов в строку */}
-      {files.length > 0 && (
+      {hasAnyFiles && (
         <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Загруженные файлы:</div>
           <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm font-medium text-indigo-600">
+            {/* Общие файлы */}
             {files.map((file, idx) => (
-              <React.Fragment key={idx}>
-                <div className="flex items-center gap-1 group">
+              <React.Fragment key={`general-${idx}`}>
+                <div className="flex items-center gap-1 group bg-white/50 px-1.5 py-0.5 rounded border border-transparent hover:border-indigo-100 hover:bg-white transition-all">
                   <a 
                     href={file.url} 
                     target="_blank" 
@@ -102,17 +107,45 @@ export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFi
                     className="hover:underline flex items-center gap-1"
                   >
                     {file.name}
-                    <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </a>
                   <button 
                     onClick={() => removeFile(idx)}
-                    className="text-slate-400 hover:text-red-500 transition-colors"
+                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all ml-1"
                     title="Удалить"
                   >
                     <X size={14} />
                   </button>
                 </div>
-                {idx < files.length - 1 && <span className="text-slate-300">,</span>}
+                {(idx < files.length - 1 || itemFiles.length > 0) && <span className="text-slate-300">,</span>}
+              </React.Fragment>
+            ))}
+
+            {/* Файлы позиций */}
+            {itemFiles.map((item, idx) => (
+              <React.Fragment key={`item-${idx}`}>
+                <div className="flex items-center gap-1 group text-emerald-600 bg-white/50 px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-100 hover:bg-white transition-all">
+                  <span className="text-[9px] text-slate-400 uppercase mr-0.5">{item.label}:</span>
+                  <a 
+                    href={item.file.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:underline flex items-center gap-1"
+                  >
+                    {item.file.name}
+                    <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                  {onRemoveItemFile && (
+                      <button 
+                        onClick={() => onRemoveItemFile(item.file.url)}
+                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all ml-1"
+                        title="Удалить из позиции"
+                      >
+                        <X size={14} />
+                      </button>
+                  )}
+                </div>
+                {idx < itemFiles.length - 1 && <span className="text-slate-300">,</span>}
               </React.Fragment>
             ))}
           </div>

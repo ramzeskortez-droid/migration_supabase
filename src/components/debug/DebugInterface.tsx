@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../../lib/supabaseClient';
 
 export const DebugInterface: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);

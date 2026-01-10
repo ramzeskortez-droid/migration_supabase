@@ -160,30 +160,69 @@ const AdminOrderRow = memo(({
                                     
                                     {/* БЛОК ФАЙЛОВ */}
                                     <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 mt-1">
-                                        {/* Файлы от Оператора */}
-                                        {order.order_files && order.order_files.length > 0 ? (
-                                            <div>
-                                                <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от оператора</span>
-                                                <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] font-bold text-indigo-600">
-                                                    {order.order_files.map((file, fidx) => (
-                                                        <React.Fragment key={fidx}>
-                                                            <a 
-                                                                href={file.url} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer"
-                                                                className="hover:underline"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {file.name}
-                                                            </a>
-                                                            {fidx < order.order_files!.length - 1 && <span className="text-slate-300">,</span>}
-                                                        </React.Fragment>
-                                                    ))}
+                                        {/* Файлы от Оператора (Агрегация: Общие + Позиционные + Live Edit) */}
+                                        {(() => {
+                                            const allOpFiles: any[] = [];
+                                            
+                                            // 1. Общие файлы заказа
+                                            if (order.order_files) {
+                                                order.order_files.forEach(f => allOpFiles.push({...f, typeLabel: 'Общий'}));
+                                            }
+
+                                            // 2. Файлы позиций (с учетом редактирования)
+                                            order.items?.forEach((item, idx) => {
+                                                let currentFiles: any[] = [];
+                                                
+                                                if (isEditing && editForm[`item_${idx}_files`]) {
+                                                    try {
+                                                        currentFiles = JSON.parse(editForm[`item_${idx}_files`]);
+                                                    } catch (e) {
+                                                        currentFiles = item.itemFiles || [];
+                                                    }
+                                                } else {
+                                                    currentFiles = item.itemFiles || [];
+                                                    // Fallback для старых фото, если нет itemFiles
+                                                    if (currentFiles.length === 0 && item.opPhotoUrl) {
+                                                        currentFiles = [{ name: 'Фото', url: item.opPhotoUrl, type: 'image/jpeg' }];
+                                                    }
+                                                }
+
+                                                currentFiles.forEach(f => {
+                                                    allOpFiles.push({ ...f, typeLabel: `Поз. ${item.AdminName || item.name}` });
+                                                });
+                                            });
+
+                                            if (allOpFiles.length === 0) {
+                                                return (
+                                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от оператора</span><span className="text-[10px] text-slate-300 italic">-</span></div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div>
+                                                    <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от оператора</span>
+                                                    <div className="flex flex-col gap-1 text-[10px] font-bold text-indigo-600 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                                                        {allOpFiles.map((file, fidx) => (
+                                                            <div key={fidx} className="flex gap-1 items-center whitespace-nowrap">
+                                                                <span className="text-slate-400 font-medium text-[9px] uppercase shrink-0">
+                                                                    {file.typeLabel}:
+                                                                </span>
+                                                                <a 
+                                                                    href={file.url} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="hover:underline truncate"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    title={file.name}
+                                                                >
+                                                                    {file.name}
+                                                                </a>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы от оператора</span><span className="text-[10px] text-slate-300 italic">-</span></div>
-                                        )}
+                                            );
+                                        })()}
 
                                         {/* Файлы от Поставщиков (Агрегация: Общие + Позиционные) */}
                                         {(() => {

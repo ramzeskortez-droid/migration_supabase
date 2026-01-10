@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { OperatorHeader } from './operator/OperatorHeader';
-import { SystemStatusSidebar } from './operator/SystemStatusSidebar';
-import { OrderInfoForm } from './operator/OrderInfoForm';
-import { OrderFilesUpload } from './operator/OrderFilesUpload';
-import { PartsList } from './operator/PartsList';
-import { AiAssistant } from './operator/AiAssistant';
-import { SystemStatusHorizontal } from './operator/SystemStatusHorizontal';
-import { OperatorAuthModal } from './operator/OperatorAuthModal';
-import { OperatorOrdersList } from './operator/OperatorOrdersList';
-import { GlobalChatWindow } from './shared/GlobalChatWindow';
-import { EmailWidget } from './operator/EmailWidget';
-import { OrderInfo, Part, LogHistory, DisplayStats } from './operator/types';
-import { SupabaseService } from '../services/supabaseService';
-import { Toast } from './shared/Toast';
-import { ChatNotification } from './shared/ChatNotification';
-import { AppUser } from '../types';
+import { OperatorHeader } from './OperatorHeader';
+import { SystemStatusSidebar } from './SystemStatusSidebar';
+import { OrderInfoForm } from './OrderInfoForm';
+import { OrderFilesUpload } from './OrderFilesUpload';
+import { PartsList } from './PartsList';
+import { AiAssistant } from './AiAssistant';
+import { SystemStatusHorizontal } from './SystemStatusHorizontal';
+import { OperatorAuthModal } from './OperatorAuthModal';
+import { OperatorOrdersList } from './OperatorOrdersList';
+import { GlobalChatWindow } from '../shared/GlobalChatWindow';
+import { EmailWidget } from './EmailWidget';
+import { OrderInfo, Part, LogHistory, DisplayStats } from './types';
+import { SupabaseService } from '../../services/supabaseService';
+import { Toast } from '../shared/Toast';
+import { ChatNotification } from '../shared/ChatNotification';
+import { AppUser } from '../../types';
 import { Search, Mail, ChevronRight } from 'lucide-react';
 
 export const OperatorInterface: React.FC = () => {
@@ -314,6 +314,21 @@ export const OperatorInterface: React.FC = () => {
       window.dispatchEvent(event);
   };
 
+  const handleRemoveItemFile = (fileUrl: string) => {
+      setParts(prevParts => prevParts.map(part => {
+          const newFiles = (part.itemFiles || []).filter(f => f.url !== fileUrl);
+          // Если удалили файл, который был превью, обновляем photoUrl
+          const newPhotoUrl = newFiles.length > 0 ? newFiles[0].url : (part.photoUrl === fileUrl ? '' : part.photoUrl);
+          
+          return {
+              ...part,
+              itemFiles: newFiles,
+              photoUrl: newPhotoUrl
+          };
+      }));
+      addLog(`Файл позиции удален.`);
+  };
+
   const handleQuickFill = async () => {
       const names = ['Иван', 'Петр', 'Алексей', 'Сергей', 'Максим'];
       const cities = ['Москва', 'СПб', 'Екб', 'Казань'];
@@ -405,7 +420,16 @@ export const OperatorInterface: React.FC = () => {
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
                 <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} onQuickFill={handleQuickFill} />
-                <OrderFilesUpload files={orderFiles} setFiles={setOrderFiles} onLog={addLog} />
+                <OrderFilesUpload 
+                    files={orderFiles} 
+                    setFiles={setOrderFiles} 
+                    onLog={addLog} 
+                    itemFiles={parts.flatMap((p, idx) => {
+                        const files = p.itemFiles || (p.photoUrl ? [{name: 'Фото', url: p.photoUrl, type: 'image/jpeg'}] : []);
+                        return files.map(f => ({ file: f, label: `Поз. ${idx + 1}` }));
+                    })}
+                    onRemoveItemFile={handleRemoveItemFile}
+                />
                 <PartsList 
                     parts={parts} 
                     setParts={setParts} 

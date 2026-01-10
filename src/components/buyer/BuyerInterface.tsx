@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { SupabaseService } from '../services/supabaseService';
-import { Order, AppUser } from '../types';
-import { Toast } from './shared/Toast';
-import { ChatNotification } from './shared/ChatNotification';
-import { BuyerAuthModal } from './buyer/BuyerAuthModal';
-import { BuyerHeader } from './buyer/BuyerHeader';
-import { BuyerDashboard } from './buyer/BuyerDashboard';
-import { BuyerToolbar } from './buyer/BuyerToolbar';
-import { BuyerOrdersList } from './buyer/BuyerOrdersList';
-import { BuyerGlobalChat } from './buyer/BuyerGlobalChat';
-import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
+import { SupabaseService } from '../../services/supabaseService';
+import { Order, AppUser } from '../../types';
+import { Toast } from '../shared/Toast';
+import { ChatNotification } from '../shared/ChatNotification';
+import { BuyerAuthModal } from './BuyerAuthModal';
+import { BuyerHeader } from './BuyerHeader';
+import { BuyerDashboard } from './BuyerDashboard';
+import { BuyerToolbar } from './BuyerToolbar';
+import { BuyerOrdersList } from './BuyerOrdersList';
+import { BuyerGlobalChat } from './BuyerGlobalChat';
+import { useOrdersInfinite } from '../../hooks/useOrdersInfinite';
 
 export const BuyerInterface: React.FC = () => {
   const queryClient = useQueryClient();

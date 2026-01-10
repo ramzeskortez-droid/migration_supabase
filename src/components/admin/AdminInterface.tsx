@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { SupabaseService } from '../services/supabaseService';
-import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab, ExchangeRates, WorkflowStatus, AppUser } from '../types';
+import { SupabaseService } from '../../services/supabaseService';
+import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab, ExchangeRates, WorkflowStatus, AppUser } from '../../types';
 import { CheckCircle2, AlertCircle, Settings, FileText, Send, ShoppingCart, CreditCard, Truck, PackageCheck } from 'lucide-react';
-import { AdminSidebar } from './admin/AdminSidebar';
-import { AdminHeader } from './admin/AdminHeader';
-import { AdminToolbar } from './admin/AdminToolbar';
-import { AdminOrdersList } from './admin/AdminOrdersList';
-import { AdminFinanceSettings } from './admin/AdminFinanceSettings';
-import { AdminUsers } from './admin/AdminUsers';
-import { AdminBrands } from './admin/AdminBrands';
-import { AdminSettings } from './admin/AdminSettings';
-import { useOrdersInfinite } from '../hooks/useOrdersInfinite';
+import { AdminSidebar } from './AdminSidebar';
+import { AdminHeader } from './AdminHeader';
+import { AdminToolbar } from './AdminToolbar';
+import { AdminOrdersList } from './AdminOrdersList';
+import { AdminFinanceSettings } from './AdminFinanceSettings';
+import { AdminUsers } from './AdminUsers';
+import { AdminBrands } from './AdminBrands';
+import { AdminSettings } from './AdminSettings';
+import { useOrdersInfinite } from '../../hooks/useOrdersInfinite';
 import { useQueryClient } from '@tanstack/react-query';
-import { GlobalChatWindow } from './shared/GlobalChatWindow';
+import { GlobalChatWindow } from '../shared/GlobalChatWindow';
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -261,7 +261,8 @@ export const AdminInterface: React.FC = () => {
       
       order.items.forEach((item, idx) => { 
           form[`item_${idx}_name`] = item.AdminName || item.name; 
-          form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity; 
+          form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity;
+          form[`item_${idx}_files`] = JSON.stringify(item.itemFiles || (item.opPhotoUrl ? [{name: 'Фото', url: item.opPhotoUrl, type: 'image/jpeg'}] : []));
       }); 
       setEditForm(form); 
       setOfferEdits({}); // Сброс правок офферов
@@ -271,11 +272,18 @@ export const AdminInterface: React.FC = () => {
       setIsSubmitting(order.id); 
       
       // 1. Сохранение изменений в Items (OrderItems)
-      const newItems = order.items.map((item, idx) => ({ 
-          ...item, 
-          AdminName: editForm[`item_${idx}_name`], 
-          AdminQuantity: Number(editForm[`item_${idx}_qty`])
-      })); 
+      const newItems = order.items.map((item, idx) => {
+          let files = [];
+          try { files = JSON.parse(editForm[`item_${idx}_files`] || '[]'); } catch (e) {}
+
+          return { 
+              ...item, 
+              AdminName: editForm[`item_${idx}_name`], 
+              AdminQuantity: Number(editForm[`item_${idx}_qty`]),
+              itemFiles: files,
+              opPhotoUrl: files.length > 0 ? files[0].url : (item.opPhotoUrl || null) // Сохраняем обратную совместимость
+          };
+      }); 
       
       try { 
           await SupabaseService.updateOrderJson(order.id, newItems); 

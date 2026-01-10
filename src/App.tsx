@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ClientInterface } from './components/ClientInterface';
-import { BuyerInterface } from './components/BuyerInterface';
-import { AdminInterface } from './components/AdminInterface';
-import { OperatorInterface } from './components/OperatorInterface';
-import { DebugInterface } from './components/DebugInterface';
+import { ClientInterface } from './components/client/ClientInterface';
+import { BuyerInterface } from './components/buyer/BuyerInterface';
+import { AdminInterface } from './components/admin/AdminInterface';
+import { OperatorInterface } from './components/operator/OperatorInterface';
+import { DebugInterface } from './components/debug/DebugInterface';
 import { Users, ShoppingBag, ShieldCheck, TrendingUp, Menu, ChevronDown } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { ExchangeRates } from './types';
@@ -26,6 +26,11 @@ const App: React.FC = () => {
       if (isActive('/buyer')) return 'Закупщик';
       if (isActive('/admin')) return 'Менеджер';
       return 'Меню';
+  };
+
+  const formatRate = (val: number | undefined) => {
+      if (val === undefined || val === null) return '0,00';
+      return val.toFixed(2).replace('.', ',');
   };
 
   return (
@@ -88,17 +93,12 @@ const App: React.FC = () => {
                   <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm gap-4">
                       <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black text-slate-400">¥/₽</span>
-                          <span className="text-xs font-black text-slate-900">{rates.cny_rub}</span>
-                      </div>
-                      <div className="w-px h-3 bg-slate-200"></div>
-                      <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400">$/₽</span>
-                          <span className="text-xs font-black text-slate-900">{rates.usd_rub}</span>
+                          <span className="text-xs font-black text-slate-900">{formatRate(rates.cny_rub)}</span>
                       </div>
                       <div className="w-px h-3 bg-slate-200"></div>
                       <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black text-slate-400">$/¥</span>
-                          <span className="text-xs font-black text-slate-900">{rates.cny_usd}</span>
+                          <span className="text-xs font-black text-slate-900">{formatRate(rates.cny_usd)}</span>
                       </div>
                   </div>
               </div>
