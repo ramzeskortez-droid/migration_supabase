@@ -192,7 +192,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
             
             <div>
                 <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
-                    Название и номер поставщика
+                    WeChat ID / номер поставщика
                     {isRequired && <span className="text-red-500 ml-1">*</span>}
                 </label>
                 <div className="relative">
@@ -201,7 +201,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                         value={item.supplierSku || ''} 
                         onChange={e => onUpdate(index, 'supplierSku', e.target.value)} 
                         className={`w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 transition-all ${isRequired && !item.supplierSku ? 'border-red-300 bg-red-50' : ''}`} 
-                        placeholder="Напр: Ли / #123-45" 
+                        placeholder="18510860570 / +86-XX-XXXX-XXX" 
                     />
                 </div>
             </div>

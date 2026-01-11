@@ -84,7 +84,7 @@ export const AdminSettings: React.FC = () => {
                             </svg>
                         </div>
                         <div>
-                            <div className="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors">Название и Номер поставщика</div>
+                            <div className="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors">WeChat ID / номер поставщика</div>
                             <div className="text-xs text-slate-400 font-medium">Поле во внутренней карточке товара</div>
                         </div>
                     </label>
