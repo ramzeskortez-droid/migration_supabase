@@ -46,7 +46,7 @@ export const getOrders = async (
         is_manual_processing,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
-        offers (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
+        offers (id, status, supplier_name, supplier_files, offer_items (is_winner, rank, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
     `);
 
     if (buyerTab === 'new' || buyerTab === 'hot') {
@@ -223,7 +223,7 @@ export const getOrders = async (
             })) || [],
             offers: order.offers?.map((o: any) => ({
                 id: o.id, status: o.status, clientName: o.supplier_name, supplier_files: o.supplier_files, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
-                    id: oi.id, order_item_id: oi.order_item_id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
+                    id: oi.id, order_item_id: oi.order_item_id, name: oi.name, is_winner: oi.is_winner, rank: oi.rank, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPrice: oi.admin_price,
                     deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
