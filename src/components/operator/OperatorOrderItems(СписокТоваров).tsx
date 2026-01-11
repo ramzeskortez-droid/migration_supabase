@@ -13,11 +13,11 @@ const OFFER_GRID = "grid-cols-[1.2fr_1fr_70px_80px_1.8fr_80px]";
 export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, onCopyItem }) => {
     const [openItems, setOpenItems] = useState<Set<string>>(new Set());
 
-    const toggleItem = (itemName: string) => {
+    const toggleItem = (itemId: string) => {
         setOpenItems(prev => {
             const next = new Set(prev);
-            if (next.has(itemName)) next.delete(itemName);
-            else next.add(itemName);
+            if (next.has(itemId)) next.delete(itemId);
+            else next.add(itemId);
             return next;
         });
     };
@@ -148,20 +148,21 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
             {/* List */}
             <div className="divide-y divide-gray-200">
                 {order.items.map((item, idx) => {
-                    const isItemExpanded = openItems.has(item.name);
+                    const isItemExpanded = openItems.has(item.id);
                     const winners = getWinnersForItem(item);
                     const isLast = idx === order.items.length - 1;
+                    const isProcessed = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'].includes(order.statusManager || '');
 
                     return (
                         <div key={idx} className={`border-b border-gray-100 last:border-b-0 ${isLast ? 'rounded-b-xl' : ''}`}>
                             {/* Main Item Row */}
                             <div 
-                                onClick={() => winners.length > 0 && toggleItem(item.name)}
-                                className={`bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors group/row ${winners.length > 0 ? 'cursor-pointer' : ''} ${isLast && !isItemExpanded ? 'rounded-b-xl' : ''}`}
+                                onClick={() => (winners.length > 0 || isProcessed) && toggleItem(item.id)}
+                                className={`bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors group/row ${(winners.length > 0 || isProcessed) ? 'cursor-pointer' : ''} ${isLast && !isItemExpanded ? 'rounded-b-xl' : ''}`}
                             >
                                 <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                                     <div className="flex items-center gap-2">
-                                        {winners.length > 0 && (
+                                        {(winners.length > 0 || isProcessed) && (
                                             <div className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
                                                 {isItemExpanded ? <ChevronDown size={14} className="text-gray-600"/> : <ChevronRight size={14} className="text-gray-600"/>}
                                             </div>
@@ -193,43 +194,51 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                             </div>
 
                             {/* Winners (Variants) Row */}
-                            {isItemExpanded && winners.length > 0 && (
+                            {isItemExpanded && (
                                 <div className={`bg-white animate-in slide-in-from-top-1 duration-200 overflow-x-auto ${isLast ? 'rounded-b-xl' : ''}`}>
-                                    <div className="bg-slate-800 text-white hidden md:block min-w-[1000px]">
-                                        <div className={`grid ${OFFER_GRID} gap-4 px-6 py-2 text-[8px] font-black uppercase tracking-widest items-center`}>
-                                            <div>Варианты</div>
-                                            <div>Бренд</div>
-                                            <div className="text-center">Кол-во</div>
-                                            <div className="text-center">Фото</div>
-                                            <div className="text-left">Цена с учетом доставки</div>
-                                            <div className="text-center">Срок</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="min-w-[1000px] divide-y divide-gray-100">
-                                        {winners.map((win, wIdx) => (
-                                            <div key={wIdx} className="relative transition-all duration-300 border-l-4 border-l-emerald-500 bg-emerald-50/30">
-                                                <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
-                                                    <div className="flex items-center gap-2 font-black text-emerald-700 uppercase text-[10px]">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                        Вариант {wIdx + 1}
-                                                    </div>
-                                                    <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{win.brand || '-'}</div>
-                                                    <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
-                                                    
-                                                    {/* Files Column for Offer Item */}
-                                                    <div>
-                                                        {renderFilesCell(win.itemFiles, win.photoUrl)}
-                                                    </div>
-
-                                                    <div className="text-base font-black text-gray-900 leading-none text-left">
-                                                        {formatPrice(win.adminPriceRub || win.sellerPrice)} ₽
-                                                    </div>
-                                                    <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.deliveryWeeks || '-'} нед.</div>
+                                    {winners.length > 0 ? (
+                                        <>
+                                            <div className="bg-slate-800 text-white hidden md:block min-w-[1000px]">
+                                                <div className={`grid ${OFFER_GRID} gap-4 px-6 py-2 text-[8px] font-black uppercase tracking-widest items-center`}>
+                                                    <div>Варианты</div>
+                                                    <div>Бренд</div>
+                                                    <div className="text-center">Кол-во</div>
+                                                    <div className="text-center">Фото</div>
+                                                    <div className="text-left">Цена с учетом доставки</div>
+                                                    <div className="text-center">Срок</div>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+
+                                            <div className="min-w-[1000px] divide-y divide-gray-100">
+                                                {winners.map((win, wIdx) => (
+                                                    <div key={wIdx} className="relative transition-all duration-300 border-l-4 border-l-emerald-500 bg-emerald-50/30">
+                                                        <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
+                                                            <div className="flex items-center gap-2 font-black text-emerald-700 uppercase text-[10px]">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                                Вариант {wIdx + 1}
+                                                            </div>
+                                                            <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{win.brand || '-'}</div>
+                                                            <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
+                                                            
+                                                            {/* Files Column for Offer Item */}
+                                                            <div>
+                                                                {renderFilesCell(win.itemFiles, win.photoUrl)}
+                                                            </div>
+
+                                                            <div className="text-base font-black text-gray-900 leading-none text-left">
+                                                                {formatPrice(win.adminPriceRub || win.sellerPrice)} ₽
+                                                            </div>
+                                                            <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.deliveryWeeks || '-'} нед.</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="p-4 bg-slate-50 text-center text-[10px] font-bold text-slate-400 uppercase italic tracking-widest">
+                                            Предложений нет или поставщик не выбран
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
