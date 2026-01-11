@@ -76,8 +76,8 @@ const AdminOrderRow = memo(({
     const firstItemName = firstItem?.name || '-';
     // Safe comment access
     const comment = firstItem?.comment || '';
-    const subjectMatch = comment.match(/\[Тема: (.*?)\]/);
-    const subject = subjectMatch ? subjectMatch[1] : '-';
+    const subjectMatch = comment.match(/\[(Тема|S): (.*?)\]/);
+    const subject = subjectMatch ? subjectMatch[2] : '-';
 
     // Removed displayBrand logic
 

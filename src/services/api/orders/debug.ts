@@ -47,7 +47,7 @@ export const seedOrders = async (count: number, brands: string[], ownerId: strin
                     quantity: Math.floor(Math.random() * 4) + 1,
                     brand: safeBrands[Math.floor(Math.random() * safeBrands.length)],
                     article: randomArticle,
-                    comment: k === 0 ? `[Тема: ${subjects[Math.floor(Math.random() * subjects.length)]}]` : '',
+                    comment: k === 0 ? `[S: ${subjects[Math.floor(Math.random() * subjects.length)]}]` : '',
                     uom: 'шт', category: 'Оригинал'
                 });
             }

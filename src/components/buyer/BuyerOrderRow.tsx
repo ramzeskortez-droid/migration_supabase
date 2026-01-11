@@ -78,8 +78,8 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
   // Data Extraction
   const firstItem = order.items?.[0];
   const firstItemName = firstItem?.name || '-';
-  const subjectMatch = firstItem?.comment?.match(/\[Тема: (.*?)\]/);
-  const subject = subjectMatch ? subjectMatch[1] : '-';
+  const subjectMatch = firstItem?.comment?.match(/\[(Тема|S): (.*?)\]/);
+  const subject = subjectMatch ? subjectMatch[2] : '-';
   const datePart = order.createdAt.split(',')[0];
 
   return (

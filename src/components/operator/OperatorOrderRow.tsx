@@ -95,9 +95,13 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
       }
   };
 
-  const comment = order.items?.[0]?.comment || '';
-  const subjectMatch = comment.match(/\[Тема: (.*?)\]/);
-  const subject = subjectMatch ? subjectMatch[1] : '-';
+    // Subject & First Item
+    const firstItem = order.items?.[0];
+    const firstItemName = firstItem?.name || '-';
+    // Safe comment access
+    const comment = firstItem?.comment || '';
+    const subjectMatch = comment.match(/\[(Тема|S): (.*?)\]/);
+    const subject = subjectMatch ? subjectMatch[2] : '-';
 
   return (
     <div className={`border-b border-slate-50 transition-all ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50/30'}`}>

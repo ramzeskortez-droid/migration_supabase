@@ -171,7 +171,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
             const itemsForDb = parts.map((p, index) => {
                 let comment = '';
                 if (index === 0 && orderInfo.emailSubject) {
-                    comment = `[Тема: ${orderInfo.emailSubject}]`;
+                    comment = `[S: ${orderInfo.emailSubject}]`;
                 }
 
                 // FIX: Если itemFiles пуст, но есть photoUrl - создаем itemFiles явно

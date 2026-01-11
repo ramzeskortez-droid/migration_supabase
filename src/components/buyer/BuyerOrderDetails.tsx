@@ -200,8 +200,8 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 </div>
                 <div>
                     <div className="text-gray-400 mb-1 uppercase font-bold text-[10px]">Тема письма</div>
-                    <div className="font-medium text-gray-700 uppercase truncate" title={order.items?.[0]?.comment?.match(/\\\[Тема: (.*?) E]/)?.[1]}>
-                        {order.items?.[0]?.comment?.match(/\\\[Тема: (.*?) E]/)?.[1] || '-'}
+                    <div className="font-medium text-gray-700 uppercase truncate" title={order.items?.[0]?.comment?.match(/\[(Тема|S): (.*?)\]/)?.[2]}>
+                        {order.items?.[0]?.comment?.match(/\[(Тема|S): (.*?)\]/)?.[2] || '-'}
                     </div>
                 </div>
             </div>
