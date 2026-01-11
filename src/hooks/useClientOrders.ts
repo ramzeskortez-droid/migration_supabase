@@ -36,9 +36,9 @@ export const useClientOrders = (clientAuth: ClientAuth | null) => {
       
       // Client-side status filtering for tabs
       if (activeTab === 'active') {
-          result = result.filter(o => o.statusAdmin !== 'Выполнен' && o.statusAdmin !== 'Отказ' && o.statusAdmin !== 'Аннулирован');
+          result = result.filter(o => o.statusManager !== 'Выполнен' && o.statusManager !== 'Отказ' && o.statusManager !== 'Аннулирован');
       } else {
-          result = result.filter(o => o.statusAdmin === 'Выполнен' || o.statusAdmin === 'Отказ' || o.statusAdmin === 'Аннулирован');
+          result = result.filter(o => o.statusManager === 'Выполнен' || o.statusManager === 'Отказ' || o.statusManager === 'Аннулирован');
       }
       return result;
   }, [data, activeTab]);

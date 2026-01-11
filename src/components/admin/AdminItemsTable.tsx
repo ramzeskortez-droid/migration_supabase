@@ -241,7 +241,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                             ) : (
                                 <div className="divide-y divide-gray-100">
                                     {itemOffers.map((off, oIdx) => {
-                                        const isLeader = off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER';
+                                        const isLeader = off.item.is_winner || off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER' || currentStatus === 'Ручная обработка';
                                         
                                         const autoPrice = calculatePrice(off.item.sellerPrice, off.item.sellerCurrency, off.item.weight);
                                         const editedPrice = offerEdits?.[off.item.id]?.adminPrice;

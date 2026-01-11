@@ -24,9 +24,19 @@ export const AdminToolbar: React.FC<AdminToolbarProps> = ({
 
       <div className="flex justify-between items-end border-b border-slate-200">
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-              {['new','kp_sent','ready_to_buy','supplier_confirmed','awaiting_payment','in_transit','completed','annulled','refused'].map(id => {
-                  const label = id === 'new' ? 'Новые' : id === 'kp_sent' ? 'КП готово' : id === 'ready_to_buy' ? 'КП у клиента' : id === 'supplier_confirmed' ? 'Подтверждено' : id === 'awaiting_payment' ? 'Ждет оплаты' : id === 'in_transit' ? 'В пути' : id === 'completed' ? 'Выполнен' : id === 'annulled' ? 'Аннулирован' : 'Отказ';
+              {['new', 'manual', 'kp_sent', 'ready_to_buy', 'supplier_confirmed', 'awaiting_payment', 'in_transit', 'archive'].map(id => {
+                  const label = id === 'new' ? 'Новые' : 
+                                id === 'manual' ? 'Ручная' :
+                                id === 'kp_sent' ? 'КП готово' : 
+                                id === 'ready_to_buy' ? 'КП у клиента' : 
+                                id === 'supplier_confirmed' ? 'Подтверждено' : 
+                                id === 'awaiting_payment' ? 'Ждет оплаты' : 
+                                id === 'in_transit' ? 'В пути' : 
+                                id === 'archive' ? 'Архив' : id;
+                  
                   const count = statusCounts[id] || 0;
+                  // Для Архива можно не показывать каунтер, или показывать сумму (отказ + аннулирован)
+                  
                   return (
                       <button key={id} onClick={() => setActiveTab(id as AdminTab)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-400'}`}>
                           {label}

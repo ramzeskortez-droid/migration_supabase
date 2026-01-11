@@ -1,6 +1,6 @@
 import { supabase } from '../../../lib/supabaseClient';
 
-export const createOffer = async (orderId: string, sellerName: string, items: any[], sellerPhone?: string, userId?: string, supplierFiles?: any[]): Promise<void> => {
+export const createOffer = async (orderId: string, sellerName: string, items: any[], sellerPhone?: string, userId?: string, supplierFiles?: any[], status: string = 'Активно'): Promise<void> => {
     const { data: existing } = await supabase.from('offers').select('id').eq('order_id', orderId).eq('supplier_name', sellerName).maybeSingle();
     if (existing) throw new Error('Вы уже отправили предложение по этому заказу.');
 
@@ -9,7 +9,8 @@ export const createOffer = async (orderId: string, sellerName: string, items: an
         supplier_name: sellerName, 
         supplier_phone: sellerPhone, 
         created_by: userId,
-        supplier_files: supplierFiles || [] 
+        supplier_files: supplierFiles || [],
+        status: status
     }).select().single();
     
     if (offerError) throw offerError;

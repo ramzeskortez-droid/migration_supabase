@@ -23,6 +23,7 @@ import * as ordersCreationApi from './api/orders/creation';
 import * as ordersUpdateApi from './api/orders/update';
 import * as ordersWorkflowApi from './api/orders/workflow';
 import * as ordersDebugApi from './api/orders/debug';
+import * as ordersStatsApi from './api/orders/stats';
 
 export class SupabaseService {
   // --- AUTH ---
@@ -85,6 +86,7 @@ export class SupabaseService {
   static getOrderStatus = ordersDetailsApi.getOrderStatus;
   static getOrderItemsSimple = ordersDetailsApi.getOrderItemsSimple;
   static getStatusCounts = ordersDetailsApi.getStatusCounts;
+  static getOperatorStatusCounts = ordersStatsApi.getOperatorStatusCounts; 
   static createOrder = ordersCreationApi.createOrder;
   static updateOrderMetadata = ordersUpdateApi.updateOrderMetadata;
   static updateOrderJson = ordersUpdateApi.updateOrderJson;
@@ -92,6 +94,7 @@ export class SupabaseService {
   static approveOrderFast = ordersWorkflowApi.approveOrderFast;
   static refuseOrder = ordersWorkflowApi.refuseOrder;
   static updateWorkflowStatus = ordersWorkflowApi.updateWorkflowStatus;
+  static manualApproveOrder = ordersWorkflowApi.manualApproveOrder; // Добавлено
   static deleteAllOrders = ordersDebugApi.deleteAllOrders;
 
   // Special case for seedOrders to keep dependencies

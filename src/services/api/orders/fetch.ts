@@ -39,17 +39,18 @@ export const getOrders = async (
 
     let query = supabase.from('orders').select(`
         id, created_at, client_name, client_phone, client_email,
-        status_admin, status_client, status_supplier,
+        status_manager, status_client, status_supplier,
         visible_to_client, location, status_updated_at,
         owner_id,
         deadline,
+        is_manual_processing,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
-        offers (id, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
+        offers (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
     `);
 
     if (buyerTab === 'new' || buyerTab === 'hot') {
-        query = query.eq('status_admin', 'В обработке');
+        query = query.eq('status_manager', 'В обработке');
         if (excludedIds.length > 0) query = query.not('id', 'in', `(${excludedIds.join(',')})`);
         
         const threeDaysAgo = new Date();
@@ -63,7 +64,7 @@ export const getOrders = async (
             const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
             const ids = myOff?.map(o => o.order_id) || [];
             query = query.in('id', ids.length > 0 ? ids : [0]);
-            query = query.eq('status_admin', 'В обработке');
+            query = query.eq('status_manager', 'В обработке');
         } 
         else if (buyerTab === 'won') {
             const { data: myWins } = await supabase.from('offer_items')
@@ -85,14 +86,40 @@ export const getOrders = async (
             const lostIds = allMyIds.filter(id => !winIds.includes(id));
             
             query = query.in('id', lostIds.length > 0 ? lostIds : [0]);
-            query = query.neq('status_admin', 'В обработке');
-            query = query.not('status_admin', 'in', '("Аннулирован","Отказ")');
+            query = query.neq('status_manager', 'В обработке');
+            query = query.not('status_manager', 'in', '("Аннулирован","Отказ")');
         }
         else if (buyerTab === 'cancelled') {
+            // DEPRECATED logic, keep for compatibility or redirect to archive
             const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
             const ids = myOff?.map(o => o.order_id) || [];
             query = query.in('id', ids.length > 0 ? ids : [0]);
-            query = query.in('status_admin', ['Аннулирован', 'Отказ']);
+            query = query.in('status_manager', ['Аннулирован', 'Отказ']);
+        }
+        else if (buyerTab === 'archive') {
+            const { data: myOffers } = await supabase.from('offers')
+                .select('order_id, status')
+                .eq('supplier_name', onlyWithMyOffersName);
+            
+            // 1. Личные отказы
+            const myRefusals = myOffers?.filter(o => o.status === 'Отказ').map(o => o.order_id) || [];
+            
+            // 2. Глобальные отмены (где я просто был)
+            const myParticipation = myOffers?.map(o => o.order_id) || [];
+            
+            // Формируем OR условие
+            // id.in.(myRefusals) OR (id.in.(myParticipation) AND status.in.(...))
+            
+            // Так как OR сложен с AND, проще загрузить ID глобальных отмен отдельным запросом и объединить списки ID
+            const { data: globalCancelled } = await supabase.from('orders')
+                .select('id')
+                .in('id', myParticipation.length > 0 ? myParticipation : [0])
+                .in('status_manager', ['Аннулирован', 'Отказ']);
+            
+            const globalCancelledIds = globalCancelled?.map(o => o.id) || [];
+            const finalIds = Array.from(new Set([...myRefusals, ...globalCancelledIds]));
+            
+            query = query.in('id', finalIds.length > 0 ? finalIds : [0]);
         }
     }
 
@@ -115,9 +142,9 @@ export const getOrders = async (
 
     if (statusFilter && !buyerTab) {
         if (statusFilter.includes(',')) {
-            query = query.in('status_admin', statusFilter.split(',').map(s => s.trim()));
+            query = query.in('status_manager', statusFilter.split(',').map(s => s.trim()));
         } else {
-            query = query.eq('status_admin', statusFilter);
+            query = query.eq('status_manager', statusFilter);
         }
     }
 
@@ -142,7 +169,7 @@ export const getOrders = async (
         'id': 'id',
         'date': 'created_at',
         'deadline': 'deadline',
-        'status': 'status_admin',
+        'status': 'status_manager',
         'statusUpdatedAt': 'status_updated_at',
         'client_name': 'client_name'
     };
@@ -168,7 +195,7 @@ export const getOrders = async (
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         const orderDate = new Date(order.created_at);
-        const isHot = order.status_admin === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
+        const isHot = order.status_manager === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
 
         return {
             id: String(order.id),
@@ -176,8 +203,8 @@ export const getOrders = async (
             clientName: order.client_name,
             clientPhone: order.client_phone,
             clientEmail: order.client_email,
-            status: order.status_admin === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
-            statusAdmin: isHot ? 'ГОРИТ' : order.status_admin,
+            status: order.status_manager === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
+            statusManager: isHot ? 'ГОРИТ' : order.status_manager,
             statusClient: order.status_client,
             statusSeller: order.status_supplier,
             workflowStatus: order.status_client as WorkflowStatus,
@@ -187,6 +214,7 @@ export const getOrders = async (
             visibleToClient: order.visible_to_client ? 'Y' : 'N',
             ownerId: order.owner_id,
             deadline: order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : undefined,
+            isManualProcessing: order.is_manual_processing,
             order_files: order.order_files,
             buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: (order.order_items as any[])?.sort((a, b) => a.id - b.id).map((i: any) => ({
@@ -194,7 +222,7 @@ export const getOrders = async (
                 itemFiles: i.item_files || []
             })) || [],
             offers: order.offers?.map((o: any) => ({
-                id: o.id, clientName: o.supplier_name, supplier_files: o.supplier_files, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
+                id: o.id, status: o.status, clientName: o.supplier_name, supplier_files: o.supplier_files, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
                     id: oi.id, order_item_id: oi.order_item_id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPrice: oi.admin_price,
@@ -203,7 +231,7 @@ export const getOrders = async (
                     photoUrl: oi.photo_url, itemFiles: oi.item_files, supplierSku: oi.supplier_sku, adminComment: oi.admin_comment
                 })) || []
             })) || [],
-            isProcessed: order.status_admin !== 'В обработке' && order.status_admin !== 'ОТКРЫТ'
+            isProcessed: order.status_manager !== 'В обработке' && order.status_manager !== 'ОТКРЫТ'
         } as unknown as Order;
     });
     

@@ -114,8 +114,10 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
 
   const handleNavigate = React.useCallback((oid: string) => {
       if (onNavigateToOrder) {
-          onNavigateToOrder(oid);
-          onClose();
+          setTimeout(() => {
+              onNavigateToOrder(oid);
+              onClose();
+          }, 0);
       }
   }, [onNavigateToOrder, onClose]);
 
@@ -125,7 +127,7 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
           if (newThreads[orderId] && newThreads[orderId][supplierName]) {
               const currentUnread = newThreads[orderId][supplierName].unread;
               if (currentUnread > 0 && onMessageRead) {
-                  onMessageRead(currentUnread);
+                  setTimeout(() => onMessageRead(currentUnread), 0);
               }
               
               newThreads[orderId][supplierName] = {

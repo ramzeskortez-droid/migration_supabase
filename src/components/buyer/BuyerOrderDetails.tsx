@@ -4,6 +4,7 @@ import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
 import { DebugCopyModal } from '../shared/DebugCopyModal';
+import { ConfirmationModal } from '../shared/ConfirmationModal'; // Added
 import { SupabaseService } from '../../services/supabaseService';
 import { FileDropzone } from '../shared/FileDropzone';
 
@@ -11,7 +12,7 @@ interface BuyerOrderDetailsProps {
   order: Order;
   editingItems: any[];
   setEditingItems: (items: any[]) => void;
-  onSubmit: (orderId: string, items: any[], supplierFiles?: any[]) => Promise<void>;
+  onSubmit: (orderId: string, items: any[], supplierFiles?: any[], status?: string) => Promise<void>;
   isSubmitting: boolean;
   myOffer: any;
   statusInfo: any;
@@ -24,6 +25,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
       isOpen: false, title: '', content: ''
   });
+  const [showRefuseModal, setShowRefuseModal] = useState(false); // Added state
   
   const [requiredFields, setRequiredFields] = useState<any>({}); 
   const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
@@ -149,6 +151,21 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             content={copyModal.content}
             onClose={() => setCopyModal({...copyModal, isOpen: false})}
             onConfirm={() => setCopyModal({...copyModal, isOpen: false})}
+        />
+
+        <ConfirmationModal 
+            isOpen={showRefuseModal}
+            onClose={() => setShowRefuseModal(false)}
+            onConfirm={async () => {
+                const zeroItems = editingItems.map(i => ({ ...i, offeredQuantity: 0 }));
+                await onSubmit(order.id, zeroItems, supplierFiles, 'Отказ');
+                setShowRefuseModal(false);
+            }}
+            title="Отказ от заказа"
+            message="Вы уверены, что хотите отказаться? Заказ будет перемещен в архив."
+            confirmText="Да, отказаться"
+            cancelText="Отмена"
+            isDangerous
         />
 
         {/* 1. Блок Информации */}
@@ -351,6 +368,14 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 >
                     <MessageCircle size={16} /> Менеджер
                 </button>
+                {!order.isProcessed && (
+                    <button 
+                        onClick={() => setShowRefuseModal(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all text-xs font-black uppercase border border-red-100"
+                    >
+                        <XCircle size={16} /> Отказаться
+                    </button>
+                )}
                 {!order.isProcessed && (
                     <button 
                         onClick={handleCopyAll}

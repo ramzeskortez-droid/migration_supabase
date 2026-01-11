@@ -30,15 +30,22 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   const getWinnersForItem = (item: any) => {
       const winners: any[] = [];
-      if (order.offers && (order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено')) {
+      const allowedStatuses = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'];
+      
+      if (order.offers && allowedStatuses.includes(order.statusManager || '')) {
           order.offers.forEach((off: any) => {
               if (!off.items) return;
               const matching = off.items.find((i: any) => 
                   (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
                   (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
               );
-              if (matching && (matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER')) {
-                  winners.push(matching);
+              // В ручном режиме показываем ВСЕХ (даже если is_winner не проставился, хотя должен)
+              // Или строго по is_winner?
+              // Давайте показывать всех, если статус ручной. Это надежнее.
+              if (matching) {
+                  if (order.statusManager === 'Ручная обработка' || matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER') {
+                      winners.push(matching);
+                  }
               }
           });
       }
@@ -52,8 +59,8 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
       if (singleLine) {
           let result = `Order #${order.id}\n`;
           if (winners.length > 0) {
-              winners.forEach(w => {
-                  result += `${base} | - | ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
+              winners.forEach((w, wIdx) => {
+                  result += `Вариант ${wIdx + 1}: ${base} | - | ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
               });
           } else {
               result += `${base} | - | -\n`;
@@ -135,13 +142,13 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
         <div>
             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter
-                ${order.statusAdmin === 'Выполнен' ? 'bg-green-100 text-green-700' : 
-                  order.statusAdmin === 'Аннулирован' || order.statusAdmin === 'Отказ' ? 'bg-red-100 text-red-700' :
-                  order.statusAdmin === 'КП готово' ? 'bg-blue-100 text-blue-700' :
+                ${order.statusManager === 'Выполнен' ? 'bg-green-100 text-green-700' : 
+                  order.statusManager === 'Аннулирован' || order.statusManager === 'Отказ' ? 'bg-red-100 text-red-700' :
+                  order.statusManager === 'КП готово' ? 'bg-blue-100 text-blue-700' :
                   'bg-slate-100 text-slate-500'
                 }
             `}>
-                {order.statusAdmin}
+                {order.statusManager}
             </span>
         </div>
 
@@ -159,7 +166,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
             <OperatorOrderItems order={order} onCopyItem={handleCopyItem} />
 
             <div className="mt-6 flex justify-end gap-3">
-                {(order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено') && (
+                {['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'].includes(order.statusManager || '') && (
                     <button 
                         onClick={handleCopyAll}
                         className="px-6 py-3 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all flex items-center gap-2"
@@ -167,12 +174,20 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                         <Copy size={14} /> Копировать всё
                     </button>
                 )}
-                {order.statusAdmin === 'КП готово' && (
+                {order.statusManager === 'КП готово' && (
                     <button 
                         onClick={handleProcessed}
                         className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-xl transition-all flex items-center gap-2 active:scale-95"
                     >
                         <Check size={14} /> Отправлено клиенту
+                    </button>
+                )}
+                {order.statusManager === 'Ручная обработка' && onStatusChange && (
+                    <button 
+                        onClick={() => onStatusChange(order.id, 'Архив')}
+                        className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-xl transition-all flex items-center gap-2 active:scale-95"
+                    >
+                        <Check size={14} /> Завершить обработку
                     </button>
                 )}
             </div>

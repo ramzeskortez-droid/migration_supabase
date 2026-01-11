@@ -14,8 +14,8 @@ interface OperatorOrdersListProps {
   scrollToId?: string | null;
 }
 
-type TabType = 'processing' | 'processed' | 'completed' | 'rejected';
-type SortField = 'id' | 'client_name' | 'created_at' | 'status_admin' | 'deadline';
+type TabType = 'processing' | 'manual' | 'processed' | 'completed' | 'rejected' | 'archive';
+type SortField = 'id' | 'client_name' | 'created_at' | 'status_manager' | 'deadline';
 
 export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshTrigger, ownerId, searchQuery = '', activeTab, onTabChange, scrollToId }) => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -24,7 +24,18 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const virtuosoRef = React.useRef<any>(null);
+
+  const updateCounts = useCallback(() => {
+      if (ownerId) {
+          SupabaseService.getOperatorStatusCounts(ownerId).then(setStatusCounts);
+      }
+  }, [ownerId]);
+
+  useEffect(() => {
+      updateCounts();
+  }, [refreshTrigger, updateCounts]);
 
   // Эффект скролла
   useEffect(() => {
@@ -56,9 +67,11 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       let statusFilter = '';
       switch (activeTab) {
           case 'processing': statusFilter = 'В обработке'; break;
+          case 'manual': statusFilter = 'Ручная обработка'; break;
           case 'processed': statusFilter = 'КП готово,КП отправлено'; break;
           case 'completed': statusFilter = 'Выполнен'; break;
           case 'rejected': statusFilter = 'Аннулирован,Отказ'; break;
+          case 'archive': statusFilter = 'Архив,Аннулирован,Отказ'; break;
       }
 
       const cursor = isLoadMore && orders.length > 0 ? Number(orders[orders.length - 1].id) : undefined;
@@ -139,6 +152,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       try {
           await SupabaseService.updateWorkflowStatus(orderId, newStatus);
           loadOrders(); 
+          updateCounts(); // Обновление счетчиков
       } catch (e) {
           console.error(e);
           alert('Ошибка обновления статуса');
@@ -153,21 +167,27 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
               Архив заявок
           </h2>
 
-          <div className="bg-white p-1 rounded-xl border border-slate-200 inline-flex shadow-sm">
+          <div className="bg-white p-1 rounded-xl border border-slate-200 inline-flex shadow-sm overflow-x-auto max-w-full no-scrollbar">
               {[
                   { id: 'processing', label: 'В обработке' },
-                  { id: 'processed', label: 'Обработанные' },
+                  { id: 'manual', label: 'Ручная' },
+                  { id: 'processed', label: 'Обработано' },
                   { id: 'completed', label: 'Успешные' },
-                  { id: 'rejected', label: 'Забракованные' }
-              ].map(tab => (
-                  <button 
-                    key={tab.id}
-                    onClick={() => onTabChange(tab.id as TabType)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    {tab.label}
-                  </button>
-              ))}
+                  { id: 'rejected', label: 'Отказ' },
+                  { id: 'archive', label: 'Архив' }
+              ].map(tab => {
+                  const count = statusCounts[tab.id] || 0;
+                  return (
+                      <button 
+                        key={tab.id}
+                        onClick={() => onTabChange(tab.id as TabType)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-1.5 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        {tab.label}
+                        {count > 0 && <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{count}</span>}
+                      </button>
+                  );
+              })}
           </div>
       </div>
 
@@ -180,7 +200,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
                   <div className="flex items-center">Тема</div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('deadline')}>Срок до <SortIcon field="deadline"/></div>
                   <div className="cursor-pointer flex items-center group" onClick={() => handleSort('created_at')}>Дата <SortIcon field="created_at"/></div>
-                  <div className="cursor-pointer flex items-center group" onClick={() => handleSort('status_admin')}>Статус <SortIcon field="status_admin"/></div>
+                  <div className="cursor-pointer flex items-center group" onClick={() => handleSort('status_manager')}>Статус <SortIcon field="status_manager"/></div>
                   <div></div>
               </div>
           </div>

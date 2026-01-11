@@ -23,7 +23,7 @@ export const seedOrders = async (count: number, brands: string[], ownerId: strin
                 client_email: `client${Math.floor(Math.random() * 10000)}@mail.ru`,
                 location: cities[Math.floor(Math.random() * cities.length)],
                 owner_id: ownerId,
-                status_admin: 'В обработке',
+                status_manager: 'В обработке',
                 status_client: 'В обработке',
                 created_at: date.toISOString(),
                 status_updated_at: date.toISOString(),
@@ -31,7 +31,10 @@ export const seedOrders = async (count: number, brands: string[], ownerId: strin
             });
         }
         const { data: insertedOrders, error } = await supabase.from('orders').insert(batchOrders).select('id');
-        if (error) continue;
+        if (error) {
+            console.error('Seed Error:', error);
+            continue;
+        }
 
         const batchItems = [];
         insertedOrders.forEach(ord => {

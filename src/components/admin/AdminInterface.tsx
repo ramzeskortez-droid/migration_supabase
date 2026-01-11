@@ -25,7 +25,7 @@ const STATUS_STEPS = [
 ];
 
 const TAB_MAPPING: Record<string, AdminTab> = {
-    'В обработке': 'new', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'Подтверждение от поставщика': 'supplier_confirmed', 'Ожидает оплаты': 'awaiting_payment', 'В пути': 'in_transit', 'Выполнен': 'completed', 'Аннулирован': 'annulled', 'Отказ': 'refused'
+    'В обработке': 'new', 'Ручная обработка': 'manual', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'Подтверждение от поставщика': 'supplier_confirmed', 'Ожидает оплаты': 'awaiting_payment', 'В пути': 'in_transit', 'Выполнен': 'completed', 'Аннулирован': 'archive', 'Отказ': 'archive'
 };
 
 export const AdminInterface: React.FC = () => {
@@ -81,14 +81,14 @@ export const AdminInterface: React.FC = () => {
   const getStatusFilter = (tab: AdminTab) => {
       switch(tab) {
           case 'new': return 'В обработке';
+          case 'manual': return 'Ручная обработка';
           case 'kp_sent': return 'КП готово';
           case 'ready_to_buy': return 'КП отправлено';
           case 'supplier_confirmed': return 'Подтверждение от поставщика';
           case 'awaiting_payment': return 'Ожидает оплаты';
           case 'in_transit': return 'В пути';
           case 'completed': return 'Выполнен';
-          case 'annulled': return 'Аннулирован';
-          case 'refused': return 'Отказ';
+          case 'archive': return 'Аннулирован,Отказ,Архив';
           default: return undefined;
       }
   };
@@ -177,52 +177,57 @@ export const AdminInterface: React.FC = () => {
       }
   };
 
-  const handleFormCP = async (orderId: string) => {
-      executeApproval(orderId);
-  };
-
-  const executeApproval = async (orderId: string) => {
-      setAdminModal(null); 
-      setIsSubmitting(orderId); 
-      
-      try {
-          const details = await SupabaseService.getOrderDetails(orderId);
-          
-          const winnersPayload: any[] = [];
-          if (details.offers) { 
-              for (const off of details.offers) { 
-                  for (const item of off.items) { 
-                      if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { 
-                          winnersPayload.push({
-                              id: item.id,
-                              admin_price: item.adminPrice || item.sellerPrice,
-                              delivery_rate: item.deliveryRate || 0,
-                              admin_comment: item.adminComment || ''
-                          });
-                      } 
-                  } 
-              } 
-          }
-          
-          if (winnersPayload.length === 0) {
-              if(!confirm('Нет победителей. Утвердить пустое КП?')) return;
-          }
-
-          await SupabaseService.approveOrderFast(orderId, winnersPayload);
-          
-          showToast(`КП по заказу #${orderId} сформировано`);
-          setSearchQuery(''); // Сбрасываем поиск, чтобы увидеть заказ в новом табе
-          setActiveTab('kp_sent'); 
-          refetch(); 
-          
-      } catch (e) { 
-          console.error(e);
-          showToast("Ошибка при утверждении КП");
-      } finally { 
-          setIsSubmitting(null); 
-      }
-  };
-
+    const handleFormCP = async (orderId: string, isManual: boolean = false) => {
+        executeApproval(orderId, isManual);
+    };
+  
+    const executeApproval = async (orderId: string, isManual: boolean) => {
+        setAdminModal(null); 
+        setIsSubmitting(orderId); 
+        
+        try {
+            if (isManual) {
+                await SupabaseService.manualApproveOrder(orderId);
+                showToast(`Заказ #${orderId} переведен в ручной режим`);
+                setSearchQuery('');
+                setActiveTab('manual');
+            } else {
+                const details = await SupabaseService.getOrderDetails(orderId);
+                
+                const winnersPayload: any[] = [];
+                if (details.offers) { 
+                    for (const off of details.offers) { 
+                        for (const item of off.items) { 
+                            if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { 
+                                winnersPayload.push({
+                                    id: item.id,
+                                    admin_price: item.adminPrice || item.sellerPrice,
+                                    delivery_rate: item.deliveryRate || 0,
+                                    admin_comment: item.adminComment || ''
+                                });
+                            } 
+                        }
+                    }
+                }
+                
+                if (winnersPayload.length === 0) {
+                    if(!confirm('Нет победителей. Утвердить пустое КП?')) return;
+                }
+  
+                await SupabaseService.approveOrderFast(orderId, winnersPayload);
+                
+                              showToast(`КП по заказу #${orderId} сформировано`);
+                              setSearchQuery(''); // Сбрасываем поиск, чтобы увидеть заказ в новом табе
+                              setActiveTab('kp_sent'); 
+                          }
+                          queryClient.invalidateQueries({ queryKey: ['order-details', orderId] });
+                          refetch(); 
+                      } catch (e) {            console.error(e);
+            showToast("Ошибка при утверждении");
+        } finally {
+            setIsSubmitting(null); 
+        }
+    };
   const handleStatusChange = async (orderId: string, newStatus: string) => {
       showToast(`Статус изменен на: ${newStatus}`);
       try { 

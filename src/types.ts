@@ -120,10 +120,11 @@ export interface Order {
   order_files?: { name: string; url: string; size?: number; type?: string }[];
   supplier_files?: { name: string; url: string; size?: number; type?: string }[]; // Файлы поставщика (общие)
   
-  statusAdmin?: string;
+  statusManager?: string; // Ex statusAdmin
   statusClient?: string;
   statusSeller?: string;
 
+  isManualProcessing?: boolean;
   isProcessed?: boolean | 'Y' | 'N';
   isSentOptimistic?: boolean;
   readyToBuy?: boolean;
@@ -151,4 +152,4 @@ export interface Brand {
   created_by?: string;
 }
 
-export type AdminTab = 'new' | 'kp_sent' | 'ready_to_buy' | 'supplier_confirmed' | 'awaiting_payment' | 'in_transit' | 'completed' | 'annulled' | 'refused';
+export type AdminTab = 'new' | 'manual' | 'kp_sent' | 'ready_to_buy' | 'supplier_confirmed' | 'awaiting_payment' | 'in_transit' | 'completed' | 'annulled' | 'refused' | 'archive';

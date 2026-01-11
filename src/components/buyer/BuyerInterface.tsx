@@ -165,14 +165,14 @@ export const BuyerInterface: React.FC = () => {
       loadInitialData();
   }, [buyerAuth]);
 
-  const handleSubmitOffer = async (orderId: string, items: any[], supplierFiles?: any[]) => {
+  const handleSubmitOffer = async (orderId: string, items: any[], supplierFiles?: any[], status: string = 'Активно') => {
       if (!buyerAuth) return;
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
-          await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id, supplierFiles);
+          await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id, supplierFiles, status);
           setExpandedId(null);
-          setSuccessToast({ message: `Предложение к заказу № ${orderId} отправлено!`, id: Date.now().toString() });
+          setSuccessToast({ message: status === 'Отказ' ? 'Вы отказались от заказа' : `Предложение к заказу № ${orderId} отправлено!`, id: Date.now().toString() });
           refetch();
           fetchCounts();
           SupabaseService.getSupplierUsedBrands(buyerAuth.name).then(setHistoryBrands);
@@ -198,16 +198,16 @@ export const BuyerInterface: React.FC = () => {
   const handleNavigateToOrder = async (orderId: string) => {
       if (!buyerAuth?.name) return;
       try {
-          const { status_admin, supplier_names } = await SupabaseService.getOrderStatus(orderId);
+          const { status_manager, supplier_names } = await SupabaseService.getOrderStatus(orderId);
           const hasMyOffer = supplier_names.some(name => name.trim().toUpperCase() === buyerAuth.name.trim().toUpperCase());
           
           if (hasMyOffer) setActiveTab('history');
-          else if (status_admin === 'В обработке') {
+          else if (status_manager === 'В обработке') {
               const threeDaysAgo = new Date();
               threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
               const order = orders.find(o => o.id === orderId); // Пытаемся найти в текущих если загружено
               // Здесь логика даты на сервере уже есть, поэтому просто переключаем таб
-              setActiveTab(status_admin === 'В обработке' ? 'new' : 'history');
+              setActiveTab(status_manager === 'В обработке' ? 'new' : 'history');
           }
           
           setSearchQuery(orderId);
@@ -226,13 +226,17 @@ export const BuyerInterface: React.FC = () => {
   const getOfferStatus = useCallback((order: Order) => {
     const myOffer = getMyOffer(order);
     if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
+    
+    // Проверка статуса оффера
+    if (myOffer.status === 'Отказ') return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
+
     const isRefusal = myOffer.items.every((item: any) => (item.offeredQuantity || 0) === 0);
     if (isRefusal) return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
     
-    // Статус ГОРИТ вычисляется на сервере и приходит в statusAdmin
-    if (order.statusAdmin === 'ГОРИТ') return { label: 'ГОРИТ', color: 'bg-orange-600 text-white border-orange-700 animate-pulse', icon: null };
+    // Статус ГОРИТ вычисляется на сервере и приходит в statusManager
+    if (order.statusManager === 'ГОРИТ') return { label: 'ГОРИТ', color: 'bg-orange-600 text-white border-orange-700 animate-pulse', icon: null };
 
-    const isBiddingActive = order.statusAdmin === 'В обработке' || order.statusAdmin === 'ОТКРЫТ';
+    const isBiddingActive = order.statusManager === 'В обработке' || order.statusManager === 'ОТКРЫТ';
     if (isBiddingActive && !order.isProcessed) return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: null };
     
     const winningItems = myOffer.items.filter((i: any) => i.is_winner || i.rank === 'ЛИДЕР' || i.rank === 'LEADER');

@@ -3,15 +3,15 @@ import { SupabaseService } from '../../services/supabaseService';
 import { Search, RefreshCw, Car, Flame, X, Plus, Loader2, Check } from 'lucide-react';
 
 interface BuyerToolbarProps {
-  activeTab: 'new' | 'history' | 'hot' | 'won' | 'lost' | 'cancelled';
-  setActiveTab: (tab: 'new' | 'history' | 'hot' | 'won' | 'lost' | 'cancelled') => void;
+  activeTab: 'new' | 'history' | 'hot' | 'won' | 'lost' | 'cancelled' | 'archive';
+  setActiveTab: (tab: 'new' | 'history' | 'hot' | 'won' | 'lost' | 'cancelled' | 'archive') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   activeBrands: string[]; 
   setActiveBrands: (brands: string[]) => void;
   availableBrands: string[]; // (Unused for now, we use search)
   historyBrands?: string[]; 
-  counts: { new: number, hot: number, history: number, won: number, lost: number, cancelled: number };
+  counts: { new: number, hot: number, history: number, won: number, lost: number, cancelled: number, archive: number };
   onRefresh: () => void;
   isSyncing: boolean;
 }
@@ -235,11 +235,22 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
                     onClick={() => setActiveTab('cancelled')} 
                     className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'cancelled' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                    Отмененные 
+                    Отмена клиента 
                     <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'cancelled' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
                         {counts.cancelled}
                     </span>
                     {activeTab === 'cancelled' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-red-500 rounded-full"></span>}
+                </button>
+
+                <button 
+                    onClick={() => setActiveTab('archive')} 
+                    className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'archive' ? 'text-slate-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    Архив / Отказ 
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'archive' ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        {counts.archive}
+                    </span>
+                    {activeTab === 'archive' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-slate-600 rounded-full"></span>}
                 </button>
             </div>
          </div>

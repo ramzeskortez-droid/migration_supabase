@@ -11,7 +11,7 @@ interface SheetRow {
   id: string;      // Col A (0)
   parentId: string;// Col B (1)
   type: string;    // Col C (2)
-  statusAdmin: string; // Col D (3)
+  statusManager: string; // Col D (3)
   statusClient: string; // Col E (4)
   statusSeller: string; // Col F (5)
   workflowStatus: string; // Col G (6)
@@ -85,15 +85,15 @@ export class SheetService {
       const offersList: { row: SheetRow, items: OrderItem[] }[] = [];
 
       // Helper to derive unified status
-      const deriveWorkflowStatus = (sAdmin: string, sClient: string): string => {
-          if (sAdmin === 'Аннулирован') return 'Аннулирован';
-          if (sAdmin === 'Отказ' || sClient === 'Отказ') return 'Отказ';
-          if (sAdmin === 'Выполнен' || sClient === 'Выполнен') return 'Выполнен';
-          if (sAdmin === 'В пути') return 'В пути';
-          if (sAdmin === 'Ожидает оплаты') return 'Ожидает оплаты';
-          if (sAdmin === 'Готов купить') return 'Готов купить'; // Client confirmed
+      const deriveWorkflowStatus = (sManager: string, sClient: string): string => {
+          if (sManager === 'Аннулирован') return 'Аннулирован';
+          if (sManager === 'Отказ' || sClient === 'Отказ') return 'Отказ';
+          if (sManager === 'Выполнен' || sClient === 'Выполнен') return 'Выполнен';
+          if (sManager === 'В пути') return 'В пути';
+          if (sManager === 'Ожидает оплаты') return 'Ожидает оплаты';
+          if (sManager === 'Готов купить') return 'Готов купить'; // Client confirmed
           if (sClient === 'Подтверждение от поставщика') return 'Подтверждение от поставщика';
-          if (sAdmin === 'КП отправлено' || sClient === 'КП готово') return 'КП отправлено';
+          if (sManager === 'КП отправлено' || sClient === 'КП готово') return 'КП отправлено';
           return 'В обработке';
       };
 
@@ -114,18 +114,18 @@ export class SheetService {
         const rawStatusSupplier = (row as any).statusSupplier || row.statusSeller || '';
 
         if (row.type === 'ORDER') {
-          const sAdmin = row.statusAdmin || '';
+          const sManager = row.statusManager || ''; // Updated
           const sClient = row.statusClient || '';
-          const derivedWorkflow = deriveWorkflowStatus(sAdmin, sClient);
+          const derivedWorkflow = deriveWorkflowStatus(sManager, sClient);
 
-          const isCPReady = sAdmin === 'КП отправлено' || sClient === 'КП готово';
+          const isCPReady = sManager === 'КП отправлено' || sClient === 'КП готово';
           const carDetails = parsedItems.length > 0 ? (parsedItems[0] as any).car : undefined;
 
           ordersMap.set(String(row.id), {
             id: String(row.id),
             type: RowType.ORDER,
-            status: row.statusAdmin as any,
-            statusAdmin: sAdmin,
+            status: row.statusManager as any,
+            statusManager: sManager,
             statusClient: sClient,
             statusSeller: rawStatusSupplier, // Correctly mapped
             clientName: row.clientName,
@@ -138,8 +138,8 @@ export class SheetService {
             offers: [],
             car: carDetails,
             isProcessed: isCPReady, // Used for locking edits
-            readyToBuy: sAdmin === 'Готов купить' || sClient === 'Подтверждение от поставщика',
-            isRefused: sAdmin === 'Аннулирован' || sAdmin === 'Отказ' || sClient === 'Отказ',
+            readyToBuy: sManager === 'Готов купить' || sClient === 'Подтверждение от поставщика',
+            isRefused: sManager === 'Аннулирован' || sManager === 'Отказ' || sClient === 'Отказ',
             workflowStatus: derivedWorkflow as any
           });
         } else if (row.type === 'OFFER') {
@@ -155,7 +155,7 @@ export class SheetService {
             id: row.id,
             parentId: row.parentId,
             type: RowType.OFFER,
-            status: row.statusAdmin as any,
+            status: row.statusManager as any,
             clientName: row.clientName,
             createdAt: row.createdAt,
             location: row.location,

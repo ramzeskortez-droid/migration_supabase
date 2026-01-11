@@ -29,16 +29,19 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
 
     const getWinnersForItem = (item: any) => {
         const winners: any[] = [];
-        // Оператор видит варианты ТОЛЬКО если менеджер утвердил КП
-        if (order.offers && (order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено')) {
+        const allowedStatuses = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'];
+
+        if (order.offers && allowedStatuses.includes(order.statusManager || '')) {
             order.offers.forEach((off: any) => {
                 if (!off.items) return;
                 const matching = off.items.find((i: any) => 
                     (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
                     (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
                 );
-                if (matching && (matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER')) {
-                    winners.push(matching);
+                if (matching) {
+                    if (order.statusManager === 'Ручная обработка' || matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER') {
+                        winners.push(matching);
+                    }
                 }
             });
         }
@@ -164,7 +167,7 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                             </div>
                                         )}
                                         <div className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</div>
-                                        {(order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено') && (
+                                        {['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'].includes(order.statusManager || '') && (
                                             <button 
                                                 onClick={(e) => onCopyItem(e, item, idx)}
                                                 className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm border border-indigo-100 group/copy ml-1"

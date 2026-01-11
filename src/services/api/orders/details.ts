@@ -5,8 +5,8 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
     const { data, error } = await supabase
         .from('orders')
         .select(`
-          id, order_files, order_items (*),
-          offers (id, created_at, supplier_name, supplier_phone, supplier_files, offer_items (*))
+          id, order_files, is_manual_processing, order_items (*),
+          offers (id, status, created_at, supplier_name, supplier_phone, supplier_files, offer_items (*))
         `)
         .eq('id', orderId)
         .single();
@@ -24,6 +24,7 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
 
     const offers: Order[] = data.offers.map((offer: any) => ({
       id: String(offer.id), parentId: String(data.id), type: RowType.OFFER,
+      status: offer.status as any, // Mapped status
       clientName: offer.supplier_name, clientPhone: offer.supplier_phone,
       supplier_files: offer.supplier_files,
       createdAt: new Date(offer.created_at).toLocaleString('ru-RU'),
@@ -43,13 +44,13 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
 export const getOrderStatus = async (orderId: string): Promise<{ status_admin: string, supplier_names: string[] }> => {
     const { data, error } = await supabase
         .from('orders')
-        .select('status_admin, offers (supplier_name)')
+        .select('status_manager, offers (supplier_name)')
         .eq('id', orderId)
         .maybeSingle();
     
     if (error || !data) return { status_admin: '', supplier_names: [] };
     return { 
-        status_admin: data.status_admin, 
+        status_admin: data.status_manager, 
         supplier_names: (data.offers as any[] || []).map(o => o.supplier_name) 
     };
 };
@@ -59,17 +60,53 @@ export const getOrderItemsSimple = async (orderId: string): Promise<string[]> =>
     return data?.map((i: any) => i.name) || [];
 };
 
+export const getOperatorStatusCounts = async (ownerId: string): Promise<Record<string, number>> => {
+    // 1. Получаем сырые данные для подсчета на клиенте (или делаем сложные count query)
+    // Чтобы не делать 5 запросов, сделаем один select статусов
+    const { data } = await supabase
+        .from('orders')
+        .select('status_manager, status_client, is_manual_processing')
+        .eq('owner_id', ownerId);
+    
+    const counts: Record<string, number> = {
+        processing: 0,
+        manual: 0,
+        processed: 0,
+        completed: 0,
+        rejected: 0,
+        archive: 0
+    };
+
+    data?.forEach((o: any) => {
+        if (o.status_manager === 'Ручная обработка') {
+            counts.manual++;
+        } else if (o.status_manager === 'В обработке') {
+            counts.processing++;
+        } else if (['КП готово', 'КП отправлено'].includes(o.status_manager)) {
+            counts.processed++;
+        } else if (o.status_manager === 'Выполнен') {
+            counts.completed++;
+            counts.archive++;
+        } else if (['Аннулирован', 'Отказ'].includes(o.status_manager)) {
+            counts.rejected++;
+            counts.archive++;
+        }
+    });
+
+    return counts;
+};
+
 export const getStatusCounts = async (): Promise<Record<string, number>> => {
     const statuses = [
-        { key: 'new', val: 'В обработке' }, { key: 'kp_sent', val: 'КП готово' }, 
+        { key: 'new', val: 'В обработке' }, { key: 'manual', val: 'Ручная обработка' }, { key: 'kp_sent', val: 'КП готово' }, 
         { key: 'ready_to_buy', val: 'КП отправлено,Готов купить' }, { key: 'supplier_confirmed', val: 'Подтверждение от поставщика' },
         { key: 'awaiting_payment', val: 'Ожидает оплаты' }, { key: 'in_transit', val: 'В пути' },
-        { key: 'completed', val: 'Выполнен' }, { key: 'annulled', val: 'Аннулирован' }, { key: 'refused', val: 'Отказ' }
+        { key: 'completed', val: 'Выполнен' }, { key: 'archive', val: 'Аннулирован,Отказ,Архив' }
     ];
     const promises = statuses.map(s => {
         let query = supabase.from('orders').select('*', { count: 'exact', head: true });
-        if (s.val.includes(',')) query = query.in('status_admin', s.val.split(',').map(v => v.trim()));
-        else query = query.eq('status_admin', s.val);
+        if (s.val.includes(',')) query = query.in('status_manager', s.val.split(',').map(v => v.trim()));
+        else query = query.eq('status_manager', s.val);
         return query;
     });
     const results = await Promise.all(promises);
