@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AppUser } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 
@@ -27,17 +27,17 @@ export const useOperatorAuth = (onLog: (msg: string) => void) => {
         checkAuth();
     }, [onLog]);
 
-    const login = (user: AppUser) => {
+    const login = useCallback((user: AppUser) => {
         setCurrentUser(user);
         localStorage.setItem('operatorToken', user.token);
         onLog(`Оператор ${user.name} вошел в систему.`);
-    };
+    }, [onLog]);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setCurrentUser(null);
         localStorage.removeItem('operatorToken');
         window.location.href = '/';
-    };
+    }, []);
 
     return { currentUser, isAuthChecking, login, logout };
 };
