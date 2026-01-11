@@ -18,14 +18,11 @@ const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
   { id: 'КП готово', label: 'КП готово', icon: Send, color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
   { id: 'Готов купить', label: 'Готов купить', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
-  { id: 'Подтверждение от поставщика', label: 'Подтверждение', icon: CheckCircle2, color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' },
-  { id: 'Ожидает оплаты', label: 'Ждет оплаты', icon: CreditCard, color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-200' },
-  { id: 'В пути', label: 'В пути', icon: Truck, color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200' },
   { id: 'Выполнен', label: 'Выполнен', icon: PackageCheck, color: 'text-teal-600', bg: 'bg-teal-100', border: 'border-teal-200' }
 ];
 
 const TAB_MAPPING: Record<string, AdminTab> = {
-    'В обработке': 'new', 'Ручная обработка': 'manual', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'Подтверждение от поставщика': 'supplier_confirmed', 'Ожидает оплаты': 'awaiting_payment', 'В пути': 'in_transit', 'Выполнен': 'completed', 'Аннулирован': 'archive', 'Отказ': 'archive'
+    'В обработке': 'new', 'Ручная обработка': 'manual', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'Выполнен': 'completed', 'Аннулирован': 'archive', 'Отказ': 'archive'
 };
 
 export const AdminInterface: React.FC = () => {
@@ -85,9 +82,6 @@ export const AdminInterface: React.FC = () => {
           case 'manual': return 'Ручная обработка';
           case 'kp_sent': return 'КП готово';
           case 'ready_to_buy': return 'КП отправлено';
-          case 'supplier_confirmed': return 'Подтверждение от поставщика';
-          case 'awaiting_payment': return 'Ожидает оплаты';
-          case 'in_transit': return 'В пути';
           case 'completed': return 'Выполнен';
           case 'archive': return 'Аннулирован,Отказ,Архив';
           default: return undefined;
@@ -348,7 +342,7 @@ export const AdminInterface: React.FC = () => {
             <div className="space-y-4">
                 <div className="px-4 py-2 bg-slate-900 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Клиента</div>
                 <div className="space-y-2">
-                    {['В обработке', 'КП готово', 'Готов купить', 'Подтверждение от поставщика', 'Ожидает оплаты', 'В пути', 'Выполнен', 'Аннулирован', 'Отказ'].map(s => (
+                    {['В обработке', 'КП готово', 'Готов купить', 'Выполнен', 'Аннулирован', 'Отказ'].map(s => (
                         <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> {s}
                         </div>

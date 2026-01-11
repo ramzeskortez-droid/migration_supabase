@@ -11,7 +11,7 @@ interface BuyerToolbarProps {
   setActiveBrands: (brands: string[]) => void;
   availableBrands: string[]; // (Unused for now, we use search)
   historyBrands?: string[]; 
-  counts: { new: number, hot: number, history: number, won: number, lost: number, cancelled: number, archive: number };
+  counts: { new: number, history: number, won: number, lost: number, archive: number };
   onRefresh: () => void;
   isSyncing: boolean;
 }
@@ -187,18 +187,6 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
                 </button>
 
                 <button 
-                    onClick={() => setActiveTab('hot')} 
-                    className={`pb-3 text-[11px] font-black uppercase transition-all relative flex items-center gap-1.5 ${activeTab === 'hot' ? 'text-orange-600' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <Flame size={14} className={activeTab === 'hot' ? 'animate-pulse' : ''} />
-                    Горящие 🔥
-                    <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'hot' ? 'bg-orange-600 text-white' : 'bg-orange-50 text-orange-400'}`}>
-                        {counts.hot}
-                    </span>
-                    {activeTab === 'hot' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-orange-600 rounded-full"></span>}
-                </button>
-
-                <button 
                     onClick={() => setActiveTab('history')} 
                     className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'history' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                 >
@@ -229,17 +217,6 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
                         {counts.lost}
                     </span>
                     {activeTab === 'lost' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-slate-600 rounded-full"></span>}
-                </button>
-
-                <button 
-                    onClick={() => setActiveTab('cancelled')} 
-                    className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'cancelled' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    Отмена клиента 
-                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] ${activeTab === 'cancelled' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                        {counts.cancelled}
-                    </span>
-                    {activeTab === 'cancelled' && <span className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-red-500 rounded-full"></span>}
                 </button>
 
                 <button 
