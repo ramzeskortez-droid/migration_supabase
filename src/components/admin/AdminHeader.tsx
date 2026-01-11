@@ -12,10 +12,11 @@ interface AdminHeaderProps {
   seedProgress: number | null;
   unreadCount?: number;
   onOpenGlobalChat?: () => void;
+  debugMode?: boolean;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ 
-  showLogs, setShowLogs, loading, logs, onClearDB, onSeed, seedProgress, unreadCount = 0, onOpenGlobalChat
+  showLogs, setShowLogs, loading, logs, onClearDB, onSeed, seedProgress, unreadCount = 0, onOpenGlobalChat, debugMode = false
 }) => {
   return (
     <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -45,18 +46,20 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         </div>
       </div>
       
-      <div className="flex gap-2">
-         <button onClick={onClearDB} className="px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-black uppercase flex items-center gap-2">
-            <Ban size={14}/> Очистить БД
-         </button>
-         <div className="flex bg-indigo-50 rounded-lg p-1 border border-indigo-100 items-center">
-            {[100, 1000].map(count => (
-                <button key={count} disabled={loading} onClick={() => onSeed(count)} className="px-3 py-1.5 hover:bg-white rounded-md text-[10px] font-black uppercase text-indigo-600">
-                    {count}
-                </button>
-            ))}
-         </div>
-      </div>
+      {debugMode && (
+        <div className="flex gap-2 animate-in fade-in slide-in-from-right-4">
+           <button onClick={onClearDB} className="px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-black uppercase flex items-center gap-2">
+              <Ban size={14}/> Очистить БД
+           </button>
+           <div className="flex bg-indigo-50 rounded-lg p-1 border border-indigo-100 items-center">
+              {[100, 1000].map(count => (
+                  <button key={count} disabled={loading} onClick={() => onSeed(count)} className="px-3 py-1.5 hover:bg-white rounded-md text-[10px] font-black uppercase text-indigo-600">
+                      {count}
+                  </button>
+              ))}
+           </div>
+        </div>
+      )}
     </div>
   );
 };

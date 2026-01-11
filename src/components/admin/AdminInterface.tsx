@@ -47,6 +47,7 @@ export const AdminInterface: React.FC = () => {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
   const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>>({});
+  const [debugMode, setDebugMode] = useState(false);
   
   // Чат
   const [chatTarget, setChatTarget] = useState<{ isOpen: boolean, orderId: string, supplierName?: string } | null>(null);
@@ -130,9 +131,17 @@ export const AdminInterface: React.FC = () => {
       } catch (e) {}
   };
 
+  const fetchSettings = async () => {
+      try {
+          const mode = await SupabaseService.getSystemSettings('debug_mode');
+          setDebugMode(!!mode);
+      } catch (e) {}
+  };
+
   useEffect(() => {
       fetchCounts();
       fetchRates();
+      fetchSettings();
       const interval = setInterval(fetchCounts, 5000); // Опрос раз в 5 секунд
       return () => clearInterval(interval);
   }, []);
@@ -394,6 +403,7 @@ export const AdminInterface: React.FC = () => {
                         setShowLogs={setShowLogs}
                         loading={isLoading || isDbLoading}
                         logs={logs}
+                        debugMode={debugMode}
                         onClearDB={async () => { if(!confirm('Удалить все?')) return; setIsDbLoading(true); try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setIsDbLoading(false); } }}
                         onSeed={async (count) => { setIsDbLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c), 'op1'); refetch(); } catch(e) {} finally { setIsDbLoading(false); setSeedProgress(null); } }}
                         seedProgress={seedProgress}

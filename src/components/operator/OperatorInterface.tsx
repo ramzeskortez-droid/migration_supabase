@@ -20,6 +20,17 @@ export const OperatorInterface: React.FC = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [navigateToOrderId, setNavigateToOrderId] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<{message: string, type: 'info'} | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
+
+  useEffect(() => {
+      const fetchSettings = async () => {
+          try {
+              const val = await SupabaseService.getSystemSettings('debug_mode');
+              setDebugMode(!!val);
+          } catch(e) {}
+      };
+      fetchSettings();
+  }, []);
 
   const addLog = useCallback((message: string) => {
       const time = new Date().toLocaleTimeString('ru-RU', { hour12: false });
@@ -140,6 +151,7 @@ export const OperatorInterface: React.FC = () => {
                 currentUser={currentUser} 
                 onLog={addLog} 
                 onOrderCreated={() => setRefreshTrigger(prev => prev + 1)}
+                debugMode={debugMode}
             />
 
             <OperatorOrdersView 

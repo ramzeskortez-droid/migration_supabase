@@ -10,11 +10,12 @@ interface AiAssistantProps {
   onCreateOrder: () => void;
   isSaving: boolean;
   isFormValid?: boolean;
+  debugMode?: boolean;
 }
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
-export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, isFormValid = true }) => {
+export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, isFormValid = true, debugMode = false }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -184,14 +185,16 @@ E‑mail:\telena.kaknibud@pochta.ru`;
         </div>
 
         <div className="flex gap-4">
-            <button
-              onClick={handleEmulate}
-              className="px-4 py-3 rounded-xl text-sm font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-              title="Вставить тестовый текст заявки"
-            >
-              <FileText size={16} />
-              <span className="hidden sm:inline">Эмуляция</span>
-            </button>
+            {debugMode && (
+                <button
+                onClick={handleEmulate}
+                className="px-4 py-3 rounded-xl text-sm font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                title="Вставить тестовый текст заявки"
+                >
+                <FileText size={16} />
+                <span className="hidden sm:inline">Эмуляция</span>
+                </button>
+            )}
 
             <button
               onClick={handleProcess}

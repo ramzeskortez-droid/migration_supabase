@@ -14,9 +14,10 @@ interface OperatorOrderCreationProps {
     currentUser: AppUser | null;
     onLog: (msg: string) => void;
     onOrderCreated: () => void;
+    debugMode?: boolean;
 }
 
-export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ currentUser, onLog, onOrderCreated }) => {
+export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ currentUser, onLog, onOrderCreated, debugMode = false }) => {
     // State
     const [parts, setParts] = useState<Part[]>([
         { id: 1, name: '', article: '', brand: '', uom: 'шт', quantity: 1 }
@@ -252,7 +253,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 document.body
             )}
 
-            <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} onQuickFill={handleQuickFill} />
+            <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} onQuickFill={debugMode ? handleQuickFill : undefined} />
             
             <OrderFilesUpload 
                 files={orderFiles} 
@@ -289,6 +290,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 onCreateOrder={handleCreateOrder}
                 isSaving={isSaving}
                 isFormValid={isFormValid} 
+                debugMode={debugMode}
             />
             
             <SystemStatusHorizontal displayStats={displayStats} />
