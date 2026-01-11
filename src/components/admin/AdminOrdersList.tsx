@@ -36,7 +36,7 @@ const AdminOrderRow = memo(({
     const isEditing = editingOrderId === order.id;
     const [isManual, setIsManual] = useState(false); // Локальный флаг ручной обработки
     // ... rest of logic
-    const currentStatus = order.workflowStatus || 'В обработке';
+    const currentStatus = order.statusManager || order.workflowStatus || 'В обработке';
     const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
 
     // Lazy load details ONLY when expanded
