@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
 import { FileDropzone } from '../shared/FileDropzone';
+import { useQueryClient } from '@tanstack/react-query';
+import { SupabaseService } from '../../services/supabaseService';
 
 interface AdminItemsTableProps {
   order: Order;
@@ -12,7 +14,7 @@ interface AdminItemsTableProps {
   editForm: { [key: string]: string };
   setEditForm: (form: any) => void;
   handleItemChange: (orderId: string, offerId: string, itemName: string, field: string, value: any) => void;
-  handleLocalUpdateRank: (orderId: string, offerId: string, offerItemId: string, orderItemId: string, currentRank: RankType, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number) => void;
+  handleLocalUpdateRank: (orderId: string, offerId: string, offerItemId: string, orderItemId: string, currentRank: RankType, adminPrice?: number, adminCurrency?: Currency, adminComment?: string, deliveryRate?: number, adminPriceRub?: number, clientDeliveryWeeks?: number) => void;
   currentStatus: string;
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
@@ -20,9 +22,6 @@ interface AdminItemsTableProps {
   offerEdits: Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>;
   onOpenChat: (orderId: string, supplierName?: string) => void;
 }
-
-import { useQueryClient } from '@tanstack/react-query';
-import { SupabaseService } from '../../services/supabaseService';
 
 export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   order, isEditing, editForm, setEditForm, handleItemChange, handleLocalUpdateRank, 
@@ -122,7 +121,20 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
         {order.items.map((item, idx) => {
             const isExpanded = openRegistry.has(item.name);
             const isLast = idx === order.items.length - 1;
-            // ... (остальной код маппинга)
+            
+            // Сбор офферов для текущей позиции
+            const itemOffers: any[] = []; 
+            if (order.offers) { 
+                for (const off of order.offers) { 
+                    const matching = off.items.find(i => 
+                        (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
+                        (!i.order_item_id && i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
+                    ); 
+                    if (matching) {
+                        itemOffers.push({ offerId: off.id, clientName: off.clientName, supplierFiles: off.supplier_files, item: matching }); 
+                    }
+                } 
+            }
 
             return (
                 <div key={idx} className={`border-b border-gray-200 last:border-b-0 ${isLast ? 'rounded-b-xl' : ''}`}>
@@ -177,7 +189,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                     </div>
 
                     {isExpanded && (
-                        <div className="bg-white animate-in slide-in-from-top-1 duration-200">
+                        <div className={`bg-white animate-in slide-in-from-top-1 duration-200 ${isLast ? 'rounded-b-xl' : ''}`}>
                             <div className="bg-slate-800 text-white hidden md:block">
                                 <div className={`grid ${OFFER_GRID} gap-4 px-6 py-2 text-[8px] font-black uppercase tracking-widest`}>
                                     <div>Поставщик</div>
@@ -236,13 +248,14 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         const currentPriceRub = editedPrice !== undefined ? editedPrice : (off.item.adminPrice ?? autoPrice);
 
                                         const editedComment = offerEdits?.[off.item.id]?.adminComment;
-                                        const currentComment = editedComment !== undefined ? editedComment : (off.item.adminComment || "");
+                                        // const currentComment = editedComment !== undefined ? editedComment : (off.item.adminComment || "");
 
                                         // Срок
                                         const editedWeeks = offerEdits?.[off.item.id]?.deliveryWeeks;
-                                        // Базовый срок = Срок поставщика + 4 недели (по требованию бизнеса)
-                                        const baseWeeks = (off.item.deliveryWeeks || 0) + 4;
-                                        const currentWeeks = editedWeeks !== undefined ? editedWeeks : baseWeeks;
+                                        // Базовый срок = Срок поставщика + Настройка (из курсов)
+                                        const baseWeeks = (off.item.deliveryWeeks || 0) + (exchangeRates?.delivery_weeks_add || 0);
+                                        // Если уже зафиксировано в БД, берем оттуда, иначе считаем динамически
+                                        const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.clientDeliveryWeeks || baseWeeks);
 
                                         return (
                                             <div key={oIdx} className={`relative transition-all duration-300 border-l-4 ${isLeader ? "bg-emerald-50 border-l-emerald-500 shadow-inner" : "hover:bg-gray-50 border-l-transparent"}`}>
@@ -326,7 +339,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                     <div className="flex justify-end pr-2">
                                                         {['В обработке', 'Идут торги'].includes(currentStatus) || isLeader ? (
                                                             <button
-                                                                onClick={() => handleLocalUpdateRank(order.id, off.offerId, off.item.id, item.id, off.item.rank || '', off.item.sellerPrice, off.item.sellerCurrency, off.item.adminComment, off.item.deliveryRate, currentPriceRub)}
+                                                                onClick={() => handleLocalUpdateRank(order.id, off.offerId, off.item.id, item.id, off.item.rank || '', off.item.sellerPrice, off.item.sellerCurrency, off.item.adminComment, off.item.deliveryRate, currentPriceRub, currentWeeks)}
                                                                 className={`w-full py-2 px-3 rounded-xl font-black uppercase text-[9px] transition-all shadow-md ${isLeader ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                                                             >
                                                                 {isLeader ? ( <span className="flex items-center justify-center gap-1"><Check size={12} strokeWidth={3} /> Лидер</span> ) : ( "Выбрать" )}

@@ -79,6 +79,7 @@ export interface OrderItem {
   adminComment?: string;
   weight?: number;
   deliveryWeeks?: number;
+  clientDeliveryWeeks?: number; // Зафиксированный срок для клиента
   deliveryRate?: number;
   photoUrl?: string; // Deprecated, use itemFiles
   itemFiles?: { name: string; url: string; size?: number; type?: string }[];
