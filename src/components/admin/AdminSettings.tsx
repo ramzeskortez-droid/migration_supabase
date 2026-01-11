@@ -39,10 +39,14 @@ export const AdminSettings: React.FC = () => {
                 SupabaseService.updateSystemSettings('buyer_required_fields', settings.buyer_required_fields, 'Manager'),
                 SupabaseService.updateSystemSettings('debug_mode', settings.debug_mode, 'Manager')
             ]);
-            setToast({ message: 'Настройки сохранены', type: 'success' });
+            setToast({ message: 'Настройки сохранены. Перезагрузка...', type: 'success' });
+            
+            // Принудительная перезагрузка для обновления UI всех компонентов
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
         } catch (e: any) {
             setToast({ message: 'Ошибка сохранения: ' + e.message, type: 'error' });
-        } finally {
             setSaving(false);
         }
     };
