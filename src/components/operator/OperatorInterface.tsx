@@ -45,15 +45,41 @@ export const OperatorInterface: React.FC = () => {
       fetchUnread();
       const interval = setInterval(fetchUnread, 30000);
 
-      const channel = SupabaseService.subscribeToUserChats((payload) => {
-          const msg = payload.new;
-          if (msg.recipient_name === 'ADMIN' && msg.sender_role === 'SUPPLIER') {
-              setUnreadChatCount(prev => prev + 1);
-              if (!isGlobalChatOpen) {
-                  setChatNotifications(prev => [...prev, msg].slice(-3));
-              }
-          }
-      }, `operator-notifications-${currentUser.id}`);
+            const channel = SupabaseService.subscribeToUserChats((payload) => {
+
+                const msg = payload.new;
+
+                
+
+                // 1. Сообщение от Поставщика (для общего чата)
+
+                if (msg.recipient_name === 'ADMIN' && msg.sender_role === 'SUPPLIER') {
+
+                    setUnreadChatCount(prev => prev + 1);
+
+                    if (!isGlobalChatOpen) {
+
+                        setChatNotifications(prev => [...prev, msg].slice(-3));
+
+                    }
+
+                }
+
+                // 2. Сообщение от Менеджера (например, о ручной обработке)
+
+                if (msg.recipient_name === 'OPERATOR' && msg.sender_role === 'ADMIN') {
+
+                    setUnreadChatCount(prev => prev + 1);
+
+                    if (!isGlobalChatOpen) {
+
+                        setChatNotifications(prev => [...prev, msg].slice(-3));
+
+                    }
+
+                }
+
+            }, `operator-notifications-${currentUser.id}`);
 
       return () => { 
           SupabaseService.unsubscribeFromChat(channel); 
