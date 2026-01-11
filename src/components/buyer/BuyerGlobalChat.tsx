@@ -14,10 +14,11 @@ interface BuyerGlobalChatProps {
   onMessageRead?: (count: number) => void;
 }
 
-export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({ 
+export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
   isOpen, onClose, currentUserRole, currentSupplierName, onNavigateToOrder, initialOrderId, onMessageRead 
 }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
+  const [unreadCounts, setUnreadCounts] = useState({ active: 0, archive: 0 }); // NEW
   const [selectedOrder, setSelectedOrder] = useState<string | null>(initialOrderId || null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,32 +26,31 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const processedIds = React.useRef(new Set<number>());
 
-  // Effect to select order when opened with initialOrderId
-  useEffect(() => {
-      if (isOpen && initialOrderId) {
-          setSelectedOrder(initialOrderId);
-          // If user is supplier, auto-select the manager chat (or self)
-          // If user is admin... wait, this is BuyerGlobalChat, so user is Supplier.
-          // We need to auto-select the supplier key.
-          // Since Buyer only sees THEIR chat with Manager, there is usually only 1 supplier key (themselves) per order in the thread list?
-          // Let's see fetchThreads logic.
-          // It calls `getGlobalChatThreads(currentSupplierName)`.
-          // So `threads` contains `[orderId][currentSupplierName]`.
-          // So we can auto-select `currentSupplierName`.
-          if (currentUserRole === 'SUPPLIER' && currentSupplierName) {
-              setSelectedSupplier(currentSupplierName);
-          }
-      }
-  }, [isOpen, initialOrderId, currentUserRole, currentSupplierName]);
+  // ... (useEffect for initialOrderId)
 
   const fetchThreads = async () => {
       setLoading(true);
       try {
-          // Если я поставщик, передаю свое имя для фильтрации
           const filter = currentUserRole === 'SUPPLIER' ? currentSupplierName : undefined;
-          const isArchived = activeTab === 'archive';
-          const data = await SupabaseService.getGlobalChatThreads(filter, isArchived);
-          setThreads(data);
+          
+          // Загружаем данные для обоих табов параллельно
+          const [activeData, archiveData] = await Promise.all([
+              SupabaseService.getGlobalChatThreads(filter, false),
+              SupabaseService.getGlobalChatThreads(filter, true)
+          ]);
+
+          setThreads(activeTab === 'active' ? activeData : archiveData);
+
+          const countUnread = (data: Record<string, Record<string, any>>) => {
+              return Object.values(data).reduce((acc, suppliers) => 
+                  acc + Object.values(suppliers).reduce((sAcc, sInfo: any) => sAcc + sInfo.unread, 0), 0
+              );
+          };
+
+          setUnreadCounts({
+              active: countUnread(activeData),
+              archive: countUnread(archiveData)
+          });
       } catch (e) {
           console.error(e);
       } finally {
@@ -59,58 +59,18 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
   };
 
   useEffect(() => {
-      fetchThreads();
-      
-      const channel = SupabaseService.subscribeToUserChats((payload) => {
-          const msg = payload.new;
-          if (processedIds.current.has(msg.id)) return;
-          processedIds.current.add(msg.id);
-
-          const orderId = String(msg.order_id);
+      if (isOpen) {
+          fetchThreads();
           
-          // Buyer cares if message is FOR him or FROM him
-          // Logic: Update thread [orderId][SupplierName]
-          
-          let relevantSupplier = '';
-          if (currentUserRole === 'SUPPLIER') {
-              const myName = currentSupplierName?.trim() || '';
-              if (msg.sender_name?.trim() === myName || msg.recipient_name?.trim() === myName) {
-                  relevantSupplier = myName;
-              }
-          } else {
-              if (msg.sender_role === 'SUPPLIER') relevantSupplier = msg.sender_name?.trim();
-              else relevantSupplier = msg.recipient_name?.trim();
-          }
+          const channel = SupabaseService.subscribeToUserChats((payload) => {
+              fetchThreads();
+          }, 'buyer-global-chat-realtime');
 
-          if (!relevantSupplier) return;
-
-          setThreads(prev => {
-              const newThreads = { ...prev };
-              if (!newThreads[orderId]) newThreads[orderId] = {};
-              
-              const prevThread = newThreads[orderId][relevantSupplier] || { unread: 0 };
-              
-              // Increment unread if message is NOT from me
-              let isUnread = false;
-              if (currentUserRole === 'SUPPLIER') {
-                  isUnread = msg.sender_role === 'ADMIN'; // Incoming from Admin
-              }
-              // If I sent it, unread doesn't change (or resets? No, keep as is)
-              
-              newThreads[orderId][relevantSupplier] = {
-                  lastMessage: msg.message,
-                  lastAuthorName: msg.sender_name,
-                  time: msg.created_at,
-                  unread: isUnread ? prevThread.unread + 1 : prevThread.unread
-              };
-              return newThreads;
-          });
-      }, 'buyer-global-chat-list');
-
-      return () => {
-          SupabaseService.unsubscribeFromChat(channel);
-      };
-  }, [isOpen, currentUserRole, currentSupplierName, activeTab]); // Added activeTab dependency
+          return () => {
+              SupabaseService.unsubscribeFromChat(channel);
+          };
+      }
+  }, [isOpen, currentUserRole, currentSupplierName, activeTab]);
 
   const handleNavigate = React.useCallback((oid: string) => {
       if (onNavigateToOrder) {
@@ -137,6 +97,10 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
           }
           return newThreads;
       });
+      setUnreadCounts(prev => ({
+          ...prev,
+          [activeTab]: Math.max(0, prev[activeTab] - (threads[orderId]?.[supplierName]?.unread || 0))
+      }));
   };
 
   if (!isOpen) return null;
@@ -171,19 +135,28 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                         <button 
                             onClick={() => setActiveTab('active')}
-                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            Активные
+                            <span>Активные</span>
+                            {unreadCounts.active > 0 && (
+                                <span className="bg-indigo-600 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
+                                    {unreadCounts.active}
+                                </span>
+                            )}
                         </button>
                         <button 
                             onClick={() => setActiveTab('archive')}
-                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            Архив
+                            <span>Архив</span>
+                            {unreadCounts.archive > 0 && (
+                                <span className="bg-red-500 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
+                                    {unreadCounts.archive}
+                                </span>
+                            )}
                         </button>
                     </div>
-                </div>
-                
+                </div>                
                 <div className="flex-grow overflow-y-auto p-2 space-y-2">
                     {Object.keys(threads).length === 0 && (
                         <div className="text-center text-slate-400 text-xs font-bold mt-10">Нет активных чатов</div>

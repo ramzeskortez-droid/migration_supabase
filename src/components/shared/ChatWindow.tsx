@@ -262,7 +262,8 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       
       let shouldMark = false;
       if (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') {
-          shouldMark = messages.some(m => !m.is_read && m.sender_role === 'SUPPLIER');
+          // Читаем сообщения от Поставщика ИЛИ системные для Оператора
+          shouldMark = messages.some(m => !m.is_read && (m.sender_role === 'SUPPLIER' || (m.sender_role === 'ADMIN' && m.recipient_name === 'OPERATOR')));
       } else if (currentUserRole === 'SUPPLIER') {
           shouldMark = messages.some(m => !m.is_read && ['ADMIN', 'MANAGER', 'OPERATOR'].includes(m.sender_role));
       }

@@ -17,6 +17,7 @@ interface GlobalChatWindowProps {
 
 export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, onMessageRead, initialOrderId, initialSupplierFilter }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
+  const [unreadCounts, setUnreadCounts] = useState({ active: 0, archive: 0 }); // NEW: Counts for tabs
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,11 +28,28 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
   const fetchThreads = async () => {
       setLoading(true);
       try {
-          const isArchived = activeTab === 'archive';
-          // Если есть initialSupplierFilter, загружаем только его (или фильтруем)
-          // Но лучше загрузить всё, а потом выбрать
-          const data = await SupabaseService.getGlobalChatThreads(undefined, isArchived);
-          setThreads(data);
+          const filter = currentUserRole === 'SUPPLIER' ? currentUserName : undefined;
+          
+          // Загружаем данные для обоих табов параллельно для обновления счетчиков
+          const [activeData, archiveData] = await Promise.all([
+              SupabaseService.getGlobalChatThreads(filter, false),
+              SupabaseService.getGlobalChatThreads(filter, true)
+          ]);
+
+          // Устанавливаем тред для текущего таба
+          setThreads(activeTab === 'active' ? activeData : archiveData);
+
+          // Считаем общее кол-во непрочитанных для каждого таба
+          const countUnread = (data: Record<string, Record<string, any>>) => {
+              return Object.values(data).reduce((acc, suppliers) => 
+                  acc + Object.values(suppliers).reduce((sAcc, sInfo: any) => sAcc + sInfo.unread, 0), 0
+              );
+          };
+
+          setUnreadCounts({
+              active: countUnread(activeData),
+              archive: countUnread(archiveData)
+          });
           
           if (initialOrderId) {
               setSelectedOrder(initialOrderId);
@@ -57,29 +75,11 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
               processedIds.current.add(msg.id);
               
               const orderId = String(msg.order_id);
-              let supplier = '';
               
-              
-              if (msg.sender_role === 'SUPPLIER') supplier = msg.sender_name?.trim();
-              else if (['ADMIN', 'MANAGER', 'OPERATOR'].includes(msg.sender_role)) supplier = msg.recipient_name?.trim();
-              
-              if (!supplier || supplier === 'ADMIN' || supplier === 'MANAGER') return;
-
-              setThreads(prev => {
-                  const newThreads = { ...prev };
-                  if (!newThreads[orderId]) newThreads[orderId] = {};
-                  
-                  const prevThread = newThreads[orderId][supplier] || { unread: 0 };
-                  
-                  newThreads[orderId][supplier] = {
-                      lastMessage: msg.message,
-                      lastAuthorName: msg.sender_name,
-                      time: msg.created_at,
-                      unread: (msg.sender_role === 'SUPPLIER') ? prevThread.unread + 1 : prevThread.unread
-                  };
-                  return newThreads;
-              });
-          }, 'operator-global-chat-list');
+              // Перезагружаем всё при новом сообщении, чтобы сохранить точность счетчиков
+              // Это проще, чем инкрементировать сложные вложенные объекты
+              fetchThreads();
+          }, 'global-chat-realtime');
 
           return () => {
               SupabaseService.unsubscribeFromChat(channel);
@@ -104,7 +104,8 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
           if (newThreads[orderId] && newThreads[orderId][supplierName]) {
               const currentUnread = newThreads[orderId][supplierName].unread;
               if (currentUnread > 0 && onMessageRead) {
-                  onMessageRead(currentUnread);
+                  // Фикс: оборачиваем в setTimeout для предотвращения ошибки рендера
+                  setTimeout(() => onMessageRead(currentUnread), 0);
               }
 
               newThreads[orderId][supplierName] = {
@@ -114,6 +115,11 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
           }
           return newThreads;
       });
+      // Обновляем счетчики табов
+      setUnreadCounts(prev => ({
+          ...prev,
+          [activeTab]: Math.max(0, prev[activeTab] - (threads[orderId]?.[supplierName]?.unread || 0))
+      }));
   };
 
   if (!isOpen) return null;
@@ -148,15 +154,25 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                         <button 
                             onClick={() => setActiveTab('active')}
-                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            Активные
+                            <span>Активные</span>
+                            {unreadCounts.active > 0 && (
+                                <span className="bg-indigo-600 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
+                                    {unreadCounts.active}
+                                </span>
+                            )}
                         </button>
                         <button 
                             onClick={() => setActiveTab('archive')}
-                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            Архив
+                            <span>Архив</span>
+                            {unreadCounts.archive > 0 && (
+                                <span className="bg-red-500 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
+                                    {unreadCounts.archive}
+                                </span>
+                            )}
                         </button>
                     </div>
                 </div>
