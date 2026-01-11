@@ -175,7 +175,7 @@ export const AdminFinanceSettings: React.FC = () => {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">+ к сроку поставщика</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">+ к сроку закупщика</label>
                         <div className="relative">
                             <input 
                                 type="text" 
@@ -244,7 +244,7 @@ export const AdminFinanceSettings: React.FC = () => {
             <div className="mt-12 p-6 rounded-2xl border-2 border-dashed border-slate-100">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Пример расчета для менеджера:</h4>
                 <div className="space-y-2 text-[11px] font-bold text-slate-600">
-                    <p>Формула: <span className="text-slate-900">(Цена Пост. * Курс ¥) + (Вес * Тариф $ * Курс $/¥ * Курс ¥) + Наценка %</span></p>
+                    <p>Формула: <span className="text-slate-900">(Цена Закуп. * Курс ¥) + (Вес * Тариф $ * Курс $/¥ * Курс ¥) + Наценка %</span></p>
                     <div className="p-3 bg-white rounded-lg border border-slate-100 flex justify-between items-center">
                         <span>Если цена 100 ¥, вес 2кг:</span>
                         <span className="text-indigo-600">

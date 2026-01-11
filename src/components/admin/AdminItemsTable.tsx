@@ -360,7 +360,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         )}
                                                         {off.supplierSku && (
                                                             <div className="flex gap-2 border-t border-yellow-200/50 pt-1 mt-1">
-                                                                <span className="font-bold uppercase text-yellow-600/70 shrink-0">Поставщик:</span>
+                                                                <span className="font-bold uppercase text-yellow-600/70 shrink-0">WeChat ID / номер поставщика:</span>
                                                                 <span className="font-mono font-bold select-all">{off.supplierSku}</span>
                                                             </div>
                                                         )}
