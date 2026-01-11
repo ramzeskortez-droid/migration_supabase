@@ -337,7 +337,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                     </div>
                                                     
                                                     <div className="flex justify-end pr-2">
-                                                        {['В обработке', 'Идут торги'].includes(currentStatus) || isLeader ? (
+                                                        {(currentStatus === 'В обработке' || currentStatus === 'Ручная обработка') ? (
                                                             <button
                                                                 onClick={() => handleLocalUpdateRank(order.id, off.offerId, off.item.id, item.id, off.item.rank || '', off.item.sellerPrice, off.item.sellerCurrency, off.item.adminComment, off.item.deliveryRate, currentPriceRub, currentWeeks)}
                                                                 className={`w-full py-2 px-3 rounded-xl font-black uppercase text-[9px] transition-all shadow-md ${isLeader ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
@@ -345,7 +345,9 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                                 {isLeader ? ( <span className="flex items-center justify-center gap-1"><Check size={12} strokeWidth={3} /> Лидер</span> ) : ( "Выбрать" )}
                                                             </button>
                                                         ) : (
-                                                            <span className="text-slate-200 text-[9px] font-black uppercase italic tracking-widest">Торги закрыты</span>
+                                                            <span className="text-slate-300 text-[9px] font-black uppercase italic tracking-widest bg-slate-50 px-2 py-1 rounded">
+                                                                {isLeader ? 'Выбран (Закрыто)' : 'Торги закрыты'}
+                                                            </span>
                                                         )}
                                                     </div>
                                                     
