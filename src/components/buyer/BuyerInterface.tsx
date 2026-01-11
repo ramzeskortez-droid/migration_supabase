@@ -4,22 +4,28 @@ import { SupabaseService } from '../../services/supabaseService';
 import { Order, AppUser } from '../../types';
 import { Toast } from '../shared/Toast';
 import { ChatNotification } from '../shared/ChatNotification';
-import { BuyerAuthModal } from './BuyerAuthModal';
 import { BuyerHeader } from './BuyerHeader';
 import { BuyerDashboard } from './BuyerDashboard';
 import { BuyerToolbar } from './BuyerToolbar';
 import { BuyerOrdersList } from './BuyerOrdersList';
 import { BuyerGlobalChat } from './BuyerGlobalChat';
 import { useOrdersInfinite } from '../../hooks/useOrdersInfinite';
+import { useNavigate } from 'react-router-dom';
 
 export const BuyerInterface: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // --- Auth ---
   const [buyerAuth, setBuyerAuth] = useState<AppUser | null>(() => {
       try { return JSON.parse(localStorage.getItem('buyer_auth_token') || 'null'); } catch { return null; }
   });
-  const [showAuthModal, setShowAuthModal] = useState(!buyerAuth);
+
+  useEffect(() => {
+      if (!buyerAuth) {
+          navigate('/');
+      }
+  }, [buyerAuth, navigate]);
 
   // --- UI State ---
   const [activeTab, setActiveTab] = useState<'new' | 'history' | 'hot' | 'won' | 'lost' | 'cancelled'>('new');
@@ -69,19 +75,13 @@ export const BuyerInterface: React.FC = () => {
     }));
   };
 
-  const handleLogin = (user: AppUser) => {
-      setBuyerAuth(user);
-      localStorage.setItem('buyer_auth_token', JSON.stringify(user));
-      setShowAuthModal(false);
-  };
-
   const handleLogout = () => {
       setBuyerAuth(null);
       setExpandedId(null);
       setEditingItemsMap({});
       localStorage.removeItem('buyer_auth_token');
       queryClient.removeQueries();
-      setShowAuthModal(true);
+      navigate('/');
   };
 
   // ВОССТАНОВЛЕННАЯ ФУНКЦИЯ
@@ -260,7 +260,6 @@ export const BuyerInterface: React.FC = () => {
                 }}
             />
         ))}
-        <BuyerAuthModal isOpen={showAuthModal} onLogin={handleLogin} />
         {buyerAuth && (
             <>
                 <BuyerHeader 

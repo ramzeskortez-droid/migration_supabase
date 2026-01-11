@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { OperatorHeader } from './OperatorHeader';
-import { OperatorAuthModal } from './OperatorAuthModal';
 import { GlobalChatWindow } from '../shared/GlobalChatWindow';
 import { EmailWidget } from './EmailWidget';
 import { ChatNotification } from '../shared/ChatNotification';
@@ -38,6 +37,13 @@ export const OperatorInterface: React.FC = () => {
   }, []);
 
   const { currentUser, isAuthChecking, login, logout } = useOperatorAuth(addLog);
+  
+  // Redirect if not authenticated
+  useEffect(() => {
+      if (!isAuthChecking && !currentUser) {
+          window.location.href = '/';
+      }
+  }, [isAuthChecking, currentUser]);
 
   const handleMessageRead = useCallback((count: number) => {
       setUnreadChatCount(prev => Math.max(0, prev - count));
@@ -116,8 +122,6 @@ export const OperatorInterface: React.FC = () => {
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden relative">
-      {!currentUser && <OperatorAuthModal onLogin={login} />}
-      
       {toast && (
           <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
               <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type} duration={1000} />

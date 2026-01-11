@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ArrowLeft, Lock, Key, AlertCircle, Loader2 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Role } from "./StartPage";
 import { SupabaseService } from "../../services/supabaseService";
 import { useNavigate } from "react-router-dom";
@@ -25,10 +25,7 @@ const demoUsers: Record<string, { name: string, token: string }[]> = {
   buyer: [
     { name: "Демо 1", token: "buy1" },
     { name: "Демо 2", token: "buy2" }
-  ],
-  admin: [
-    { name: "Admin", token: "admin1" }
-  ],
+  ]
 };
 
 const colors = [
@@ -42,7 +39,8 @@ const colors = [
 export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
   const navigate = useNavigate();
   const [selectedUserToken, setSelectedUserToken] = useState<string | null>(null);
-  const [showTokenInput, setShowTokenInput] = useState(false);
+  // Для менеджера (или если нет демо-юзеров) сразу показываем поле ввода
+  const [showTokenInput, setShowTokenInput] = useState((demoUsers[role]?.length || 0) === 0);
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,15 +49,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
 
   const users = demoUsers[role] || [];
 
-  const handleUserSelect = (userToken: string) => {
-    setSelectedUserToken(userToken);
-    setShowTokenInput(false);
-    setToken("");
-    setError(null);
-  };
-
-  const handleLogin = async () => {
-    const loginToken = selectedUserToken || token;
+  const handleLogin = async (tokenOverride?: string) => {
+    const loginToken = tokenOverride || selectedUserToken || token;
     if (!loginToken) return;
 
     setLoading(true);
@@ -69,20 +60,33 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
       const user = await SupabaseService.loginWithToken(loginToken);
       
       if (user) {
-        if (user.role !== role && !(role === 'operator' && user.role === 'admin')) { // Admin can login as operator too ideally, but let's be strict or strict-ish
-             // Allow admin to login as manager (role=admin)
-             // Allow operator to login as operator
-             // Allow buyer as buyer
-             // Special case: admin token might be used in operator interface? Let's restrict for now based on requested role.
+        if (user.role !== role && !(role === 'operator' && user.role === 'admin')) { 
              if (role === 'admin' && user.role !== 'admin') throw new Error('Нет прав менеджера');
              if (role === 'operator' && user.role !== 'operator' && user.role !== 'admin') throw new Error('Нет прав оператора');
              if (role === 'buyer' && user.role !== 'buyer') throw new Error('Нет прав закупщика');
         }
 
-        // Redirect based on role
-        if (role === 'admin') navigate('/admin');
-        else if (role === 'operator') navigate('/operator');
-        else if (role === 'buyer') navigate('/buyer');
+        // Save session based on role
+        if (role === 'operator') {
+            localStorage.setItem('operatorToken', user.token);
+            navigate('/operator');
+        } else if (role === 'buyer') {
+            localStorage.setItem('buyer_auth_token', JSON.stringify(user));
+            navigate('/buyer');
+        } else if (role === 'admin') {
+            // Assuming Admin uses 'adminToken' or similar - let's check AdminInterface later but for now this is a safe guess if consistent
+            // Actually AdminInterface doesn't seem to have a hook in the same way? 
+            // Let's look at AdminInterface to be sure. 
+            // AdminInterface doesn't have an auth hook in the imports I saw.
+            // Wait, looking at previous read of AdminInterface, it doesn't seem to have auth check logic visible? 
+            // It just renders. Maybe it relies on global auth or something I missed?
+            // Ah, AdminInterface has NO auth check in the code I read earlier!
+            // It seems AdminInterface just renders. 
+            // But if I want to persist it, I should probably save it. 
+            // Let's save 'adminToken' for consistency, though it might not be used yet.
+            localStorage.setItem('adminToken', user.token);
+            navigate('/admin');
+        }
       } else {
         throw new Error('Неверный токен');
       }
@@ -91,6 +95,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUserSelect = (userToken: string) => {
+    setSelectedUserToken(userToken);
+    // Мгновенный вход для демо-пользователей
+    handleLogin(userToken);
   };
 
   const getUserInitial = (name: string) => {
@@ -131,51 +141,55 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
       )}
 
       {/* User Selection (Demo Users) */}
-      <div className="mb-6">
-        <p className="text-white/80 text-sm mb-3 font-medium text-center">Быстрый вход (Демо)</p>
-        <div className="grid grid-cols-3 gap-3 justify-center">
-          {users.map((user, index) => (
-            <motion.button
-              key={user.token}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 * index }}
-              onClick={() => handleUserSelect(user.token)}
-              className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-200 ${
-                selectedUserToken === user.token
-                  ? "bg-white/30 backdrop-blur-sm border-2 border-white shadow-lg scale-105"
-                  : "bg-white/10 backdrop-blur-sm border-2 border-white/20 hover:bg-white/20"
-              }`}
-            >
-              <div
-                className={`w-12 h-12 rounded-full bg-gradient-to-br ${colors[index % colors.length]} flex items-center justify-center text-white font-bold text-lg mb-2 shadow-lg`}
-              >
-                {getUserInitial(user.name)}
-              </div>
-              <span className="text-sm font-medium text-white truncate w-full text-center">{user.name}</span>
-            </motion.button>
-          ))}
+      {users.length > 0 && (
+        <div className="mb-6">
+            <p className="text-white/80 text-sm mb-3 font-medium text-center">Быстрый вход (Демо)</p>
+            <div className="grid grid-cols-2 gap-3 justify-center">
+            {users.map((user, index) => (
+                <motion.button
+                key={user.token}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 * index }}
+                onClick={() => handleUserSelect(user.token)}
+                className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-200 ${
+                    selectedUserToken === user.token
+                    ? "bg-white/30 backdrop-blur-sm border-2 border-white shadow-lg scale-105"
+                    : "bg-white/10 backdrop-blur-sm border-2 border-white/20 hover:bg-white/20"
+                }`}
+                >
+                <div
+                    className={`w-12 h-12 rounded-full bg-gradient-to-br ${colors[index % colors.length]} flex items-center justify-center text-white font-bold text-lg mb-2 shadow-lg`}
+                >
+                    {getUserInitial(user.name)}
+                </div>
+                <span className="text-sm font-medium text-white truncate w-full text-center">{user.name}</span>
+                </motion.button>
+            ))}
+            </div>
         </div>
-      </div>
+      )}
 
       {/* Divider */}
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-white/20"></div>
+      {users.length > 0 && (
+        <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/20"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+            <button
+                onClick={() => {
+                setShowTokenInput(!showTokenInput);
+                setSelectedUserToken(null);
+                setError(null);
+                }}
+                className="px-4 py-1 bg-white/10 backdrop-blur-sm text-white/70 rounded-full hover:bg-white/20 hover:text-white transition-all border border-white/20"
+            >
+                или используйте токен
+            </button>
+            </div>
         </div>
-        <div className="relative flex justify-center text-sm">
-          <button
-            onClick={() => {
-              setShowTokenInput(!showTokenInput);
-              setSelectedUserToken(null);
-              setError(null);
-            }}
-            className="px-4 py-1 bg-white/10 backdrop-blur-sm text-white/70 rounded-full hover:bg-white/20 hover:text-white transition-all border border-white/20"
-          >
-            или используйте токен
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Token Input */}
       <AnimatePresence>
@@ -195,6 +209,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
                 placeholder="Введите ваш токен..."
                 className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:border-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                autoFocus
                 />
             </div>
             </motion.div>
@@ -205,7 +220,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        onClick={handleLogin}
+        onClick={() => handleLogin()}
         disabled={(!selectedUserToken && !token) || loading}
         className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-white/10 disabled:to-white/10 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-2xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
       >

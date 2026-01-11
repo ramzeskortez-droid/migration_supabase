@@ -36,6 +36,7 @@ export const useOperatorAuth = (onLog: (msg: string) => void) => {
     const logout = () => {
         setCurrentUser(null);
         localStorage.removeItem('operatorToken');
+        window.location.href = '/';
     };
 
     return { currentUser, isAuthChecking, login, logout };
