@@ -35,6 +35,16 @@ const App: React.FC = () => {
       return val.toFixed(2).replace('.', ',');
   };
 
+  const handleNavigation = (path: string) => {
+      // При смене интерфейса или переходе на главную — сбрасываем авторизацию
+      localStorage.removeItem('operatorToken');
+      localStorage.removeItem('buyer_auth_token');
+      localStorage.removeItem('adminToken');
+      
+      navigate('/');
+      setIsMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       {/* Navigation Header - Hide on Start Page */}
@@ -43,7 +53,7 @@ const App: React.FC = () => {
             <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
             {/* Left Side: Logo + Menu */}
             <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => navigate('/')}>
+                <div className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => handleNavigation('/')}>
                     <img src="https://i.vgy.me/0lR7Mt.png" alt="logo" className="w-7 h-7 object-contain" />
                     <span className="font-black tracking-tighter uppercase text-sm text-slate-900">
                     CHINA-<span className="text-indigo-600">NAI</span>
@@ -71,7 +81,7 @@ const App: React.FC = () => {
                                 ].map(item => (
                                     <button 
                                         key={item.path}
-                                        onClick={() => { navigate(item.path); setIsMenuOpen(false); }}
+                                        onClick={() => handleNavigation(item.path)}
                                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${isActive(item.path) && item.path !== '/' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
                                     >
                                         <div className={`p-1.5 rounded-lg ${isActive(item.path) && item.path !== '/' ? 'bg-white shadow-sm' : item.bg} ${isActive(item.path) && item.path !== '/' ? 'text-indigo-600' : item.color}`}>
