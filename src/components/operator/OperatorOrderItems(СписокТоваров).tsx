@@ -232,9 +232,9 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                                             </div>
 
                                                             <div className="text-base font-black text-gray-900 leading-none text-left">
-                                                                {formatPrice(win.adminPriceRub || win.sellerPrice)} ₽
+                                                                {formatPrice(win.adminPrice || win.sellerPrice)} ₽
                                                             </div>
-                                                            <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.deliveryWeeks || '-'} нед.</div>
+                                                            <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.clientDeliveryWeeks || win.deliveryWeeks || '-'} нед.</div>
                                                         </div>
                                                     </div>
                                                 ))}
