@@ -166,7 +166,12 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                         </button>
                     </div>
 
-                    <input disabled={isDisabled || isUnavailable} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity')} />
+                    <div className="flex items-center justify-center">
+                        <div className="w-full h-[38px] flex items-center justify-center text-center font-black text-sm text-slate-700 bg-slate-100/50 rounded-lg border border-slate-200/50">
+                            {item.offeredQuantity ?? item.quantity}
+                        </div>
+                    </div>
+
                     <input disabled={isDisabled || isUnavailable} value={item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice')} placeholder="0" />
                     <input disabled={isDisabled || isUnavailable} value={item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight')} placeholder="0.0" />
                     <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks')} placeholder="Min 4" />
