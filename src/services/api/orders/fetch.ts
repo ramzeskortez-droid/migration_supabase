@@ -20,7 +20,8 @@ export const getOrders = async (
     let matchingIds: any[] = [];
     const q = searchQuery.trim();
 
-    if (q && isNaN(Number(q))) {
+    if (q) {
+        // Всегда ищем по позициям (название, бренд, артикул, коммент)
         const { data: items } = await supabase
             .from('order_items')
             .select('order_id')
@@ -90,7 +91,6 @@ export const getOrders = async (
             query = query.not('status_manager', 'in', '("Аннулирован","Отказ")');
         }
         else if (buyerTab === 'cancelled') {
-            // DEPRECATED logic, keep for compatibility or redirect to archive
             const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
             const ids = myOff?.map(o => o.order_id) || [];
             query = query.in('id', ids.length > 0 ? ids : [0]);
@@ -100,17 +100,8 @@ export const getOrders = async (
             const { data: myOffers } = await supabase.from('offers')
                 .select('order_id, status')
                 .eq('supplier_name', onlyWithMyOffersName);
-            
-            // 1. Личные отказы
             const myRefusals = myOffers?.filter(o => o.status === 'Отказ').map(o => o.order_id) || [];
-            
-            // 2. Глобальные отмены (где я просто был)
             const myParticipation = myOffers?.map(o => o.order_id) || [];
-            
-            // Формируем OR условие
-            // id.in.(myRefusals) OR (id.in.(myParticipation) AND status.in.(...))
-            
-            // Так как OR сложен с AND, проще загрузить ID глобальных отмен отдельным запросом и объединить списки ID
             const { data: globalCancelled } = await supabase.from('orders')
                 .select('id')
                 .in('id', myParticipation.length > 0 ? myParticipation : [0])
@@ -118,7 +109,6 @@ export const getOrders = async (
             
             const globalCancelledIds = globalCancelled?.map(o => o.id) || [];
             const finalIds = Array.from(new Set([...myRefusals, ...globalCancelledIds]));
-            
             query = query.in('id', finalIds.length > 0 ? finalIds : [0]);
         }
     }
@@ -149,15 +139,23 @@ export const getOrders = async (
     }
 
     if (q) {
+        let orFilters = [
+            `client_name.ilike.%${q}%`,
+            `client_email.ilike.%${q}%`
+        ];
+
         if (!isNaN(Number(q))) {
-             query = query.or(`id.eq.${q},client_phone.ilike.%${q}%`);
+            orFilters.push(`id.eq.${q}`);
+            orFilters.push(`client_phone.ilike.%${q}%`);
         } else {
-             let orFilter = `client_name.ilike.%${q}%,client_email.ilike.%${q}%`;
-             if (matchingIds.length > 0) {
-                 orFilter += `,id.in.(${matchingIds.join(',')})`;
-             }
-             query = query.or(orFilter);
+            orFilters.push(`client_phone.ilike.%${q}%`);
         }
+
+        if (matchingIds.length > 0) {
+            orFilters.push(`id.in.(${matchingIds.join(',')})`);
+        }
+
+        query = query.or(orFilters.join(','));
     }
 
     if (cursor) {
