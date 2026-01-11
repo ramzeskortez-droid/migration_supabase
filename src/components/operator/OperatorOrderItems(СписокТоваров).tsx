@@ -34,13 +34,19 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
         if (order.offers && allowedStatuses.includes(order.statusManager || '')) {
             order.offers.forEach((off: any) => {
                 if (!off.items) return;
-                const matching = off.items.find((i: any) => 
-                    (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
-                    (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
-                );
+                
+                // Ищем позицию в оффере, которая соответствует текущей строке заказа
+                const matching = off.items.find((i: any) => {
+                    // 1. Приоритет: точное совпадение по ID
+                    if (i.order_item_id && String(i.order_item_id) === String(item.id)) return true;
+                    // 2. Фолбек: совпадение по имени (для старых данных)
+                    if (!i.order_item_id && i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase()) return true;
+                    return false;
+                });
+
                 if (matching) {
                     if (order.statusManager === 'Ручная обработка' || matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER') {
-                        winners.push(matching);
+                        winners.push({ ...matching, supplierName: off.clientName }); // Добавляем имя поставщика для контекста
                     }
                 }
             });
