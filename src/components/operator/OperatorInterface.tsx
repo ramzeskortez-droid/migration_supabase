@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { OperatorHeader } from './OperatorHeader';
 import { GlobalChatWindow } from '../shared/GlobalChatWindow';
 import { EmailWidget } from './EmailWidget';
 import { ChatNotification } from '../shared/ChatNotification';
-import { Mail, ChevronRight } from 'lucide-react';
+import { Mail, ChevronRight, MessageCircle, User, LogOut } from 'lucide-react';
 import { SupabaseService } from '../../services/supabaseService';
 import { useOperatorAuth } from '../../hooks/useOperatorAuth';
 import { OperatorOrderCreation } from './OperatorOrderCreation(СозданиеЗаявки)';
 import { OperatorOrdersView } from './OperatorOrdersView(ПросмотрЗаявок)';
 import { Toast } from '../shared/Toast';
+import { useHeaderStore } from '../../store/headerStore';
 
 export const OperatorInterface: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
@@ -37,6 +37,49 @@ export const OperatorInterface: React.FC = () => {
   }, []);
 
   const { currentUser, isAuthChecking, login, logout } = useOperatorAuth(addLog);
+  const setHeader = useHeaderStore(s => s.setCustomRightContent);
+
+  // Set Header Content
+  useEffect(() => {
+      if (currentUser) {
+          setHeader(
+            <div className="flex items-center gap-6">
+                <button 
+                    onClick={() => setIsGlobalChatOpen(true)}
+                    className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all relative"
+                    title="Все сообщения от закупщиков"
+                >
+                    <MessageCircle size={20} />
+                    {unreadChatCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                            {unreadChatCount}
+                        </span>
+                    )}
+                </button>
+
+                <div className="flex items-center gap-3 pl-6 border-l border-slate-100 h-8">
+                    <div className="text-right hidden sm:block">
+                        <div className="text-xs font-bold text-slate-900">{currentUser.name}</div>
+                        <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Оператор</div>
+                    </div>
+                    <div className="h-9 w-9 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-sm">
+                        <User size={16} strokeWidth={2.5} />
+                    </div>
+                    <button 
+                        onClick={logout}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all ml-2"
+                        title="Выйти"
+                    >
+                        <LogOut size={18} />
+                    </button>
+                </div>
+            </div>
+          );
+      } else {
+          setHeader(null);
+      }
+      return () => setHeader(null);
+  }, [currentUser, unreadChatCount, logout]);
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -141,13 +184,6 @@ export const OperatorInterface: React.FC = () => {
             />
       ))}
       
-      <OperatorHeader 
-        operatorName={currentUser?.name || null} 
-        onLogout={logout} 
-        onOpenChat={() => setIsGlobalChatOpen(true)}
-        unreadCount={unreadChatCount}
-      />
-
       <div className={`flex flex-1 overflow-hidden transition-opacity duration-300 ${!currentUser ? 'opacity-30 pointer-events-none blur-sm' : 'opacity-100'}`}>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto space-y-8">

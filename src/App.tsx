@@ -9,12 +9,14 @@ import { StartPage } from './components/start_page/StartPage';
 import { Users, ShoppingBag, ShieldCheck, TrendingUp, Menu, ChevronDown, Home } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { ExchangeRates } from './types';
+import { useHeaderStore } from './store/headerStore';
 
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [rates, setRates] = React.useState<ExchangeRates | null>(null);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const customRightContent = useHeaderStore((state) => state.customRightContent);
   
   useEffect(() => {
      SupabaseService.getExchangeRates().then(setRates).catch(console.error);
@@ -96,27 +98,31 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Right Side: Currency Rates */}
-            {rates && (
-                <div className="hidden md:flex items-center gap-3">
-                    <div className="flex flex-col items-end leading-none mr-1">
-                        <span className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Курс CHINA-NAI</span>
-                        <span className="text-[9px] font-black text-slate-400">{new Date(rates.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</span>
-                    </div>
-                    
-                    <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-slate-400">¥/₽</span>
-                            <span className="text-xs font-black text-slate-900">{formatRate(rates.cny_rub)}</span>
+            {/* Right Side: Currency Rates & Custom Actions */}
+            <div className="hidden md:flex items-center gap-6">
+                {customRightContent}
+                
+                {rates && (
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end leading-none mr-1">
+                            <span className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Курс CHINA-NAI</span>
+                            <span className="text-[9px] font-black text-slate-400">{new Date(rates.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</span>
                         </div>
-                        <div className="w-px h-3 bg-slate-200"></div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-slate-400">$/¥</span>
-                            <span className="text-xs font-black text-slate-900">{formatRate(rates.cny_usd)}</span>
+                        
+                        <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm gap-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-slate-400">¥/₽</span>
+                                <span className="text-xs font-black text-slate-900">{formatRate(rates.cny_rub)}</span>
+                            </div>
+                            <div className="w-px h-3 bg-slate-200"></div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-slate-400">$/¥</span>
+                                <span className="text-xs font-black text-slate-900">{formatRate(rates.cny_usd)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
             </div>
         </header>
       )}
