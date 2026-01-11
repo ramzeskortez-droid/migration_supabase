@@ -9,3 +9,11 @@ export const getUnreadChatCountForSupplier = async (supplierName: string): Promi
     const { count } = await supabase.from('chat_messages').select('*', { count: 'exact', head: true }).eq('recipient_name', supplierName).eq('is_read', false);
     return { count: count || 0 };
 };
+
+export const getOperatorUnreadCount = async (): Promise<number> => {
+    const { count } = await supabase.from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .or('and(sender_role.eq.SUPPLIER,recipient_name.eq.ADMIN),and(sender_role.eq.ADMIN,recipient_name.eq.OPERATOR)')
+        .eq('is_read', false);
+    return count || 0;
+};

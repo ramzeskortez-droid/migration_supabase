@@ -68,6 +68,7 @@ export class SupabaseService {
   static getChatMessages = chatCoreApi.getChatMessages;
   static sendChatMessage = chatCoreApi.sendChatMessage;
   static getUnreadChatCount = chatStatsApi.getUnreadChatCount;
+  static getOperatorUnreadCount = chatStatsApi.getOperatorUnreadCount; // NEW
   static getUnreadChatCountForSupplier = chatStatsApi.getUnreadChatCountForSupplier;
   static markChatAsRead = chatManagementApi.markChatAsRead;
   static deleteChatHistory = chatManagementApi.deleteChatHistory;

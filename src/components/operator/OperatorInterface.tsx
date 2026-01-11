@@ -38,7 +38,7 @@ export const OperatorInterface: React.FC = () => {
 
       const fetchUnread = async () => {
           try {
-              const count = await SupabaseService.getUnreadChatCount();
+              const count = await SupabaseService.getOperatorUnreadCount();
               setUnreadChatCount(count);
           } catch (e) {}
       };
