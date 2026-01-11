@@ -46,23 +46,33 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
 
   const isValid = editingItems.every(item => {
       if (item.offeredQuantity === 0) return true;
-      const basicValid = (item.BuyerPrice > 0) && (item.weight > 0) && (item.deliveryWeeks >= 4);
-      if (requiredFields.supplier_sku) {
-          return basicValid && (item.supplierSku && item.supplierSku.trim().length > 0);
-      }
-      return basicValid;
+      
+      // Default to TRUE for critical fields if settings are not yet loaded or initialized
+      const reqPrice = requiredFields.price !== false;
+      const reqWeight = requiredFields.weight !== false;
+      const reqWeeks = requiredFields.delivery_weeks !== false;
+      const reqQty = requiredFields.quantity === true;
+      const reqComment = requiredFields.comment === true;
+      const reqSku = requiredFields.supplier_sku === true;
+      const reqImages = requiredFields.images === true;
+
+      if (reqPrice && (!item.BuyerPrice || item.BuyerPrice <= 0)) return false;
+      if (reqWeight && (!item.weight || item.weight <= 0)) return false;
+      if (reqWeeks && (!item.deliveryWeeks || item.deliveryWeeks < 4)) return false;
+      if (reqQty && (!item.offeredQuantity || item.offeredQuantity <= 0)) return false;
+      
+      if (reqSku && (!item.supplierSku || item.supplierSku.trim().length === 0)) return false;
+      if (reqComment && (!item.comment || item.comment.trim().length === 0)) return false;
+      if (reqImages && (!item.itemFiles || item.itemFiles.length === 0)) return false;
+
+      return true;
   });
 
   const handlePreSubmit = async () => {
-      if (requiredFields.supplier_sku) {
-          const missingSku = editingItems.some(item => {
-              const isMissing = item.offeredQuantity > 0 && (!item.supplierSku || item.supplierSku.trim() === '');
-              return isMissing;
-          });
-          if (missingSku) {
-              setToast({ message: 'Заполните поле "Поставщик" для всех позиций!', type: 'error' });
-              return;
-          }
+      // Re-validate just in case (though button is disabled)
+      if (!isValid) {
+          setToast({ message: 'Заполните все обязательные поля!', type: 'error' });
+          return;
       }
       await onSubmit(order.id, editingItems, supplierFiles);
   };

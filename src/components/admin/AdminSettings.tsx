@@ -62,7 +62,7 @@ export const AdminSettings: React.FC = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
                 <div className="flex items-center gap-3 mb-6">
                     <AlertCircle className="text-indigo-600" />
-                    <h2 className="text-lg font-bold text-slate-700">Обязательные поля для Закупщика</h2>
+                    <h2 className="text-lg font-bold text-slate-700">Обязательность полей</h2>
                 </div>
                 
                 <p className="text-sm text-slate-500 mb-6 max-w-2xl">
@@ -70,24 +70,45 @@ export const AdminSettings: React.FC = () => {
                     Если галочка стоит, система не даст отправить оффер без этих данных.
                 </p>
 
-                <div className="space-y-4">
-                    <label className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer group">
-                        <div className="relative flex items-center">
-                            <input 
-                                type="checkbox"
-                                className="peer h-6 w-6 cursor-pointer appearance-none rounded-lg border border-slate-300 shadow-sm transition-all checked:border-indigo-600 checked:bg-indigo-600 hover:border-indigo-400"
-                                checked={settings?.buyer_required_fields?.supplier_sku || false}
-                                onChange={(e) => setSettings({ ...settings, buyer_required_fields: { ...settings.buyer_required_fields, supplier_sku: e.target.checked } })}
-                            />
-                            <svg className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 border-b border-slate-100 pb-2">Закупщик</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[
+                                { key: 'supplier_sku', label: 'WeChat ID / номер поставщика', sub: 'Внутренний ID' },
+                                { key: 'comment', label: 'Комментарий / Замена / Аналог', sub: 'Текстовое поле' },
+                                { key: 'quantity', label: 'Кол-во', sub: 'Предлагаемое кол-во' },
+                                { key: 'price', label: 'Цена (¥)', sub: 'Цена закупки' },
+                                { key: 'weight', label: 'Вес (кг)', sub: 'Вес одной единицы' },
+                                { key: 'delivery_weeks', label: 'Срок (нед)', sub: 'Срок поставки' },
+                                { key: 'images', label: 'Ваши файлы', sub: 'Фото или документы' },
+                            ].map((field) => (
+                                <label key={field.key} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer group">
+                                    <div className="relative flex items-center">
+                                        <input 
+                                            type="checkbox"
+                                            className="peer h-6 w-6 cursor-pointer appearance-none rounded-lg border border-slate-300 shadow-sm transition-all checked:border-indigo-600 checked:bg-indigo-600 hover:border-indigo-400"
+                                            checked={settings?.buyer_required_fields?.[field.key] ?? (['price', 'weight', 'delivery_weeks'].includes(field.key))}
+                                            onChange={(e) => setSettings({ 
+                                                ...settings, 
+                                                buyer_required_fields: { 
+                                                    ...settings.buyer_required_fields, 
+                                                    [field.key]: e.target.checked 
+                                                } 
+                                            })}
+                                        />
+                                        <svg className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors">{field.label}</div>
+                                        <div className="text-xs text-slate-400 font-medium">{field.sub}</div>
+                                    </div>
+                                </label>
+                            ))}
                         </div>
-                        <div>
-                            <div className="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors">WeChat ID / номер поставщика</div>
-                            <div className="text-xs text-slate-400 font-medium">Поле во внутренней карточке товара</div>
-                        </div>
-                    </label>
+                    </div>
                 </div>
             </div>
 

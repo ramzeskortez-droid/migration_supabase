@@ -11,10 +11,10 @@ interface BuyerItemCardProps {
   orderId: string;
   bestStats?: { bestPrice: number | null, bestWeeks: number | null } | null;
   onCopy?: (item: any, index: number) => void;
-  isRequired?: boolean;
+  requiredFields?: any;
 }
 
-export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, index, onUpdate, isDisabled, orderId, bestStats, onCopy, isRequired }) => {
+export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, index, onUpdate, isDisabled, orderId, bestStats, onCopy, requiredFields = {} }) => {
   
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
@@ -90,12 +90,27 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
       );
   };
 
-  const getInputClass = (field: string) => {
+  // Determine requirement status (defaulting logic matches BuyerOrderDetails)
+  const isReqPrice = requiredFields.price !== false;
+  const isReqWeight = requiredFields.weight !== false;
+  const isReqWeeks = requiredFields.delivery_weeks !== false;
+  const isReqQty = requiredFields.quantity === true;
+  const isReqComment = requiredFields.comment === true;
+  const isReqSku = requiredFields.supplier_sku === true;
+  const isReqImages = requiredFields.images === true;
+
+  const getInputClass = (field: string, value: any) => {
       const base = "w-full text-center font-bold text-xs bg-white border border-gray-200 rounded md:rounded-lg py-1.5 md:py-2 px-1 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all";
       if (isDisabled) return `${base} bg-gray-100 text-gray-500 border-gray-200`;
       
-      if (field === 'deliveryWeeks' && (item.deliveryWeeks || 0) > 0 && (item.deliveryWeeks || 0) < 4) {
-          return `${base} border-rose-300 text-rose-600 focus:border-rose-500`;
+      let isInvalid = false;
+      if (field === 'BuyerPrice' && isReqPrice && (!value || value <= 0)) isInvalid = true;
+      if (field === 'weight' && isReqWeight && (!value || value <= 0)) isInvalid = true;
+      if (field === 'deliveryWeeks' && isReqWeeks && (!value || value < 4)) isInvalid = true;
+      if (field === 'offeredQuantity' && isReqQty && (!value || value <= 0)) isInvalid = true;
+
+      if (isInvalid) {
+          return `${base} border-red-300 bg-red-50 focus:border-red-500`;
       }
       return base;
   };
@@ -134,15 +149,21 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
             <div className={`mx-6 mt-4 mb-4 rounded-lg overflow-hidden border border-slate-200 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
                 <div className="bg-slate-900 px-4 py-1.5 grid grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-4 items-center">
                     <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Действия</div>
-                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Кол-во</div>
                     <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">
-                        Цена (¥) {bestStats?.bestPrice && <span className="text-emerald-400 ml-1">BEST: {bestStats.bestPrice}</span>}
+                        Кол-во {isReqQty && <span className="text-red-500 ml-0.5">*</span>}
                     </div>
-                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Вес (кг)</div>
                     <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">
-                        Срок (нед) {bestStats?.bestWeeks && <span className="text-blue-400 ml-1">BEST: {bestStats.bestWeeks}</span>}
+                        Цена (¥) {isReqPrice && <span className="text-red-500 ml-0.5">*</span>} {bestStats?.bestPrice && <span className="text-emerald-400 ml-1">BEST: {bestStats.bestPrice}</span>}
                     </div>
-                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Ваши файлы</div>
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">
+                        Вес (кг) {isReqWeight && <span className="text-red-500 ml-0.5">*</span>}
+                    </div>
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">
+                        Срок (нед) {isReqWeeks && <span className="text-red-500 ml-0.5">*</span>} {bestStats?.bestWeeks && <span className="text-blue-400 ml-1">BEST: {bestStats.bestWeeks}</span>}
+                    </div>
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">
+                        Ваши файлы {isReqImages && <span className="text-red-500 ml-0.5">*</span>}
+                    </div>
                 </div>
 
                 <div className="bg-slate-50 px-4 py-3 grid grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-4 items-center">
@@ -166,12 +187,12 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                         </button>
                     </div>
 
-                    <input disabled={isDisabled || isUnavailable} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity')} />
-                    <input disabled={isDisabled || isUnavailable} value={item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice')} placeholder="0" />
-                    <input disabled={isDisabled || isUnavailable} value={item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight')} placeholder="0.0" />
-                    <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks')} placeholder="Min 4" />
+                    <input disabled={isDisabled || isUnavailable} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity', item.offeredQuantity ?? item.quantity)} />
+                    <input disabled={isDisabled || isUnavailable} value={item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice', item.BuyerPrice)} placeholder="0" />
+                    <input disabled={isDisabled || isUnavailable} value={item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight', item.weight)} placeholder="0.0" />
+                    <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks', item.deliveryWeeks)} placeholder="Min 4" />
 
-                    <div className="h-[34px] flex items-center justify-center bg-white rounded border border-gray-300 overflow-hidden">
+                    <div className={`h-[34px] flex items-center justify-center bg-white rounded border overflow-hidden ${isReqImages && (!item.itemFiles || item.itemFiles.length === 0) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}>
                         <FileDropzone files={item.itemFiles || (item.photoUrl ? [{name: 'Фото', url: item.photoUrl, type: 'image/jpeg'}] : [])} onUpdate={(files) => onUpdate(index, 'itemFiles', files)} compact />
                     </div>
                 </div>
@@ -180,12 +201,15 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
         {/* 3. ДОП ИНФО (Комментарий и Поставщик) */}
         <div className={`px-6 pb-4 bg-white grid grid-cols-2 gap-4 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
             <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Комментарий / Замена / Аналог</label>
+                <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
+                    Комментарий / Замена / Аналог
+                    {isReqComment && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 <input 
                     disabled={isDisabled || isUnavailable} 
                     value={item.comment || ''} 
                     onChange={e => onUpdate(index, 'comment', e.target.value)} 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white outline-none transition-colors" 
+                    className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white outline-none transition-colors ${isReqComment && !item.comment ? 'border-red-300 bg-red-50' : ''}`}
                     placeholder="Ваш комментарий..." 
                 />
             </div>
@@ -193,14 +217,14 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
             <div>
                 <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
                     WeChat ID / номер поставщика
-                    {isRequired && <span className="text-red-500 ml-1">*</span>}
+                    {isReqSku && <span className="text-red-500 ml-1">*</span>}
                 </label>
                 <div className="relative">
                     <input 
                         disabled={isDisabled || isUnavailable} 
                         value={item.supplierSku || ''} 
                         onChange={e => onUpdate(index, 'supplierSku', e.target.value)} 
-                        className={`w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 transition-all ${isRequired && !item.supplierSku ? 'border-red-300 bg-red-50' : ''}`} 
+                        className={`w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 transition-all ${isReqSku && !item.supplierSku ? 'border-red-300 bg-red-50' : ''}`} 
                         placeholder="18510860570 / +86-XX-XXXX-XXX" 
                     />
                 </div>
