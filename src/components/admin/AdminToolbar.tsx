@@ -24,14 +24,11 @@ export const AdminToolbar: React.FC<AdminToolbarProps> = ({
 
       <div className="flex justify-between items-end border-b border-slate-200">
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-              {['new', 'manual', 'kp_sent', 'ready_to_buy', 'supplier_confirmed', 'awaiting_payment', 'in_transit', 'archive'].map(id => {
+              {['new', 'manual', 'kp_sent', 'ready_to_buy', 'archive'].map(id => {
                   const label = id === 'new' ? 'Новые' : 
                                 id === 'manual' ? 'Ручная' :
                                 id === 'kp_sent' ? 'КП готово' : 
                                 id === 'ready_to_buy' ? 'КП у клиента' : 
-                                id === 'supplier_confirmed' ? 'Подтверждено' : 
-                                id === 'awaiting_payment' ? 'Ждет оплаты' : 
-                                id === 'in_transit' ? 'В пути' : 
                                 id === 'archive' ? 'Архив' : id;
                   
                   const count = statusCounts[id] || 0;
