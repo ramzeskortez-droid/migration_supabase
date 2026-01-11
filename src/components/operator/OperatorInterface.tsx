@@ -229,6 +229,12 @@ export const OperatorInterface: React.FC = () => {
                 comment = `[Тема: ${orderInfo.emailSubject}]`;
             }
 
+            // FIX: Если itemFiles пуст, но есть photoUrl - создаем itemFiles явно
+            let finalItemFiles = p.itemFiles;
+            if ((!finalItemFiles || finalItemFiles.length === 0) && p.photoUrl) {
+                 finalItemFiles = [{ name: 'Фото', url: p.photoUrl, type: 'image/jpeg' }];
+            }
+
             return {
                 name: p.name,
                 quantity: p.quantity,
@@ -238,7 +244,7 @@ export const OperatorInterface: React.FC = () => {
                 article: p.article,
                 uom: p.uom,
                 photoUrl: p.photoUrl,
-                itemFiles: p.itemFiles
+                itemFiles: finalItemFiles
             };
         });
 

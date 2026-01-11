@@ -89,7 +89,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                   +{allFiles.length}
               </div>
               {/* Dropdown list on hover */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[999]">
                   <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-2">
                       <div className="text-[9px] font-black uppercase text-slate-400 mb-1 border-b border-slate-100 pb-1">Файлы ({allFiles.length})</div>
                       <div className="space-y-1">
@@ -107,8 +107,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-4 overflow-hidden">
-        <div className="bg-gray-100 border-b border-gray-300 hidden md:block">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-4">
+        <div className="bg-gray-100 border-b border-gray-300 hidden md:block rounded-t-xl">
             <div className={`grid ${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">№</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
@@ -121,24 +121,14 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
 
         {order.items.map((item, idx) => {
             const isExpanded = openRegistry.has(item.name);
-            const itemOffers: any[] = []; 
-            if (order.offers) { 
-                for (const off of order.offers) { 
-                    const matching = off.items.find(i => 
-                        (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
-                        (!i.order_item_id && i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
-                    ); 
-                    if (matching) {
-                        itemOffers.push({ offerId: off.id, clientName: off.clientName, supplierFiles: off.supplier_files, item: matching }); 
-                    }
-                } 
-            }
+            const isLast = idx === order.items.length - 1;
+            // ... (остальной код маппинга)
 
             return (
-                <div key={idx} className="border-b border-gray-200 last:border-b-0">
+                <div key={idx} className={`border-b border-gray-200 last:border-b-0 ${isLast ? 'rounded-b-xl' : ''}`}>
                     <div 
                         onClick={() => toggleRegistry(item.name)}
-                        className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 transition-colors cursor-pointer"
+                        className={`bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 transition-colors cursor-pointer ${isLast && !isExpanded ? 'rounded-b-xl' : ''}`}
                     >
                         <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                             <div className="flex items-center gap-2">

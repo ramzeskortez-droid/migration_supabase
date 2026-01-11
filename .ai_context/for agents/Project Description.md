@@ -10,6 +10,8 @@
 - **UI Kit:** Tailwind CSS, Lucide Icons.
 - **State Management:** React Query (TanStack Query) v5 — активное использование кеширования и инвалидации для мгновенного отклика UI.
 - **Database & Backend:** Supabase (PostgreSQL).
+  - **Project ID:** `axrrmbhcwtlbsffqosls` (Cloud)
+  - **Region:** `eu-north-1`
 - **AI Integration:** Groq API (LLaMA 3) — для парсинга неструктурированных заявок.
 - **Performance:** `react-virtuoso` для виртуализации длинных списков заказов.
 

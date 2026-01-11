@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Order } from '../../types';
-import { ChevronDown, ChevronUp, Check, FileText, Camera, ChevronRight, Pencil, Copy } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Copy } from 'lucide-react';
 import { DebugCopyModal } from '../shared/DebugCopyModal';
 import { Toast } from '../shared/Toast';
+import { OperatorClientInfo } from './OperatorClientInfo(ИнформацияОКлиенте)';
+import { OperatorOrderItems } from './OperatorOrderItems(СписокТоваров)';
 
 interface OperatorOrderRowProps {
   order: Order;
@@ -12,27 +14,14 @@ interface OperatorOrderRowProps {
   onStatusChange?: (orderId: string, status: string) => void;
 }
 
-const PRODUCT_GRID = "grid-cols-[90px_1fr_100px_100px_80px_80px_80px]";
-const OFFER_GRID = "grid-cols-[1.2fr_1fr_70px_80px_1.8fr_80px]";
-
 export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange }) => {
-  const [datePart, timePart] = order.createdAt.split(', ');
-  const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  const [datePart] = order.createdAt.split(', ');
   const [toast, setToast] = useState<{message: string} | null>(null);
   
   // Состояние для копирования
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
       isOpen: false, title: '', content: ''
   });
-
-  const toggleItem = (itemName: string) => {
-      setOpenItems(prev => {
-          const next = new Set(prev);
-          if (next.has(itemName)) next.delete(itemName);
-          else next.add(itemName);
-          return next;
-      });
-  };
 
   const formatPrice = (val?: number) => {
     if (!val) return '0';
@@ -41,7 +30,6 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   const getWinnersForItem = (item: any) => {
       const winners: any[] = [];
-      // Оператор видит варианты ТОЛЬКО если менеджер утвердил КП (готово или уже отправлено)
       if (order.offers && (order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено')) {
           order.offers.forEach((off: any) => {
               if (!off.items) return;
@@ -59,11 +47,6 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   const formatItemText = (item: any, idx: number, singleLine = false) => {
       const winners = getWinnersForItem(item);
-      // const priceText = item.adminPrice ? `${formatPrice(item.adminPrice)} ₽` : '-'; 
-      // В примере пользователя цены клиента в строке варианта нет, она есть в шапке?
-      // Пример: "Пылесос... | - | 100000..." (где "-" это цена клиента?)
-      // Я буду использовать "-" если цены нет.
-      
       const base = `${item.AdminName || item.name} | ${item.brand || '-'} | ${item.article || '-'} | ${item.quantity} ${item.uom || 'шт'}`;
       
       if (singleLine) {
@@ -169,185 +152,11 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
       {isExpanded && (
         <div className="p-6 bg-slate-50 border-t border-slate-100 animate-in slide-in-from-top-1 duration-200">
-            {/* 1. Информация о клиенте (1в1 как у менеджера) */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                        <FileText size={14} className="text-slate-400"/>
-                        <span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span>
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6 text-[10px]">
-                    <div>
-                        <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span>
-                        <span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span>
-                    </div>
-                    <div>
-                        <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span>
-                        <span className="font-bold text-slate-700">{order.clientPhone || "-"}</span>
-                    </div>
-                    <div>
-                        <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span>
-                        <span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span>
-                    </div>
-                    <div>
-                        <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span>
-                        <span className="font-black text-slate-800 uppercase">{order.location || "-"}</span>
-                    </div>
-                    <div>
-                        <span className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase mb-1">
-                            Тема письма
-                            {subject && subject !== '-' && (
-                                <button 
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(subject);
-                                        setToast({ message: 'Тема скопирована' });
-                                    }} 
-                                    className="text-slate-400 hover:text-indigo-600 transition-colors"
-                                    title="Копировать"
-                                >
-                                    <Copy size={10} />
-                                </button>
-                            )}
-                        </span>
-                        <span className="font-bold text-slate-700 uppercase">{subject}</span>
-                    </div>
-
-                    {/* Новая широкая строка: Файлы по заявке */}
-                    {order.order_files && order.order_files.length > 0 && (
-                        <div className="md:col-span-5 pt-3 border-t border-slate-100 mt-1">
-                            <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Файлы по заявке</span>
-                            <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] font-bold text-indigo-600">
-                                {order.order_files.map((file, fidx) => (
-                                    <React.Fragment key={fidx}>
-                                        <a 
-                                            href={file.url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="hover:underline flex items-center gap-1"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            {file.name}
-                                        </a>
-                                        {fidx < order.order_files.length - 1 && <span className="text-slate-300">,</span>}
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+            {/* 1. Информация о клиенте */}
+            <OperatorClientInfo order={order} subject={subject} />
 
             {/* 2. Состав заявки */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-4">
-                <div className="bg-gray-100 border-b border-gray-300 hidden md:block">
-                    <div className={`grid ${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
-                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">№</div>
-                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
-                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Бренд</div>
-                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Артикул</div>
-                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Кол-во</div>
-                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Ед.</div>
-                        <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Фото</div>
-                    </div>
-                </div>
-
-                <div className="divide-y divide-gray-200">
-                    {order.items && order.items.length > 0 ? (
-                        order.items.map((item, idx) => {
-                            const isItemExpanded = openItems.has(item.name);
-                            const winners = getWinnersForItem(item);
-
-                            return (
-                                <div key={idx} className="border-b border-gray-100 last:border-b-0">
-                                    <div 
-                                        onClick={() => winners.length > 0 && toggleItem(item.name)}
-                                        className={`bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors group/row ${winners.length > 0 ? 'cursor-pointer' : ''}`}
-                                    >
-                                        <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
-                                            <div className="flex items-center gap-2">
-                                                {winners.length > 0 && (
-                                                    <div className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
-                                                        {isItemExpanded ? <ChevronDown size={14} className="text-gray-600"/> : <ChevronRight size={14} className="text-gray-600"/>}
-                                                    </div>
-                                                )}
-                                                <div className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</div>
-                                                {(order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено') && (
-                                                    <button 
-                                                        onClick={(e) => handleCopyItem(e, item, idx)}
-                                                        className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm border border-indigo-100 group/copy ml-1"
-                                                        title="Скопировать позицию"
-                                                    >
-                                                        <Copy size={12} className="group-hover/copy:scale-110 transition-transform" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">
-                                                {item.AdminName || item.name}
-                                            </div>
-                                            <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{item.brand || '-'}</div>
-                                            <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
-                                            <div className="text-gray-700 text-center font-black text-xs">{item.quantity}</div>
-                                            <div className="text-gray-600 text-center text-[10px] font-bold uppercase">{item.uom || 'шт'}</div>
-                                            <div className="flex justify-center">
-                                                {item.opPhotoUrl ? (
-                                                    <a href={item.opPhotoUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:opacity-80 transition-opacity">
-                                                        <img src={item.opPhotoUrl} alt="Заявка" className="w-10 h-8 object-cover rounded border border-gray-300 shadow-sm" />
-                                                    </a>
-                                                ) : ( <span className="text-gray-300 text-[10px]">-</span> )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Вложенные офферы */}
-                                    {isItemExpanded && winners.length > 0 && (
-                                        <div className="bg-white animate-in slide-in-from-top-1 duration-200 overflow-x-auto">
-                                            <div className="bg-slate-800 text-white hidden md:block min-w-[1000px]">
-                                                <div className={`grid ${OFFER_GRID} gap-4 px-6 py-2 text-[8px] font-black uppercase tracking-widest items-center`}>
-                                                    <div>Варианты</div>
-                                                    <div>Бренд</div>
-                                                    <div className="text-center">Кол-во</div>
-                                                    <div className="text-center">Фото</div>
-                                                    <div className="text-left">Цена с учетом доставки</div>
-                                                    <div className="text-center">Срок</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="min-w-[1000px] divide-y divide-gray-100">
-                                                {winners.map((win, wIdx) => (
-                                                    <div key={wIdx} className="relative transition-all duration-300 border-l-4 border-l-emerald-500 bg-emerald-50/30">
-                                                        <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
-                                                            <div className="flex items-center gap-2 font-black text-emerald-700 uppercase text-[10px]">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                                Вариант {wIdx + 1}
-                                                            </div>
-                                                            <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{win.brand || '-'}</div>
-                                                            <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
-                                                            <div className="flex items-center justify-center">
-                                                                {win.photoUrl ? (
-                                                                    <a href={win.photoUrl} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity">
-                                                                        <img src={win.photoUrl} alt="Фото" className="w-10 h-8 object-cover rounded border border-gray-300 shadow-sm" />
-                                                                    </a>
-                                                                ) : ( <Camera className="w-4 h-4 text-gray-200" /> )}
-                                                            </div>
-                                                            <div className="text-base font-black text-gray-900 leading-none text-left">
-                                                                {formatPrice(win.adminPriceRub || win.sellerPrice)} ₽
-                                                            </div>
-                                                            <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.deliveryWeeks || '-'} нед.</div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })
-                    ) : (
-                        <div className="text-center text-[10px] font-bold text-slate-300 py-8 uppercase italic">Позиции не найдены</div>
-                    )}
-                </div>
-            </div>
+            <OperatorOrderItems order={order} onCopyItem={handleCopyItem} />
 
             <div className="mt-6 flex justify-end gap-3">
                 {(order.statusAdmin === 'КП готово' || order.statusAdmin === 'КП отправлено') && (
