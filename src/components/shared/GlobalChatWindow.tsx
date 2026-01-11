@@ -90,8 +90,11 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
 
   const handleNavigate = React.useCallback((oid: string) => {
       if (onNavigateToOrder) {
-          onNavigateToOrder(oid);
-          onClose();
+          // Defer state update to avoid conflicts during render cycle
+          setTimeout(() => {
+              onNavigateToOrder(oid);
+              onClose();
+          }, 0);
       }
   }, [onNavigateToOrder, onClose]);
 
