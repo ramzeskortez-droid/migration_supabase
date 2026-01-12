@@ -9,15 +9,26 @@ interface PartsListProps {
   setParts: (parts: Part[]) => void;
   onAddBrand: (name: string) => void;
   onValidationChange?: (isValid: boolean) => void; // Коллбэк для валидации
+  requiredFields?: any;
+  highlightedFields?: Set<string>;
+  blinkTrigger?: number;
 }
 
-export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBrand, onValidationChange }) => {
+export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBrand, onValidationChange, requiredFields = {}, highlightedFields = new Set(), blinkTrigger = 0 }) => {
   const [activeBrandInput, setActiveBrandInput] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   
   // Кэш проверенных брендов: { "makita": "Makita" } или { "unknown": null }
   const [brandCache, setBrandCache] = useState<Record<string, string | null>>({});
   const [validating, setValidating] = useState<Set<number>>(new Set());
+
+  // Helper for animation
+  const getHighlightClass = (partId: number, field: string) => {
+      if (highlightedFields.has(`part_${partId}_${field}`)) {
+          return 'ring-2 ring-red-500 bg-red-50 animate-[pulse_0.5s_ease-in-out_1]';
+      }
+      return '';
+  };
 
   // Эффект: уведомляем родителя об изменении общей валидности брендов
   useEffect(() => {
@@ -103,12 +114,12 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
         {/* Header Row */}
         <div className="grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
           <div className={`${headerClass} text-center`}>#</div>
-          <div className={headerClass}>Наименование <span className="text-red-500">*</span></div>
-          <div className={headerClass}>Бренд <span className="text-red-500">*</span></div>
-          <div className={headerClass}>Артикул</div>
-          <div className={`${headerClass} text-center`}>Ед.</div>
-          <div className={`${headerClass} text-center`}>Кол-во</div>
-          <div className={`${headerClass} text-center`}>Фото</div>
+          <div className={headerClass}>Наименование {requiredFields.name && <span className="text-red-500">*</span>}</div>
+          <div className={headerClass}>Бренд {requiredFields.brand && <span className="text-red-500">*</span>}</div>
+          <div className={headerClass}>Артикул {requiredFields.article && <span className="text-red-500">*</span>}</div>
+          <div className={`${headerClass} text-center`}>Ед. {requiredFields.uom && <span className="text-red-500">*</span>}</div>
+          <div className={`${headerClass} text-center`}>Кол-во {requiredFields.quantity && <span className="text-red-500">*</span>}</div>
+          <div className={`${headerClass} text-center`}>Фото {requiredFields.photos && <span className="text-red-500">*</span>}</div>
         </div>
 
         {parts.map((part, idx) => {
@@ -137,16 +148,18 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                
                <div>
                  <input 
+                    key={`name_${part.id}_${blinkTrigger}`}
                     value={part.name}
                     onChange={(e) => updatePart(part.id, 'name', e.target.value)}
                     placeholder="Наименование"
-                    className={inputClass}
+                    className={`${inputClass} ${getHighlightClass(part.id, 'name')}`}
                  />
                </div>
 
                {/* Brand Input */}
                <div className="relative">
                  <input 
+                    key={`brand_${part.id}_${blinkTrigger}`}
                     value={part.brand}
                     onChange={(e) => {
                         updatePart(part.id, 'brand', e.target.value);
@@ -159,6 +172,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                         ${isError ? 'border-red-500 bg-red-50 text-red-700' : ''}
                         ${isNonStrictMatch ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : ''}
                         ${isStrictMatch ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : ''}
+                        ${getHighlightClass(part.id, 'brand')}
                     `}
                  />
                  
@@ -211,7 +225,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                     value={part.article}
                     onChange={(e) => updatePart(part.id, 'article', e.target.value)}
                     placeholder="Артикул"
-                    className={inputClass}
+                    className={`${inputClass} ${getHighlightClass(part.id, 'article')}`}
                  />
                </div>
 
@@ -236,7 +250,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                         const val = parseInt(e.target.value);
                         updatePart(part.id, 'quantity', isNaN(val) ? 1 : val);
                     }}
-                    className={`${inputClass} text-center font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                    className={`${inputClass} text-center font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getHighlightClass(part.id, 'quantity')}`}
                   />
                </div>
 

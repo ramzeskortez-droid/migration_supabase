@@ -4,7 +4,8 @@ import { ExchangeRates } from '../../types';
 import { Banknote, Save, Calendar, Percent, Truck, RefreshCw, AlertCircle } from 'lucide-react';
 
 export const AdminFinanceSettings: React.FC = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Используем локальную дату (YYYY-MM-DD)
+    const todayStr = new Date().toLocaleDateString('sv-SE');
     
     const [rates, setRates] = useState<ExchangeRates>({
         date: todayStr,
@@ -116,8 +117,10 @@ export const AdminFinanceSettings: React.FC = () => {
         try {
             // rates уже содержит актуальные числа (обновляются в handleChange)
             await SupabaseService.upsertExchangeRates(rates);
-            setStatus({ message: 'Курсы на сегодня успешно сохранены', type: 'success' });
-            setTimeout(() => setStatus(null), 1000);
+            setStatus({ message: 'Курсы на сегодня успешно сохранены. Перезагрузка...', type: 'success' });
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
         } catch (e: any) {
             setStatus({ message: 'Ошибка сохранения: ' + e.message, type: 'error' });
         } finally {

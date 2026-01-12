@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SupabaseService } from '../../services/supabaseService';
 import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab, ExchangeRates, WorkflowStatus, AppUser } from '../../types';
-import { CheckCircle2, AlertCircle, Settings, FileText, Send, ShoppingCart, CreditCard, Truck, PackageCheck } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Settings, FileText, Send, ShoppingCart, CreditCard, Truck, PackageCheck, User, LogOut, Ban, MessageCircle } from 'lucide-react';
 import { AdminSidebar } from './AdminSidebar';
-import { AdminHeader } from './AdminHeader';
 import { AdminToolbar } from './AdminToolbar';
 import { AdminOrdersList } from './AdminOrdersList';
 import { AdminFinanceSettings } from './AdminFinanceSettings';
@@ -13,6 +12,8 @@ import { AdminSettings } from './AdminSettings';
 import { useOrdersInfinite } from '../../hooks/useOrdersInfinite';
 import { useQueryClient } from '@tanstack/react-query';
 import { GlobalChatWindow } from '../shared/GlobalChatWindow';
+import { useHeaderStore } from '../../store/headerStore';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -27,6 +28,8 @@ const TAB_MAPPING: Record<string, AdminTab> = {
 
 export const AdminInterface: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const setHeader = useHeaderStore(s => s.setCustomRightContent);
   const [currentView, setCurrentView] = useState<'listing' | 'statuses' | 'finance' | 'brands' | 'users' | 'settings'>('listing');
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,6 +53,81 @@ export const AdminInterface: React.FC = () => {
   const [chatTarget, setChatTarget] = useState<{ isOpen: boolean, orderId: string, supplierName?: string } | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+
+  // --- Header Logic ---
+  const handleLogout = () => {
+      localStorage.removeItem('adminToken');
+      navigate('/');
+  };
+
+  const handleClearDB = async () => { 
+      if(!confirm('Удалить все?')) return; 
+      setIsDbLoading(true); 
+      try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setIsDbLoading(false); } 
+  };
+
+  const handleSeed = async (count: number) => { 
+      setIsDbLoading(true); 
+      try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c), 'op1'); refetch(); } catch(e) {} finally { setIsDbLoading(false); setSeedProgress(null); } 
+  };
+
+  useEffect(() => {
+      setHeader(
+        <div className="flex items-center gap-6">
+            {/* Debug Controls */}
+            {debugMode && (
+                <div className="flex gap-2 animate-in fade-in slide-in-from-right-4 mr-4">
+                   <button onClick={handleClearDB} disabled={isDbLoading} className="px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 hover:bg-red-100 transition-colors">
+                      <Ban size={14}/> {isDbLoading ? '...' : 'Очистить БД'}
+                   </button>
+                   <div className="flex bg-indigo-50 rounded-lg p-1 border border-indigo-100 items-center">
+                      {[100, 1000].map(count => (
+                          <button key={count} disabled={isDbLoading} onClick={() => handleSeed(count)} className="px-3 py-1.5 hover:bg-white rounded-md text-[10px] font-black uppercase text-indigo-600 transition-colors">
+                              {count}
+                          </button>
+                      ))}
+                   </div>
+                   {seedProgress !== null && <span className="text-[10px] font-bold text-slate-400 self-center">{seedProgress}%</span>}
+                </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={() => setIsGlobalChatOpen(true)}
+                    className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all relative"
+                    title="Глобальный чат"
+                >
+                    <MessageCircle size={20} />
+                    {unreadChatCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                            {unreadChatCount}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* Profile */}
+            <div className="flex items-center gap-3 pl-6 border-l border-slate-100 h-8">
+                <div className="text-right hidden sm:block">
+                    <div className="text-xs font-bold text-slate-900">Manager</div>
+                    <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Администратор</div>
+                </div>
+                <div className="h-9 w-9 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-sm">
+                    <User size={16} strokeWidth={2.5} />
+                </div>
+                <button 
+                    onClick={handleLogout}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all ml-2"
+                    title="Выйти"
+                >
+                    <LogOut size={18} />
+                </button>
+            </div>
+        </div>
+      );
+      return () => setHeader(null);
+  }, [debugMode, unreadChatCount, showLogs, isDbLoading, seedProgress]);
 
   // Загрузка счетчика непрочитанных
   const fetchUnreadCount = async () => {
@@ -392,18 +470,7 @@ export const AdminInterface: React.FC = () => {
                          </div>
                       )}
                       
-                      <AdminHeader 
-                        showLogs={showLogs}
-                        setShowLogs={setShowLogs}
-                        loading={isLoading || isDbLoading}
-                        logs={logs}
-                        debugMode={debugMode}
-                        onClearDB={async () => { if(!confirm('Удалить все?')) return; setIsDbLoading(true); try { await SupabaseService.deleteAllOrders(); refetch(); } catch(e) {} finally { setIsDbLoading(false); } }}
-                        onSeed={async (count) => { setIsDbLoading(true); try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c), 'op1'); refetch(); } catch(e) {} finally { setIsDbLoading(false); setSeedProgress(null); } }}
-                        seedProgress={seedProgress}
-                        unreadCount={unreadChatCount}
-                        onOpenGlobalChat={() => setIsGlobalChatOpen(true)}
-                      />
+                      {/* AdminHeader удален, используется глобальный хедер */}
 
                       <AdminToolbar 
                         searchQuery={searchQuery}

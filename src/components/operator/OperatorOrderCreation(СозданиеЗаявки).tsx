@@ -39,6 +39,15 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     const [isSaving, setIsSaving] = useState(false);
     const [isBrandsValid, setIsBrandsValid] = useState(false);
     const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
+    const [requiredFields, setRequiredFields] = useState<any>({ name: true, brand: true }); // Defaults
+    const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
+    const [blinkTrigger, setBlinkTrigger] = useState(0);
+
+    useEffect(() => {
+        SupabaseService.getSystemSettings('operator_required_fields').then(res => {
+            if (res) setRequiredFields(res);
+        });
+    }, []);
 
     // Stats
     const [requestHistory, setRequestHistory] = useState<LogHistory[]>([]);
@@ -145,7 +154,33 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
         setToast({ message: 'Данные заполнены (2 позиции)', type: 'success' });
     };
 
-    const isFormValid = parts.length > 0 && parts.every(p => p.name?.trim() && p.brand?.trim()) && isBrandsValid;
+    const validateForm = () => {
+        const errors: string[] = [];
+        const highlighted = new Set<string>();
+        
+        // 1. Header Fields
+        if (requiredFields.client_name && !orderInfo.clientName?.trim()) { errors.push('Имя клиента'); highlighted.add('clientName'); }
+        if (requiredFields.client_phone && !orderInfo.clientPhone?.trim()) { errors.push('Телефон'); highlighted.add('clientPhone'); }
+        if (requiredFields.client_email && !orderInfo.clientEmail?.trim()) { errors.push('Почта'); highlighted.add('clientEmail'); }
+        if (requiredFields.location && !orderInfo.city?.trim()) { errors.push('Адрес/Город'); highlighted.add('city'); }
+        if (requiredFields.email_subject && !orderInfo.emailSubject?.trim()) { errors.push('Тема письма'); highlighted.add('emailSubject'); }
+
+        // 2. Parts Fields
+        parts.forEach((p, idx) => {
+            if (requiredFields.name && !p.name?.trim()) { errors.push(`Поз. ${idx+1}: Наименование`); highlighted.add(`part_${p.id}_name`); }
+            if (requiredFields.brand && !p.brand?.trim()) { errors.push(`Поз. ${idx+1}: Бренд`); highlighted.add(`part_${p.id}_brand`); }
+            if (requiredFields.article && !p.article?.trim()) { errors.push(`Поз. ${idx+1}: Артикул`); highlighted.add(`part_${p.id}_article`); }
+            if (requiredFields.quantity && (!p.quantity || p.quantity <= 0)) { errors.push(`Поз. ${idx+1}: Кол-во`); highlighted.add(`part_${p.id}_quantity`); }
+            if (requiredFields.photos && (!p.itemFiles?.length && !p.photoUrl)) {
+                 // Check if orderFiles exists (общие фото могут считаться зачет)
+                 if (orderFiles.length === 0) { errors.push(`Поз. ${idx+1}: Фото/Файлы`); highlighted.add(`part_${p.id}_photos`); }
+            }
+        });
+
+        if (requiredFields.brand && !isBrandsValid) errors.push('Бренды должны быть из базы (зеленые)');
+
+        return { errors, highlighted };
+    };
 
     const handleCreateOrder = async () => {
         if (!currentUser) return;
@@ -155,11 +190,20 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
             return;
         }
 
-        if (!isFormValid) {
-            setToast({ message: 'Заполните обязательные поля: Бренд (должен быть зеленым) и Наименование', type: 'error' });
+        const { errors, highlighted } = validateForm();
+        if (errors.length > 0) {
+            setHighlightedFields(highlighted);
+            setBlinkTrigger(prev => prev + 1); // Trigger animation
+            setToast({ message: `Заполните обязательные поля: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`, type: 'error' });
+            
+            // Убираем подсветку через 1 секунду (после анимации)
+            setTimeout(() => {
+                setHighlightedFields(new Set());
+            }, 1000);
             return;
         }
         
+        setHighlightedFields(new Set()); // Clear on success or proceeding
         setIsSaving(true);
         try {
             const newBrands = parts.filter(p => p.isNewBrand && p.brand?.trim()).map(p => p.brand.trim());
@@ -277,7 +321,14 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 document.body
             )}
 
-            <OrderInfoForm orderInfo={orderInfo} setOrderInfo={setOrderInfo} onQuickFill={debugMode ? handleQuickFill : undefined} />
+            <OrderInfoForm 
+                orderInfo={orderInfo} 
+                setOrderInfo={setOrderInfo} 
+                onQuickFill={debugMode ? handleQuickFill : undefined} 
+                requiredFields={requiredFields} 
+                highlightedFields={highlightedFields}
+                blinkTrigger={blinkTrigger}
+            />
             
             <OrderFilesUpload 
                 files={orderFiles} 
@@ -288,6 +339,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                     return files.map(f => ({ file: f, label: `Поз. ${idx + 1}` }));
                 })}
                 onRemoveItemFile={handleRemoveItemFile}
+                required={requiredFields.photos}
             />
             
             <PartsList 
@@ -295,6 +347,9 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 setParts={setParts} 
                 onAddBrand={handleAddBrand}
                 onValidationChange={setIsBrandsValid}
+                requiredFields={requiredFields}
+                highlightedFields={highlightedFields}
+                blinkTrigger={blinkTrigger}
             />
             
             <AiAssistant 
@@ -313,7 +368,6 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 }}
                 onCreateOrder={handleCreateOrder}
                 isSaving={isSaving}
-                isFormValid={isFormValid} 
                 debugMode={debugMode}
             />
             

@@ -1,7 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { SupabaseService } from '../../services/supabaseService';
-import { Save, AlertCircle, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Toast } from '../shared/Toast';
+
+const AccordionSection = ({ title, children, defaultOpen = false }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+    return (
+        <div className="border border-slate-200 rounded-xl overflow-hidden mb-4">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+            >
+                <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest">{title}</h3>
+                {isOpen ? <ChevronUp size={16} className="text-slate-400"/> : <ChevronDown size={16} className="text-slate-400"/>}
+            </button>
+            {isOpen && (
+                <div className="p-4 bg-white border-t border-slate-100 animate-in slide-in-from-top-2">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const AdminSettings: React.FC = () => {
     const [settings, setSettings] = useState<any>(null);
@@ -16,17 +36,19 @@ export const AdminSettings: React.FC = () => {
     const loadSettings = async () => {
         setLoading(true);
         try {
-            const [buyerFields, debugMode] = await Promise.all([
+            const [buyerFields, operatorFields, debugMode] = await Promise.all([
                 SupabaseService.getSystemSettings('buyer_required_fields'),
+                SupabaseService.getSystemSettings('operator_required_fields'),
                 SupabaseService.getSystemSettings('debug_mode')
             ]);
             setSettings({
                 buyer_required_fields: buyerFields || { supplier_sku: false },
+                operator_required_fields: operatorFields || { name: true, brand: true }, // Default required
                 debug_mode: debugMode || false
             });
         } catch (e) {
             setToast({ message: 'Ошибка загрузки настроек', type: 'error' });
-            setSettings({ buyer_required_fields: { supplier_sku: false }, debug_mode: false });
+            setSettings({ buyer_required_fields: {}, operator_required_fields: { name: true, brand: true }, debug_mode: false });
         } finally {
             setLoading(false);
         }
@@ -37,6 +59,7 @@ export const AdminSettings: React.FC = () => {
         try {
             await Promise.all([
                 SupabaseService.updateSystemSettings('buyer_required_fields', settings.buyer_required_fields, 'Manager'),
+                SupabaseService.updateSystemSettings('operator_required_fields', settings.operator_required_fields, 'Manager'),
                 SupabaseService.updateSystemSettings('debug_mode', settings.debug_mode, 'Manager')
             ]);
             setToast({ message: 'Настройки сохранены. Перезагрузка...', type: 'success' });
@@ -70,9 +93,8 @@ export const AdminSettings: React.FC = () => {
                     Если галочка стоит, система не даст отправить оффер без этих данных.
                 </p>
 
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 border-b border-slate-100 pb-2">Закупщик</h3>
+                <div className="space-y-2">
+                    <AccordionSection title="Поля Закупщика">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {[
                                 { key: 'supplier_sku', label: 'WeChat ID / номер поставщика', sub: 'Внутренний ID' },
@@ -108,7 +130,50 @@ export const AdminSettings: React.FC = () => {
                                 </label>
                             ))}
                         </div>
-                    </div>
+                    </AccordionSection>
+
+                    <AccordionSection title="Поля Оператора">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[
+                                { key: 'client_phone', label: 'Телефон клиента', sub: 'В шапке' },
+                                { key: 'client_name', label: 'Имя клиента', sub: 'В шапке' },
+                                { key: 'client_email', label: 'Почта клиента', sub: 'В шапке' },
+                                { key: 'location', label: 'Адрес / Город', sub: 'В шапке' },
+                                { key: 'deadline', label: 'Срок до', sub: 'Дедлайн' },
+                                { key: 'email_subject', label: 'Тема письма', sub: 'Для поиска' },
+                                { key: 'name', label: 'Наименование', sub: 'В позиции' },
+                                { key: 'brand', label: 'Бренд', sub: 'В позиции (зеленый)' },
+                                { key: 'article', label: 'Артикул', sub: 'В позиции' },
+                                { key: 'uom', label: 'Ед. изм.', sub: 'шт/компл' },
+                                { key: 'quantity', label: 'Кол-во', sub: 'В позиции' },
+                                { key: 'photos', label: 'Фото / Файлы', sub: 'В позиции или общие' },
+                            ].map((field) => (
+                                <label key={field.key} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer group">
+                                    <div className="relative flex items-center">
+                                        <input 
+                                            type="checkbox"
+                                            className="peer h-6 w-6 cursor-pointer appearance-none rounded-lg border border-slate-300 shadow-sm transition-all checked:border-indigo-600 checked:bg-indigo-600 hover:border-indigo-400"
+                                            checked={settings?.operator_required_fields?.[field.key] ?? false}
+                                            onChange={(e) => setSettings({ 
+                                                ...settings, 
+                                                operator_required_fields: { 
+                                                    ...settings.operator_required_fields, 
+                                                    [field.key]: e.target.checked 
+                                                } 
+                                            })}
+                                        />
+                                        <svg className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-700 group-hover:text-indigo-700 transition-colors">{field.label}</div>
+                                        <div className="text-xs text-slate-400 font-medium">{field.sub}</div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                    </AccordionSection>
                 </div>
             </div>
 

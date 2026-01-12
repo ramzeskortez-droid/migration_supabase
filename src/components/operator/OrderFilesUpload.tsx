@@ -15,9 +15,10 @@ interface OrderFilesUploadProps {
   onLog?: (message: string) => void;
   itemFiles?: { file: UploadedFile, label: string }[];
   onRemoveItemFile?: (url: string) => void; // Добавлено: коллбэк для удаления файла позиции
+  required?: boolean;
 }
 
-export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFiles, onLog, itemFiles = [], onRemoveItemFile }) => {
+export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFiles, onLog, itemFiles = [], onRemoveItemFile, required }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +89,9 @@ export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFi
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-        <h2 className="font-bold text-slate-800 tracking-tight uppercase text-xs">Файлы по заявке</h2>
+        <h2 className="font-bold text-slate-800 tracking-tight uppercase text-xs">
+            Файлы по заявке {required && <span className="text-red-500">*</span>}
+        </h2>
       </div>
 
       {/* Отображение загруженных файлов в строку */}

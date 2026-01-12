@@ -6,9 +6,12 @@ interface OrderInfoFormProps {
   orderInfo: OrderInfo;
   setOrderInfo: (info: OrderInfo) => void;
   onQuickFill?: () => void;
+  requiredFields?: any;
+  highlightedFields?: Set<string>;
+  blinkTrigger?: number;
 }
 
-export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrderInfo, onQuickFill }) => {
+export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrderInfo, onQuickFill, requiredFields = {}, highlightedFields = new Set(), blinkTrigger = 0 }) => {
   const handleChange = (field: keyof OrderInfo, value: string) => {
     // Валидация
     if (field === 'clientName' && value.length > 20) return;
@@ -21,6 +24,15 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
 
     setOrderInfo({ ...orderInfo, [field]: value });
   };
+
+  const getClassName = (field: string, baseClass: string) => {
+      if (highlightedFields.has(field)) {
+          return `${baseClass} ring-2 ring-red-500 bg-red-50 animate-[pulse_0.5s_ease-in-out_1]`;
+      }
+      return baseClass;
+  };
+
+  const baseInputClass = "w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium";
 
   return (
     <section>
@@ -45,9 +57,12 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         
         {/* Тема письма (во всю ширину) */}
         <div className="md:col-span-12">
-           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Тема письма</label>
+           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+               Тема письма {requiredFields.email_subject && <span className="text-red-500">*</span>}
+           </label>
            <input 
-             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
+             key={`emailSubject_${blinkTrigger}`}
+             className={getClassName('emailSubject', baseInputClass)}
              placeholder="Re: Запрос на запчасти..."
              value={orderInfo.emailSubject}
              onChange={(e) => handleChange('emailSubject', e.target.value)}
@@ -57,18 +72,24 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         {/* Row 1: Client & Contact */}
         <div className="md:col-span-4 grid grid-cols-2 gap-2">
            <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Телефон</label>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                   Телефон {requiredFields.client_phone && <span className="text-red-500">*</span>}
+               </label>
               <input 
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
+                key={`clientPhone_${blinkTrigger}`}
+                className={getClassName('clientPhone', baseInputClass)}
                 placeholder="+7 (999)..."
                 value={orderInfo.clientPhone}
                 onChange={(e) => handleChange('clientPhone', e.target.value)}
               />
            </div>
            <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Имя</label>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                   Имя {requiredFields.client_name && <span className="text-red-500">*</span>}
+               </label>
               <input 
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
+                key={`clientName_${blinkTrigger}`}
+                className={getClassName('clientName', baseInputClass)}
                 placeholder="Иван"
                 value={orderInfo.clientName}
                 onChange={(e) => handleChange('clientName', e.target.value)}
@@ -78,22 +99,28 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
 
         <div className="md:col-span-4 grid grid-cols-2 gap-2">
             <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Почта клиента</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Почта клиента {requiredFields.client_email && <span className="text-red-500">*</span>}
+                </label>
                 <input 
-                    className={`w-full bg-slate-50 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-400 font-medium ${
+                    key={`clientEmail_${blinkTrigger}`}
+                    className={getClassName('clientEmail', `w-full bg-slate-50 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-400 font-medium ${
                         orderInfo.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orderInfo.clientEmail) 
                         ? 'border-red-300 focus:border-red-500 text-red-600' 
                         : 'border-slate-200 focus:border-indigo-500'
-                    }`}
+                    }`)}
                     placeholder="example@mail.com"
                     value={orderInfo.clientEmail}
                     onChange={(e) => handleChange('clientEmail', e.target.value)}
                 />
             </div>
             <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Адрес</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Адрес {requiredFields.location && <span className="text-red-500">*</span>}
+                </label>
                 <input 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
+                    key={`city_${blinkTrigger}`}
+                    className={getClassName('city', baseInputClass)}
                     placeholder="Москва, МО"
                     value={orderInfo.city}
                     onChange={(e) => handleChange('city', e.target.value)}
@@ -102,10 +129,12 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         </div>
 
         <div className="md:col-span-4">
-           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Срок до</label>
+           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+               Срок до {requiredFields.deadline && <span className="text-red-500">*</span>}
+           </label>
            <input 
             type="date"
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-medium text-slate-700"
+            className={baseInputClass}
             value={orderInfo.deadline}
             onChange={(e) => handleChange('deadline', e.target.value)}
           />
