@@ -30,7 +30,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   const getWinnersForItem = (item: any) => {
       const winners: any[] = [];
-      const allowedStatuses = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'];
+      const allowedStatuses = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен', 'Обработано вручную'];
       
       if (order.offers && allowedStatuses.includes(order.statusManager || '')) {
           order.offers.forEach((off: any) => {
@@ -149,6 +149,8 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                 ${order.statusManager === 'Выполнен' || order.statusManager === 'КП отправлено' ? 'bg-emerald-100 text-emerald-700' : 
                   order.statusManager === 'Аннулирован' || order.statusManager === 'Отказ' ? 'bg-red-100 text-red-700' :
                   order.statusManager === 'КП готово' ? 'bg-amber-100 text-amber-700' :
+                  order.statusManager === 'Идут торги' ? 'bg-blue-100 text-blue-700' :
+                  order.statusManager === 'Обработано вручную' ? 'bg-purple-100 text-purple-700' :
                   'bg-slate-100 text-slate-500'
                 }
             `}>
@@ -170,7 +172,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
             <OperatorOrderItems order={order} onCopyItem={handleCopyItem} />
 
             <div className="mt-6 flex justify-end gap-3">
-                {['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'].includes(order.statusManager || '') && (
+                {['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен', 'Обработано вручную'].includes(order.statusManager || '') && (
                     <button 
                         onClick={handleCopyAll}
                         className="px-6 py-3 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all flex items-center gap-2"
@@ -188,7 +190,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                 )}
                 {order.statusManager === 'Ручная обработка' && onStatusChange && (
                     <button 
-                        onClick={() => onStatusChange(order.id, 'Архив')}
+                        onClick={() => onStatusChange(order.id, 'Обработано вручную')}
                         className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-xl transition-all flex items-center gap-2 active:scale-95"
                     >
                         <Check size={14} /> Завершить обработку

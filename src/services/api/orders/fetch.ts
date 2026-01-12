@@ -14,7 +14,8 @@ export const getOrders = async (
     ownerToken?: string, 
     buyerToken?: string, 
     excludeOffersFrom?: string,
-    buyerTab?: 'new' | 'hot' | 'history' | 'won' | 'lost' | 'cancelled'
+    buyerTab?: 'new' | 'hot' | 'history' | 'won' | 'lost' | 'cancelled',
+    operatorTab?: 'processing' | 'trading' // Новый аргумент
 ): Promise<{ data: Order[], nextCursor?: number }> => {
     
     let matchingIds: any[] = [];
@@ -47,7 +48,7 @@ export const getOrders = async (
         is_manual_processing,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
-        offers (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
+        offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
     `);
 
     if (buyerTab === 'new' || buyerTab === 'hot') {
@@ -193,8 +194,22 @@ export const getOrders = async (
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         const orderDate = new Date(order.created_at);
+        
+        // Логика статусов для Оператора
+        const hasOffers = order.offers && order.offers.length > 0;
+        const isTrading = hasOffers && order.status_manager === 'В обработке';
+        
         // Отключаем логику ГОРИТ для Оператора (ownerToken)
         const isHot = !ownerToken && order.status_manager === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
+        
+        // Подмена статуса для Оператора
+        let displayStatus = order.status_manager;
+        if (ownerToken) {
+             if (isTrading) displayStatus = 'Идут торги';
+             else if (isHot) displayStatus = 'ГОРИТ'; // Вдруг решим вернуть
+        } else {
+             if (isHot) displayStatus = 'ГОРИТ';
+        }
 
         return {
             id: String(order.id),
@@ -203,7 +218,7 @@ export const getOrders = async (
             clientPhone: order.client_phone,
             clientEmail: order.client_email,
             status: order.status_manager === 'ЗАКРЫТ' ? OrderStatus.CLOSED : OrderStatus.OPEN,
-            statusManager: isHot ? 'ГОРИТ' : order.status_manager,
+            statusManager: displayStatus,
             statusClient: order.status_client,
             statusSeller: order.status_supplier,
             workflowStatus: order.status_client as WorkflowStatus,
@@ -232,6 +247,11 @@ export const getOrders = async (
             })) || [],
             isProcessed: order.status_manager !== 'В обработке' && order.status_manager !== 'ОТКРЫТ'
         } as unknown as Order;
+    })
+    // Фильтрация на клиенте для 'processing' (исключаем те, что ушли в торги)
+    .filter(o => {
+        if (operatorTab === 'processing') return o.statusManager !== 'Идут торги';
+        return true;
     });
     
     const nextCursor = data.length === limit ? data[data.length - 1].id : undefined;

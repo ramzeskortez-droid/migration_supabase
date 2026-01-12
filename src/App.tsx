@@ -61,41 +61,6 @@ const App: React.FC = () => {
                     CHINA-<span className="text-indigo-600">NAI</span>
                     </span>
                 </div>
-
-                <div className="relative">
-                    <button 
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="flex items-center gap-2 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-full text-[11px] font-black uppercase text-slate-600 transition-all border border-slate-200 hover:border-slate-300 hover:shadow-sm"
-                    >
-                        <span className="text-indigo-600">{getActiveLabel()}</span>
-                        <ChevronDown size={12} className={`text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {isMenuOpen && (
-                        <>
-                            <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
-                            <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-1 animate-in slide-in-from-top-2 fade-in duration-200">
-                                {[
-                                    { path: '/', label: 'Главная', icon: Home, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                                    { path: '/operator', label: 'Оператор', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                                    { path: '/buyer', label: 'Закупщик', icon: ShoppingBag, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                                    { path: '/admin', label: 'Менеджер', icon: ShieldCheck, color: 'text-rose-600', bg: 'bg-rose-50' }
-                                ].map(item => (
-                                    <button 
-                                        key={item.path}
-                                        onClick={() => handleNavigation(item.path)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${isActive(item.path) && item.path !== '/' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
-                                    >
-                                        <div className={`p-1.5 rounded-lg ${isActive(item.path) && item.path !== '/' ? 'bg-white shadow-sm' : item.bg} ${isActive(item.path) && item.path !== '/' ? 'text-indigo-600' : item.color}`}>
-                                            <item.icon size={14} />
-                                        </div>
-                                        <span>{item.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
             </div>
 
             {/* Right Side: Currency Rates & Custom Actions */}

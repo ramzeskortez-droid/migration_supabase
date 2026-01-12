@@ -24,6 +24,8 @@ import * as ordersUpdateApi from './api/orders/update';
 import * as ordersWorkflowApi from './api/orders/workflow';
 import * as ordersDebugApi from './api/orders/debug';
 import * as ordersStatsApi from './api/orders/stats';
+import * as emailArchiveApi from './api/email/archive';
+import * as emailLockingApi from './api/email/locking';
 
 export class SupabaseService {
   // --- AUTH ---
@@ -39,6 +41,11 @@ export class SupabaseService {
   static upsertExchangeRates = ratesApi.upsertExchangeRates;
   static getSystemSettings = settingsApi.getSystemSettings;
   static updateSystemSettings = settingsApi.updateSystemSettings;
+
+  // --- EMAIL ---
+  static archiveEmail = emailArchiveApi.archiveEmail;
+  static lockEmail = emailLockingApi.lockEmail;
+  static unlockEmail = emailLockingApi.unlockEmail;
 
   // --- STORAGE ---
   static uploadFile = uploadApi.uploadFile;

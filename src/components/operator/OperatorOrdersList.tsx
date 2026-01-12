@@ -67,9 +67,10 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       let statusFilter = '';
       switch (activeTab) {
           case 'processing': statusFilter = 'В обработке'; break;
+          case 'trading': statusFilter = 'В обработке'; break; // Для торгов фильтр тот же, но будет доп. проверка на offers > 0
           case 'manual': statusFilter = 'Ручная обработка'; break;
           case 'processed': statusFilter = 'КП готово'; break;
-          case 'archive': statusFilter = 'Архив,Аннулирован,Отказ,КП отправлено,Выполнен'; break;
+          case 'archive': statusFilter = 'Архив,Аннулирован,Отказ,КП отправлено,Выполнен,Обработано вручную'; break;
       }
 
       const cursor = isLoadMore && orders.length > 0 ? Number(orders[orders.length - 1].id) : undefined;
@@ -84,7 +85,11 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
           undefined, // phone
           undefined, // brand
           undefined, // offers
-          ownerId 
+          ownerId,
+          undefined, // buyerToken
+          undefined, // excludeOffersFrom
+          undefined, // buyerTab
+          (activeTab === 'processing' || activeTab === 'trading') ? activeTab : undefined
       );
 
       if (isLoadMore) {
@@ -168,6 +173,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
           <div className="bg-white p-1 rounded-xl border border-slate-200 inline-flex shadow-sm overflow-x-auto max-w-full no-scrollbar">
               {[
                   { id: 'processing', label: 'В обработке' },
+                  { id: 'trading', label: 'Идут торги' },
                   { id: 'manual', label: 'Ручная' },
                   { id: 'processed', label: 'КП готово' },
                   { id: 'archive', label: 'Архив' }

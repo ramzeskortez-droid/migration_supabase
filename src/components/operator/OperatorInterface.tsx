@@ -12,7 +12,7 @@ import { useHeaderStore } from '../../store/headerStore';
 
 export const OperatorInterface: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
-  const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isEmailOpen, setIsEmailOpen] = useState(true);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
@@ -154,6 +154,14 @@ export const OperatorInterface: React.FC = () => {
       window.dispatchEvent(event);
   };
 
+  const handleLinkEmail = (emailId: string) => {
+      // Передаем ID письма в компонент создания заявки через событие
+      // Это потребует обновления AiAssistant или OperatorOrderCreation
+      const event = new CustomEvent('linkEmailToOrder', { detail: emailId });
+      window.dispatchEvent(event);
+      addLog(`Письмо прикреплено к форме создания.`);
+  };
+
   const handleNavigateToOrder = (orderId: string) => {
       setNavigateToOrderId(orderId);
       setIsGlobalChatOpen(false); // Закрываем чат при переходе
@@ -213,7 +221,7 @@ export const OperatorInterface: React.FC = () => {
             </button>
 
             <div className={`flex-1 overflow-hidden p-4 pt-16 transition-all duration-300 ${isEmailOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
-                <EmailWidget onImportToAI={handleImportEmail} />
+                <EmailWidget onImportToAI={handleImportEmail} onLinkToOrder={handleLinkEmail} currentUserId={currentUser?.id} />
             </div>
         </aside>
       </div>

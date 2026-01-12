@@ -34,6 +34,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
         clientPhone: ''
     });
 
+    const [linkedEmailId, setLinkedEmailId] = useState<string | null>(null);
     const [orderFiles, setOrderFiles] = useState<{name: string, url: string, size?: number, type?: string}[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isBrandsValid, setIsBrandsValid] = useState(false);
@@ -205,8 +206,19 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 })(),
                 orderInfo.clientEmail,
                 orderInfo.city,
-                orderFiles
+                orderFiles,
+                linkedEmailId // Передаем ID письма
             );
+
+            // Если был привязан email, архивируем его
+            if (linkedEmailId) {
+                try {
+                    await SupabaseService.archiveEmail(linkedEmailId);
+                    onLog(`Письмо перемещено в архив.`);
+                } catch (e) {
+                    console.error('Ошибка архивации письма:', e);
+                }
+            }
 
             setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });
             onLog(`Заказ №${orderId} создан.`);
@@ -218,6 +230,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
             setOrderInfo({
                 deadline: '', region: '', city: '', email: '', clientEmail: '', emailSubject: '', clientName: '', clientPhone: ''
             });
+            setLinkedEmailId(null);
 
         } catch (e: any) {
             console.error(e);
@@ -229,6 +242,17 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     };
 
     // Слушатель для импорта из почты
+    useEffect(() => {
+        const handleLink = (e: any) => {
+            setLinkedEmailId(e.detail);
+            onLog('Письмо успешно привязано к будущему заказу.');
+        };
+        
+        window.addEventListener('linkEmailToOrder', handleLink);
+        return () => window.removeEventListener('linkEmailToOrder', handleLink);
+    }, []);
+
+    // Слушатель для импорта из почты (предыдущий хук был пустой, заменяем его)
     useEffect(() => {
         const handleImport = (e: any) => {
             // Логика будет внутри AiAssistant, здесь просто слушаем или пробрасываем?
