@@ -16,6 +16,8 @@ const GRID_COLS = "grid-cols-[80px_1.5fr_110px_130px_100px_100px_100px_1.2fr_40p
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
+  { id: 'Ручная обработка', label: 'Ручная обработка', icon: Edit2, color: 'text-purple-700', bg: 'bg-purple-100', border: 'border-purple-200' },
+  { id: 'Обработано вручную', label: 'Обработано вручную', icon: Check, color: 'text-purple-700', bg: 'bg-purple-100', border: 'border-purple-200' },
   { id: 'КП отправлено', label: 'КП отправлено', icon: Send, color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
   { id: 'Готов купить', label: 'Готов купить', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
   { id: 'Выполнен', label: 'Выполнен', icon: PackageCheck, color: 'text-teal-600', bg: 'bg-teal-100', border: 'border-teal-200' }

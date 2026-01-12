@@ -79,6 +79,10 @@ export const AdminFinanceSettings: React.FC = () => {
         delivery_weeks_add: '0'
     });
 
+    // Calculator State
+    const [calcPrice, setCalcPrice] = useState('100');
+    const [calcWeight, setCalcWeight] = useState('2');
+
     useEffect(() => {
         const loadRates = async () => {
             setLoading(true);
@@ -245,16 +249,38 @@ export const AdminFinanceSettings: React.FC = () => {
             </form>
 
             <div className="mt-12 p-6 rounded-2xl border-2 border-dashed border-slate-100">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Пример расчета для менеджера:</h4>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Калькулятор цены (Тест):</h4>
+                
+                <div className="flex gap-4 mb-4">
+                    <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Цена пост. (¥)</label>
+                        <input 
+                            type="number" 
+                            className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500"
+                            value={calcPrice}
+                            onChange={(e) => setCalcPrice(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Вес (кг)</label>
+                        <input 
+                            type="number" 
+                            className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500"
+                            value={calcWeight}
+                            onChange={(e) => setCalcWeight(e.target.value)}
+                        />
+                    </div>
+                </div>
+
                 <div className="space-y-2 text-[11px] font-bold text-slate-600">
                     <p>Формула: <span className="text-slate-900">(Цена Закуп. * Курс ¥) + (((Вес * Тариф $) * Курс $/¥) * Курс ¥) + Наценка %</span></p>
-                    <div className="p-3 bg-white rounded-lg border border-slate-100 flex justify-between items-center">
-                        <span>Если цена 100 ¥, вес 2кг:</span>
-                        <span className="text-indigo-600">
-                            (100 * {rates.cny_rub}) + (((2 * {rates.delivery_kg_usd}) * {rates.cny_usd}) * {rates.cny_rub}) + {rates.markup_percent}% 
-                            = <span className="text-lg font-black ml-2">
-                                {Math.round(((100 * rates.cny_rub) + (2 * rates.delivery_kg_usd * rates.cny_usd * rates.cny_rub)) * (1 + rates.markup_percent/100))} ₽
-                            </span>
+                    <div className="p-3 bg-white rounded-lg border border-slate-100 flex flex-col md:flex-row md:items-center gap-2">
+                        <span className="text-slate-500">Расчет:</span>
+                        <span className="text-indigo-600 break-all">
+                            ({calcPrice || 0} * {rates.cny_rub}) + ((({calcWeight || 0} * {rates.delivery_kg_usd}) * {rates.cny_usd}) * {rates.cny_rub}) + {rates.markup_percent}% 
+                        </span>
+                        <span className="text-lg font-black ml-auto bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg">
+                            = {Math.round(((Number(calcPrice || 0) * rates.cny_rub) + (Number(calcWeight || 0) * rates.delivery_kg_usd * rates.cny_usd * rates.cny_rub)) * (1 + rates.markup_percent/100))} ₽
                         </span>
                     </div>
                 </div>

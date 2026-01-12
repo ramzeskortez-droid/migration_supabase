@@ -60,6 +60,20 @@ export const AdminInterface: React.FC = () => {
       navigate('/');
   };
 
+  const handleNavigateToOrder = async (orderId: string) => {
+      try {
+          const { status_admin } = await SupabaseService.getOrderStatus(orderId);
+          const tab = TAB_MAPPING[status_admin] || 'new';
+          
+          setActiveTab(tab);
+          setSearchQuery(orderId);
+          setExpandedId(orderId);
+          // Скролл? Пока просто поиск.
+      } catch (e) {
+          setSearchQuery(orderId);
+      }
+  };
+
   const handleClearDB = async () => { 
       if(!confirm('Удалить все?')) return; 
       setIsDbLoading(true); 
@@ -523,6 +537,7 @@ export const AdminInterface: React.FC = () => {
                   initialOrderId={chatTarget.orderId}
                   initialSupplierFilter={chatTarget.supplierName}
                   onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
+                  onNavigateToOrder={handleNavigateToOrder}
               />
           )}
 
@@ -533,6 +548,7 @@ export const AdminInterface: React.FC = () => {
                   currentUserRole="ADMIN"
                   currentUserName="Manager"
                   onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
+                  onNavigateToOrder={handleNavigateToOrder}
               />
           )}
 
