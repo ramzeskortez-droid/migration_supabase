@@ -193,7 +193,8 @@ export const getOrders = async (
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         const orderDate = new Date(order.created_at);
-        const isHot = order.status_manager === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
+        // Отключаем логику ГОРИТ для Оператора (ownerToken)
+        const isHot = !ownerToken && order.status_manager === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
 
         return {
             id: String(order.id),

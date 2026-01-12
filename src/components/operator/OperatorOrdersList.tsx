@@ -68,10 +68,8 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       switch (activeTab) {
           case 'processing': statusFilter = 'В обработке'; break;
           case 'manual': statusFilter = 'Ручная обработка'; break;
-          case 'processed': statusFilter = 'КП готово,КП отправлено'; break;
-          case 'completed': statusFilter = 'Выполнен'; break;
-          case 'rejected': statusFilter = 'Аннулирован,Отказ'; break;
-          case 'archive': statusFilter = 'Архив,Аннулирован,Отказ'; break;
+          case 'processed': statusFilter = 'КП готово'; break;
+          case 'archive': statusFilter = 'Архив,Аннулирован,Отказ,КП отправлено,Выполнен'; break;
       }
 
       const cursor = isLoadMore && orders.length > 0 ? Number(orders[orders.length - 1].id) : undefined;
@@ -171,9 +169,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
               {[
                   { id: 'processing', label: 'В обработке' },
                   { id: 'manual', label: 'Ручная' },
-                  { id: 'processed', label: 'Обработано' },
-                  { id: 'completed', label: 'Успешные' },
-                  { id: 'rejected', label: 'Отказ' },
+                  { id: 'processed', label: 'КП готово' },
                   { id: 'archive', label: 'Архив' }
               ].map(tab => {
                   const count = statusCounts[tab.id] || 0;

@@ -100,8 +100,6 @@ const App: React.FC = () => {
 
             {/* Right Side: Currency Rates & Custom Actions */}
             <div className="hidden md:flex items-center gap-6">
-                {customRightContent}
-                
                 {rates && (
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col items-end leading-none mr-1">
@@ -122,6 +120,8 @@ const App: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {customRightContent}
             </div>
             </div>
         </header>

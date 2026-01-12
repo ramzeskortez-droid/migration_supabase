@@ -13,7 +13,7 @@ interface OperatorOrdersViewProps {
 export const OperatorOrdersView: React.FC<OperatorOrdersViewProps> = ({ ownerId, refreshTrigger, initialSearch, onLog }) => {
     const [searchQuery, setSearchQuery] = useState(initialSearch || '');
     const [debouncedQuery, setDebouncedQuery] = useState(initialSearch || '');
-    const [activeTab, setActiveTab] = useState<'processing' | 'manual' | 'processed' | 'completed' | 'rejected' | 'archive'>('processing');
+    const [activeTab, setActiveTab] = useState<'processing' | 'manual' | 'processed' | 'archive'>('processing');
     const [scrollToId, setScrollToId] = useState<string | null>(null);
     const listRef = useRef<HTMLDivElement>(null);
 

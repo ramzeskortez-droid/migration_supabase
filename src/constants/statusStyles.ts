@@ -1,7 +1,8 @@
 // Централизованная конфигурация стилей статусов
 export const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string }> = {
   'В обработке': { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
-  'КП отправлено': { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
+  'КП готово': { color: 'text-amber-700', bg: 'bg-amber-100', border: 'border-amber-200' },
+  'КП отправлено': { color: 'text-green-700', bg: 'bg-green-100', border: 'border-green-200' },
   'Подтверждение от поставщика': { color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' },
   'Ожидает оплаты': { color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-200' },
   'В пути': { color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200' },
