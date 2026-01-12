@@ -1,11 +1,11 @@
 import { supabase } from '../../../lib/supabaseClient';
 import { OrderItem, Order, RowType, Currency } from '../../../types';
 
-export const getOrderDetails = async (orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[] }> => {
+export const getOrderDetails = async (orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[], refusalReason?: string }> => {
     const { data, error } = await supabase
         .from('orders')
         .select(`
-          id, order_files, is_manual_processing, order_items (*),
+          id, order_files, is_manual_processing, refusal_reason, order_items (*),
           offers (id, status, created_at, supplier_name, supplier_phone, supplier_files, offer_items (*))
         `)
         .eq('id', orderId)
@@ -38,7 +38,7 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
       }))
     } as any));
 
-    return { items, offers, orderFiles: data.order_files };
+    return { items, offers, orderFiles: data.order_files, refusalReason: data.refusal_reason };
 };
 
 export const getOrderStatus = async (orderId: string): Promise<{ status_admin: string, supplier_names: string[] }> => {

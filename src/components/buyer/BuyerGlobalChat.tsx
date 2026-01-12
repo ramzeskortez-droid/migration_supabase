@@ -51,6 +51,14 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
               active: countUnread(activeData),
               archive: countUnread(archiveData)
           });
+          
+          // Auto-select logic
+          if (initialOrderId) {
+              setSelectedOrder(initialOrderId);
+              if (currentUserRole === 'SUPPLIER' && currentSupplierName) {
+                  setSelectedSupplier(currentSupplierName);
+              }
+          }
       } catch (e) {
           console.error(e);
       } finally {

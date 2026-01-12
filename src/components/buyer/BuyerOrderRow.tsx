@@ -63,7 +63,8 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
   const fullOrder = React.useMemo(() => ({
       ...order,
       items: details?.items || order.items || [],
-      offers: details?.offers || order.offers || []
+      offers: details?.offers || order.offers || [],
+      refusalReason: details?.refusalReason || order.refusalReason
   }), [order, details]);
 
   const containerStyle = isExpanded 

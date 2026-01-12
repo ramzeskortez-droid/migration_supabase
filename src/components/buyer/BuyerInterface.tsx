@@ -4,17 +4,19 @@ import { SupabaseService } from '../../services/supabaseService';
 import { Order, AppUser } from '../../types';
 import { Toast } from '../shared/Toast';
 import { ChatNotification } from '../shared/ChatNotification';
-import { BuyerHeader } from './BuyerHeader';
 import { BuyerDashboard } from './BuyerDashboard';
 import { BuyerToolbar } from './BuyerToolbar';
 import { BuyerOrdersList } from './BuyerOrdersList';
 import { BuyerGlobalChat } from './BuyerGlobalChat';
 import { useOrdersInfinite } from '../../hooks/useOrdersInfinite';
 import { useNavigate } from 'react-router-dom';
+import { useHeaderStore } from '../../store/headerStore';
+import { MessageCircle, User, LogOut } from 'lucide-react';
 
 export const BuyerInterface: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const setHeader = useHeaderStore(s => s.setCustomRightContent);
 
   // --- Auth ---
   const [buyerAuth, setBuyerAuth] = useState<AppUser | null>(() => {
@@ -52,6 +54,57 @@ export const BuyerInterface: React.FC = () => {
     direction: 'desc' 
   });
 
+  const handleLogout = useCallback(() => {
+      setBuyerAuth(null);
+      setExpandedId(null);
+      setEditingItemsMap({});
+      localStorage.removeItem('buyer_auth_token');
+      queryClient.removeQueries();
+      navigate('/');
+  }, [navigate, queryClient]);
+
+  // Set Header Content (Unified Header)
+  useEffect(() => {
+      if (buyerAuth) {
+          setHeader(
+            <div className="flex items-center gap-6">
+                <button 
+                    onClick={() => setIsGlobalChatOpen(true)}
+                    className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all relative"
+                    title="Все сообщения"
+                >
+                    <MessageCircle size={20} />
+                    {unreadChatCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                            {unreadChatCount}
+                        </span>
+                    )}
+                </button>
+
+                <div className="flex items-center gap-3 pl-6 border-l border-slate-100 h-8">
+                    <div className="text-right hidden sm:block">
+                        <div className="text-xs font-bold text-slate-900">{buyerAuth.name}</div>
+                        <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Закупщик</div>
+                    </div>
+                    <div className="h-9 w-9 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 shadow-sm">
+                        <User size={16} strokeWidth={2.5} />
+                    </div>
+                    <button 
+                        onClick={handleLogout}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all ml-2"
+                        title="Выйти"
+                    >
+                        <LogOut size={18} />
+                    </button>
+                </div>
+            </div>
+          );
+      } else {
+          setHeader(null);
+      }
+      return () => setHeader(null);
+  }, [buyerAuth, unreadChatCount, handleLogout]);
+
   // --- Realtime Notifications ---
   useEffect(() => {
       if (!buyerAuth) return;
@@ -73,15 +126,6 @@ export const BuyerInterface: React.FC = () => {
         key,
         direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
-  };
-
-  const handleLogout = () => {
-      setBuyerAuth(null);
-      setExpandedId(null);
-      setEditingItemsMap({});
-      localStorage.removeItem('buyer_auth_token');
-      queryClient.removeQueries();
-      navigate('/');
   };
 
   // ВОССТАНОВЛЕННАЯ ФУНКЦИЯ
@@ -230,6 +274,9 @@ export const BuyerInterface: React.FC = () => {
     // Проверка статуса оффера
     if (myOffer.status === 'Отказ') return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
 
+    // Проверка статуса заказа на Аннулирование
+    if (order.statusManager === 'Аннулирован') return { label: 'АННУЛИРОВАН', color: 'bg-red-50 text-red-600 border-red-100', icon: null };
+
     const isRefusal = myOffer.items.every((item: any) => (item.offeredQuantity || 0) === 0);
     if (isRefusal) return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
     
@@ -262,14 +309,6 @@ export const BuyerInterface: React.FC = () => {
         ))}
         {buyerAuth && (
             <>
-                <BuyerHeader 
-                    buyerName={buyerAuth.name} 
-                    buyerPhone={buyerAuth.phone || ''} 
-                    onLogout={handleLogout} 
-                    onOpenChat={() => setIsGlobalChatOpen(true)}
-                    unreadCount={unreadChatCount}
-                />
-                
                 <BuyerDashboard userId={buyerAuth.id} />
 
                 <div ref={listRef}>

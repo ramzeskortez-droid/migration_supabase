@@ -376,7 +376,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     onClick={() => onOpenChat(order.id)}
                     className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all text-xs font-black uppercase border-2 border-indigo-100"
                 >
-                    <MessageCircle size={16} /> Менеджер
+                    <MessageCircle size={16} /> Оператор
                 </button>
                 {!order.isProcessed && (
                     <button 
@@ -415,6 +415,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                         {statusInfo.label === 'ЧАСТИЧНО' ? 'ЗАКАЗ ОБРАБОТАН. ЕСТЬ ПОЗИЦИИ, КОТОРЫЕ УТВЕРЖДЕНЫ К ПОКУПКЕ.' :
                         statusInfo.label === 'ВЫИГРАЛ' ? 'ЗАКАЗ ОБРАБОТАН. ВЫ ВЫИГРАЛИ ПО ВСЕМ ПОЗИЦИЯМ.' :
                         statusInfo.label === 'ПРОИГРАЛ' ? 'ЗАКАЗ ОБРАБОТАН. ВАШЕ ПРЕДЛОЖЕНИЕ НЕ ПОДХОДИТ.' :
+                        statusInfo.label === 'АННУЛИРОВАН' ? `ЗАКАЗ АННУЛИРОВАН. ПРИЧИНА: ${order.refusalReason || 'Не указана'}` :
                         'ЗАКАЗ ОБРАБОТАН МЕНЕДЖЕРОМ. РЕДАКТИРОВАНИЕ ЗАКРЫТО.'}
                 </span>
             </div>

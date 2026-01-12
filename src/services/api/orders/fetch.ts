@@ -46,6 +46,7 @@ export const getOrders = async (
         owner_id,
         deadline,
         is_manual_processing,
+        refusal_reason,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
         offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
@@ -229,6 +230,7 @@ export const getOrders = async (
             ownerId: order.owner_id,
             deadline: order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : undefined,
             isManualProcessing: order.is_manual_processing,
+            refusalReason: order.refusal_reason, // Mapped field
             order_files: order.order_files,
             buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: (order.order_items as any[])?.sort((a, b) => a.id - b.id).map((i: any) => ({
