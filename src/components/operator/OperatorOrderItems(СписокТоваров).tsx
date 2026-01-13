@@ -29,7 +29,7 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
 
     const getWinnersForItem = (item: any) => {
         const winners: any[] = [];
-        const allowedStatuses = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'];
+        const allowedStatuses = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен', 'Обработано вручную'];
 
         if (order.offers && allowedStatuses.includes(order.statusManager || '')) {
             order.offers.forEach((off: any) => {
@@ -157,7 +157,7 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                     const isItemExpanded = openItems.has(item.id);
                     const winners = getWinnersForItem(item);
                     const isLast = idx === order.items.length - 1;
-                    const isProcessed = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'].includes(order.statusManager || '');
+                    const isProcessed = ['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен', 'Обработано вручную'].includes(order.statusManager || '');
 
                     return (
                         <div key={idx} className={`border-b border-gray-100 last:border-b-0 ${isLast ? 'rounded-b-xl' : ''}`}>
