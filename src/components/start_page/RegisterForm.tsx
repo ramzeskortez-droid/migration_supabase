@@ -36,7 +36,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onBack, onSwit
 
   const validatePhone = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
-    return digits.length >= 10;
+    return digits.length >= 10 && digits.length <= 15;
   };
 
   const handleRegister = async () => {
@@ -46,7 +46,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onBack, onSwit
     }
 
     if (!validatePhone(formData.phone)) {
-        setError("Введите корректный номер телефона (минимум 10 цифр)");
+        setError("Введите корректный номер телефона (10-15 цифр)");
         return;
     }
 

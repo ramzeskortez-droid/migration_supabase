@@ -10,7 +10,7 @@ export const AdminUsers: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'invites'>('pending');
     const [searchTerm, setSearchTerm] = useState('');
     const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-    const [inviteRole, setInviteRole] = useState<'operator' | 'buyer'>('buyer');
+    const [inviteRole, setInviteRole] = useState<'operator' | 'buyer' | 'admin'>('buyer');
     const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
 
     const { data: users, isLoading } = useQuery({
@@ -245,6 +245,12 @@ export const AdminUsers: React.FC = () => {
                                     >
                                         Оператор
                                     </button>
+                                    <button 
+                                        onClick={() => setInviteRole('admin')}
+                                        className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${inviteRole === 'admin' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}
+                                    >
+                                        Менеджер
+                                    </button>
                                 </div>
                             </div>
                             <button 
@@ -277,8 +283,11 @@ export const AdminUsers: React.FC = () => {
                             {invites?.map((invite: any) => (
                                 <div key={invite.code} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-mono font-black text-lg ${invite.role === 'buyer' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
-                                            {invite.role === 'buyer' ? 'B' : 'O'}
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-mono font-black text-lg ${
+                                            invite.role === 'buyer' ? 'bg-emerald-100 text-emerald-600' : 
+                                            invite.role === 'operator' ? 'bg-blue-100 text-blue-600' : 'bg-rose-100 text-rose-600'
+                                        }`}>
+                                            {invite.role === 'buyer' ? 'B' : invite.role === 'operator' ? 'O' : 'M'}
                                         </div>
                                         <div>
                                             <div className="font-black text-slate-800 text-lg tracking-widest">{invite.code}</div>
