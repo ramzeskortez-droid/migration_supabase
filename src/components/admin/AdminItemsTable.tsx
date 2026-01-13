@@ -155,7 +155,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <input 
                                         value={editForm[`item_${idx}_name`]} 
                                         onChange={e => setEditForm({...editForm, [`item_${idx}_name`]: e.target.value})} 
-                                        className="w-full px-2 py-1 bg-indigo-50 border-2 border-indigo-400 rounded text-[11px] font-bold uppercase outline-none ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
+                                        className="w-full px-2 py-1 bg-white border border-indigo-300 rounded text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                     />
                                 ) : (
                                     <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">{item.AdminName || item.name}</div>
@@ -169,7 +169,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         type="number" 
                                         value={editForm[`item_${idx}_qty`]} 
                                         onChange={e => setEditForm({...editForm, [`item_${idx}_qty`]: e.target.value})} 
-                                        className="w-16 px-1 py-1 bg-indigo-50 border-2 border-indigo-400 rounded text-center text-xs font-bold ring-2 ring-indigo-400/20 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
+                                        className="w-16 px-1 py-1 bg-white border border-indigo-300 rounded text-center text-xs font-bold outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                     />
                                 ) : ( item.quantity )}
                             </div>
@@ -308,7 +308,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                         {isEditing ? (
                                                             <input 
                                                                 type="text" 
-                                                                className="w-full px-2 py-1 border-2 border-indigo-500 rounded-lg font-black text-xs outline-none bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/30 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
+                                                                className="w-full px-2 py-1 border border-indigo-300 rounded-lg font-black text-xs outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
                                                                 value={currentPriceRub}
                                                                 onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminPrice', Number(e.target.value.replace(/\D/g, '')))}
                                                             />
@@ -327,7 +327,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                             <div className="relative w-16">
                                                                 <input 
                                                                     type="number" 
-                                                                    className="w-full px-1 py-1 border-2 border-indigo-500 rounded-lg font-black text-xs text-center outline-none bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/30 animate-pulse-subtle focus:animate-none focus:bg-white transition-all"
+                                                                    className="w-full px-1 py-1 border border-indigo-300 rounded-lg font-black text-xs text-center outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
                                                                     value={currentWeeks}
                                                                     onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'deliveryWeeks', Number(e.target.value))}
                                                                 />
