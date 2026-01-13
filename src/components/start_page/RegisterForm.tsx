@@ -26,11 +26,33 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onBack, onSwit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isPhoneLimitReached, setIsPhoneLimitReached] = useState(false);
 
   if (!role) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    
+    if (name === 'phone') {
+        const digits = value.replace(/\D/g, '');
+        if (digits.length > 15) {
+            // Визуальный сигнал ошибки (красный бордер)
+            setIsPhoneLimitReached(true);
+            setTimeout(() => setIsPhoneLimitReached(false), 500);
+            
+            // Обрезаем до 15 цифр
+            const truncated = value.slice(0, value.lastIndexOf(digits.slice(-1)) + (15 - digits.length) + 1);
+            // На самом деле проще просто оставить старое значение или обрезать строку по цифрам
+            return; 
+        }
+        
+        // Если это ввод цифр, просто проверяем длину
+        if (digits.length <= 15) {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }
     setError(null);
   };
 
@@ -148,7 +170,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onBack, onSwit
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+7 (999) 000-00-00"
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 ${
+                    isPhoneLimitReached 
+                    ? "border-red-500 ring-2 ring-red-200 bg-red-50 animate-pulse" 
+                    : "bg-slate-50 border-slate-200 focus:ring-indigo-500 focus:bg-white"
+                } text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2`}
             />
         </div>
 
