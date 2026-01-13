@@ -6,7 +6,7 @@ export const updateOrderMetadata = async (orderId: string, metadata: { client_na
 };
 
 export const updateOrderJson = async (orderId: string, newItems: any[]): Promise<void> => {
-    // Обновляем существующие позиции по ID, чтобы не ломать связи с офферами
+    // Обновляем существующие позиции по ID
     const updates = newItems.map(item => {
         if (!item.id) return null;
         
@@ -24,7 +24,13 @@ export const updateOrderJson = async (orderId: string, newItems: any[]): Promise
     }).filter(Boolean);
 
     if (updates.length > 0) {
-        await Promise.all(updates);
+        const results = await Promise.all(updates);
+        
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+            console.error('Update errors:', errors);
+            throw new Error(`Ошибка обновления позиций: ${errors[0].error?.message}`);
+        }
     }
 };
 
