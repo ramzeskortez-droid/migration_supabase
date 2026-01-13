@@ -319,21 +319,31 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       const tempId = Date.now();
       let senderName = 'Менеджер';
       let dbRole: 'MANAGER' | 'OPERATOR' | 'SUPPLIER' | 'ADMIN' = 'MANAGER';
+      let recipientName = supplierName;
 
       if (currentUserRole === 'OPERATOR') {
-          senderName = currentUserName ? `${currentUserName}` : 'Оператор'; // Убрал префикс "Оператор -", оставил имя или "Оператор"
+          senderName = currentUserName ? `${currentUserName}` : 'Оператор';
           dbRole = 'OPERATOR';
+          // Recipient is the Supplier (supplierName)
+          recipientName = supplierName;
       } else if (currentUserRole === 'ADMIN') {
           senderName = 'Менеджер';
-          dbRole = 'MANAGER';
+          dbRole = 'MANAGER'; // or ADMIN
+          // Recipient is the Supplier (supplierName)
+          recipientName = supplierName;
       } else {
-          senderName = supplierName;
+          // I AM SUPPLIER
+          senderName = currentUserName || 'Закупщик'; // FIX: Use my own name
           dbRole = 'SUPPLIER';
+          
+          // Determine recipient based on the active thread (supplierName prop acts as Thread Key here)
+          if (supplierName === 'Оператор') {
+              recipientName = 'OPERATOR';
+          } else {
+              // Default to ADMIN/Manager
+              recipientName = 'ADMIN';
+          }
       }
-
-      // Recipient is always Supplier (if I am Admin/Op) OR Admin (if I am Supplier)
-      // We use 'ADMIN' as a generic recipient for Supplier messages
-      const recipientName = (currentUserRole === 'SUPPLIER') ? 'ADMIN' : supplierName;
 
       const optimisticMsg = {
           id: tempId,

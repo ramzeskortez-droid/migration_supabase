@@ -71,14 +71,15 @@ export const getGlobalChatThreads = async (
             // Для Менеджера/Оператора группируем по Имени Поставщика
             threadKey = msg.sender_role === 'SUPPLIER' ? msg.sender_name : (msg.recipient_name || 'Unknown');
             
-            // Если это системное сообщение (ADMIN -> OPERATOR), оно не привязано к поставщику
+            // Обработка системных/внутренних сообщений
             if (threadKey === 'OPERATOR' || threadKey === 'ADMIN') {
-                // Пытаемся понять, касается ли это поставщика. Если нет - это внутренний чат.
-                // Но мы хотим видеть это сообщение. Пусть будет 'OPERATOR' (Системное)
-                // Если мы фильтруем по поставщику (например в GlobalChatWindow), то мы видим только его сообщения.
-                // Если мы без фильтра (Админ смотрит всё), то системные сообщения будут в отдельной куче?
-                // Пока оставим 'OPERATOR' для системных.
-                threadKey = 'OPERATOR';
+                if (currentUserRole === 'OPERATOR') {
+                    // Оператор видит сообщения от Админа как "Менеджер"
+                    threadKey = (msg.sender_role === 'ADMIN' || msg.recipient_name === 'ADMIN') ? 'Менеджер' : 'Оператор';
+                } else {
+                    // Админ видит как "Оператор"
+                    threadKey = 'Оператор';
+                }
             }
         }
 
