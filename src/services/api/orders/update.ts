@@ -42,10 +42,12 @@ export const updateOrderJson = async (orderId: string, newItems: any[]): Promise
 
         if (!data || data.length === 0) {
             console.error(`Update returned 0 rows for item ${item.id}. Possible RLS or ID mismatch.`);
-            // Не прерываем весь процесс, но логируем. В идеале можно кинуть ошибку.
-            // throw new Error(`Не удалось обновить позицию ${item.id} (запись не найдена или нет прав)`);
         } else {
             console.log(`Successfully updated item ${item.id}`, data);
+            
+            // Paranoid verification
+            const { data: verify } = await supabase.from('order_items').select('name').eq('id', item.id).single();
+            console.log(`VERIFICATION for ${item.id}: DB Value = "${verify?.name}"`);
         }
     }
     console.log('All updates finished');

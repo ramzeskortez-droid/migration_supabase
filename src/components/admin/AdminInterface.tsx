@@ -430,6 +430,7 @@ export const AdminInterface: React.FC = () => {
 
           setEditingOrderId(null); 
           setOfferEdits({});
+          queryClient.invalidateQueries({ queryKey: ['order-details', order.id] });
           refetch(); 
       } catch (e) { 
           console.error(e);
