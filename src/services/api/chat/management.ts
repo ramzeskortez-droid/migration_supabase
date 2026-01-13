@@ -34,11 +34,13 @@ export const archiveChat = async (orderId: string, supplierName: string): Promis
     await supabase.from('chat_messages').update({ is_archived: true }).eq('order_id', orderId).or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
 };
 
-export const getGlobalChatThreads = async (filterBySupplierName?: string, isArchived: boolean = false): Promise<Record<string, Record<string, any>>> => {
+export const getGlobalChatThreads = async (
+    filterBySupplierName?: string, 
+    isArchived: boolean = false, 
+    currentUserRole?: 'ADMIN' | 'SUPPLIER' | 'OPERATOR'
+): Promise<Record<string, Record<string, any>>> => {
     if (!isArchived) supabase.rpc('auto_archive_chats').then(() => {});
     
-    // Запрашиваем сообщения. Для счетчиков в табах нам может понадобиться больше данных, 
-    // но пока придерживаемся текущей логики фильтрации по is_archived.
     let query = supabase.from('chat_messages').select('*').eq('is_archived', isArchived).order('created_at', { ascending: false }).limit(500);
     
     if (filterBySupplierName) {
@@ -53,36 +55,46 @@ export const getGlobalChatThreads = async (filterBySupplierName?: string, isArch
     data?.forEach((msg: any) => {
         const oid = String(msg.order_id);
         
-        // Определяем ключ поставщика (с кем чат)
-        let supplierKey = msg.sender_role === 'SUPPLIER' ? msg.sender_name : (msg.recipient_name || 'Unknown');
-        
-        // Спец-случай для системных сообщений OPERATOR -> ADMIN или наоборот
-        if (supplierKey === 'OPERATOR' || supplierKey === 'ADMIN') {
-            // Если сообщение системное, привязываем его к какому-то ключу или заказу в целом
-            // В данном проекте чаты идут [Заказ][Поставщик]. Системное сообщение о ручной обработке 
-            // привязано к заказу, но в recipient_name стоит OPERATOR.
-            // Чтобы оно попало в список, используем OPERATOR как ключ, если нет закупщика.
-            supplierKey = (msg.sender_role === 'SUPPLIER' || msg.recipient_name === 'SUPPLIER') ? supplierKey : 'OPERATOR';
+        let threadKey = 'Unknown';
+
+        if (currentUserRole === 'SUPPLIER') {
+            // Для Закупщика разделяем ветки: Менеджер и Оператор
+            if (msg.sender_role === 'ADMIN' || msg.recipient_name === 'ADMIN') {
+                threadKey = 'Менеджер';
+            } else if (msg.sender_role === 'OPERATOR' || msg.recipient_name === 'OPERATOR') {
+                threadKey = 'Оператор';
+            } else {
+                // Fallback: Если сообщение между поставщиками (не должно быть) или системное
+                threadKey = 'Оператор';
+            }
+        } else {
+            // Для Менеджера/Оператора группируем по Имени Поставщика
+            threadKey = msg.sender_role === 'SUPPLIER' ? msg.sender_name : (msg.recipient_name || 'Unknown');
+            
+            // Если это системное сообщение (ADMIN -> OPERATOR), оно не привязано к поставщику
+            if (threadKey === 'OPERATOR' || threadKey === 'ADMIN') {
+                // Пытаемся понять, касается ли это поставщика. Если нет - это внутренний чат.
+                // Но мы хотим видеть это сообщение. Пусть будет 'OPERATOR' (Системное)
+                // Если мы фильтруем по поставщику (например в GlobalChatWindow), то мы видим только его сообщения.
+                // Если мы без фильтра (Админ смотрит всё), то системные сообщения будут в отдельной куче?
+                // Пока оставим 'OPERATOR' для системных.
+                threadKey = 'OPERATOR';
+            }
         }
 
-        if (supplierKey === 'Unknown') return;
+        if (threadKey === 'Unknown') return;
         
         if (!threads[oid]) threads[oid] = {};
-        if (!threads[oid][supplierKey]) {
-            threads[oid][supplierKey] = { lastMessage: msg.message, lastAuthorName: msg.sender_name, time: msg.created_at, unread: 0 };
+        if (!threads[oid][threadKey]) {
+            threads[oid][threadKey] = { lastMessage: msg.message, lastAuthorName: msg.sender_name, time: msg.created_at, unread: 0 };
         }
-        
-        // Считаем непрочитанные: сообщение должно быть ВХОДЯЩИМ для текущего пользователя
-        // Если мы не знаем кто текущий (в этом методе), считаем "все непрочитанные не от меня" 
-        // Логика ниже: если я (Поставщик) смотрю - непрочитанные те, что от ADMIN.
-        // Если я (Админ/Опер) смотрю - непрочитанные те, что от SUPPLIER или ADMIN (системные для оператора).
         
         const isMsgIncoming = filterBySupplierName 
           ? ['ADMIN', 'MANAGER', 'OPERATOR'].includes(msg.sender_role) // Я поставщик, входящие от офиса
-          : (msg.sender_role === 'SUPPLIER' || (msg.sender_role === 'ADMIN' && msg.recipient_name === 'OPERATOR')); // Я офис, входящие от пост или системные
+          : (msg.sender_role === 'SUPPLIER' || (msg.sender_role === 'ADMIN' && msg.recipient_name === 'OPERATOR')); // Я офис
           
         if (!msg.is_read && isMsgIncoming) {
-            threads[oid][supplierKey].unread++;
+            threads[oid][threadKey].unread++;
         }
     });
     return threads;

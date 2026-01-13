@@ -35,8 +35,8 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
           
           // Загружаем данные для обоих табов параллельно
           const [activeData, archiveData] = await Promise.all([
-              SupabaseService.getGlobalChatThreads(filter, false),
-              SupabaseService.getGlobalChatThreads(filter, true)
+              SupabaseService.getGlobalChatThreads(filter, false, currentUserRole),
+              SupabaseService.getGlobalChatThreads(filter, true, currentUserRole)
           ]);
 
           setThreads(activeTab === 'active' ? activeData : archiveData);

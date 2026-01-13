@@ -32,8 +32,8 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
           
           // Загружаем данные для обоих табов параллельно для обновления счетчиков
           const [activeData, archiveData] = await Promise.all([
-              SupabaseService.getGlobalChatThreads(filter, false),
-              SupabaseService.getGlobalChatThreads(filter, true)
+              SupabaseService.getGlobalChatThreads(filter, false, currentUserRole),
+              SupabaseService.getGlobalChatThreads(filter, true, currentUserRole)
           ]);
 
           // Устанавливаем тред для текущего таба
