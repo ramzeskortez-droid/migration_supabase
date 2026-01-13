@@ -101,7 +101,7 @@ export const getStatusCounts = async (): Promise<Record<string, number>> => {
         { key: 'new', val: 'В обработке' }, { key: 'manual', val: 'Ручная обработка' }, { key: 'kp_sent', val: 'КП готово' }, 
         { key: 'ready_to_buy', val: 'КП отправлено,Готов купить' }, { key: 'supplier_confirmed', val: 'Подтверждение от поставщика' },
         { key: 'awaiting_payment', val: 'Ожидает оплаты' }, { key: 'in_transit', val: 'В пути' },
-        { key: 'completed', val: 'Выполнен' }, { key: 'archive', val: 'Аннулирован,Отказ,Архив' }
+        { key: 'completed', val: 'Выполнен' }, { key: 'archive', val: 'Аннулирован,Отказ,Архив,Обработано вручную' }
     ];
     const promises = statuses.map(s => {
         let query = supabase.from('orders').select('*', { count: 'exact', head: true });
