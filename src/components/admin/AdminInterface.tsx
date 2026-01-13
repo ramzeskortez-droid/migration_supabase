@@ -281,43 +281,49 @@ export const AdminInterface: React.FC = () => {
         setIsSubmitting(orderId); 
         
         try {
+            const details = await SupabaseService.getOrderDetails(orderId);
+            
+            const winnersPayload: any[] = [];
+            if (details.offers) { 
+                for (const off of details.offers) { 
+                    for (const item of off.items) { 
+                        if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { 
+                            winnersPayload.push({
+                                id: item.id,
+                                admin_price: item.adminPrice || item.sellerPrice,
+                                delivery_rate: item.deliveryRate || 0,
+                                admin_comment: item.adminComment || ''
+                            });
+                        } 
+                    }
+                }
+            }
+
             if (isManual) {
+                if (winnersPayload.length > 0) {
+                    await SupabaseService.approveOrderFast(orderId, winnersPayload);
+                }
+                
+                await SupabaseService.updateWorkflowStatus(orderId, 'Ручная обработка');
                 await SupabaseService.manualApproveOrder(orderId);
+
                 showToast(`Заказ #${orderId} переведен в ручной режим`);
                 setSearchQuery('');
                 setActiveTab('manual');
             } else {
-                const details = await SupabaseService.getOrderDetails(orderId);
-                
-                const winnersPayload: any[] = [];
-                if (details.offers) { 
-                    for (const off of details.offers) { 
-                        for (const item of off.items) { 
-                            if (item.rank === 'ЛИДЕР' || item.rank === 'LEADER') { 
-                                winnersPayload.push({
-                                    id: item.id,
-                                    admin_price: item.adminPrice || item.sellerPrice,
-                                    delivery_rate: item.deliveryRate || 0,
-                                    admin_comment: item.adminComment || ''
-                                });
-                            } 
-                        }
-                    }
-                }
-                
                 if (winnersPayload.length === 0) {
                     if(!confirm('Нет победителей. Утвердить пустое КП?')) return;
                 }
   
                 await SupabaseService.approveOrderFast(orderId, winnersPayload);
                 
-                              showToast(`КП по заказу #${orderId} сформировано`);
-                              setSearchQuery(''); // Сбрасываем поиск, чтобы увидеть заказ в новом табе
-                              setActiveTab('kp_sent'); 
-                          }
-                          queryClient.invalidateQueries({ queryKey: ['order-details', orderId] });
-                          refetch(); 
-                      } catch (e) {            console.error(e);
+                showToast(`КП по заказу #${orderId} сформировано`);
+                setSearchQuery(''); 
+                setActiveTab('kp_sent'); 
+            }
+            queryClient.invalidateQueries({ queryKey: ['order-details', orderId] });
+            refetch(); 
+        } catch (e) {            console.error(e);
             showToast("Ошибка при утверждении");
         } finally {
             setIsSubmitting(null); 
