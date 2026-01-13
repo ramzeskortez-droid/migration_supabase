@@ -30,7 +30,7 @@ export const AdminInterface: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setHeader = useHeaderStore(s => s.setCustomRightContent);
-  const [currentView, setCurrentView] = useState<'listing' | 'statuses' | 'finance' | 'brands' | 'users' | 'settings'>('listing');
+  const [currentView, setCurrentView] = useState<'listing' | 'finance' | 'brands' | 'users' | 'settings'>('listing');
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('new');
@@ -424,58 +424,12 @@ export const AdminInterface: React.FC = () => {
   const [openRegistry, setOpenRegistry] = useState<Set<string>>(new Set());
   const toggleRegistry = (id: string) => { setOpenRegistry(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
 
-  const renderStatusSettings = () => (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 animate-in fade-in slide-in-from-left-4 duration-500">
-        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><Settings size={20}/></div>
-            <h2 className="text-xl font-black uppercase text-slate-800 tracking-tight">Настройка статусов</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="space-y-4">
-                <div className="px-4 py-2 bg-slate-900 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Клиента</div>
-                <div className="space-y-2">
-                    {['В обработке', 'КП готово', 'Готов купить', 'Выполнен', 'Аннулирован', 'Отказ'].map(s => (
-                        <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> {s}
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="space-y-4">
-                <div className="px-4 py-2 bg-indigo-600 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Закупщика</div>
-                <div className="space-y-2">
-                    {['Сбор офферов', 'Идут торги', 'ВЫИГРАЛ', 'ПРОИГРАЛ', 'ЧАСТИЧНО', 'ОТКАЗ', 'Торги завершены'].map(s => (
-                        <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div> {s}
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="space-y-4">
-                <div className="px-4 py-2 bg-amber-500 rounded-xl text-white text-[10px] font-black uppercase tracking-widest text-center shadow-lg">Интерфейс Менеджера</div>
-                <div className="space-y-2">
-                    {STATUS_STEPS.map(s => (
-                        <div key={s.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
-                            <s.icon size={12} className={s.color}/> {s.label}
-                        </div>
-                    ))}
-                    {['Аннулирован', 'Отказ'].map(s => (
-                        <div key={s} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div> {s}
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    </div>
-  );
-
   return (
       <div className="flex min-h-screen bg-slate-50">
           <AdminSidebar currentView={currentView} setCurrentView={setCurrentView} />
 
           <main className="flex-grow p-4 overflow-y-auto">
-              {currentView === 'users' ? <AdminUsers /> : currentView === 'brands' ? <AdminBrands /> : currentView === 'settings' ? <AdminSettings /> : currentView === 'statuses' ? renderStatusSettings() : currentView === 'finance' ? <AdminFinanceSettings /> : (
+              {currentView === 'users' ? <AdminUsers /> : currentView === 'brands' ? <AdminBrands /> : currentView === 'settings' ? <AdminSettings /> : currentView === 'finance' ? <AdminFinanceSettings /> : (
                   <div className="max-w-6xl mx-auto space-y-4">
                       {successToast && (
                          <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 border border-slate-700">
