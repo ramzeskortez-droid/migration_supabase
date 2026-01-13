@@ -133,7 +133,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                 )}
             </div>
 
-            <div className={`text-xs font-bold uppercase truncate ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-600'}`} title={opBrand}>{opBrand}</div>
+            <div className={`text-xs font-black uppercase truncate ${isUnavailable ? 'text-red-400 line-through' : 'text-indigo-600'}`} title={opBrand}>{opBrand}</div>
             <div className={`text-xs font-mono truncate ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-500'}`} title={opArticle}>{opArticle}</div>
             <div className={`text-xs font-black text-center ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`}>{item.quantity}</div>
             <div className={`text-[10px] font-bold text-center uppercase ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>{opUom}</div>
