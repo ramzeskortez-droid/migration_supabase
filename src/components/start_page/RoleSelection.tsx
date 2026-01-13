@@ -13,33 +13,34 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onRoleSelect }) =>
       id: "operator" as Role,
       label: "Я оператор",
       icon: UserCog,
-      gradient: "from-cyan-400 to-blue-500",
+      iconColor: "text-blue-600",
+      bgColor: "bg-blue-50",
+      borderColor: "hover:border-blue-400",
     },
     {
       id: "buyer" as Role,
       label: "Я закупщик",
       icon: Package,
-      gradient: "from-emerald-400 to-teal-500",
+      iconColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+      borderColor: "hover:border-emerald-400",
     },
     {
       id: "admin" as Role,
       label: "Я менеджер",
       icon: Briefcase,
-      gradient: "from-violet-400 to-purple-500",
+      iconColor: "text-violet-600",
+      bgColor: "bg-violet-50",
+      borderColor: "hover:border-violet-400",
     },
   ];
 
   return (
-    <div className="relative z-10 backdrop-blur-xl bg-white/10 rounded-3xl p-12 shadow-2xl border border-white/20 max-w-lg w-full mx-4">
-      <div className="flex flex-col items-center mb-10">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="w-24 h-24 rounded-full bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center mb-6 backdrop-blur-sm border border-white/30"
-        >
+    <div className="bg-white rounded-2xl p-10 shadow-xl border border-slate-200 max-w-lg w-full">
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4">
           <svg
-            className="w-12 h-12 text-white"
+            className="w-8 h-8 text-indigo-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -51,27 +52,32 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onRoleSelect }) =>
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
             />
           </svg>
-        </motion.div>
-        <h1 className="text-4xl font-bold text-white mb-2 text-center">Добро пожаловать</h1>
-        <p className="text-white/70 text-lg text-center">Выберите вашу роль для входа</p>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2 text-center">Добро пожаловать</h1>
+        <p className="text-slate-500 text-center">Выберите вашу роль для входа</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {roles.map((role, index) => {
           const Icon = role.icon;
           return (
             <motion.button
               key={role.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 * index, duration: 0.3 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * index, duration: 0.2 }}
               onClick={() => onRoleSelect(role.id)}
-              className={`w-full bg-gradient-to-r ${role.gradient} text-white rounded-2xl p-6 flex items-center gap-6 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-2xl group`}
+              className={`w-full bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4 transition-all duration-200 hover:shadow-md ${role.borderColor} group`}
             >
-              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-all">
-                <Icon className="w-8 h-8" />
+              <div className={`w-12 h-12 rounded-lg ${role.bgColor} flex items-center justify-center transition-colors`}>
+                <Icon className={`w-6 h-6 ${role.iconColor}`} />
               </div>
-              <span className="text-xl font-semibold">{role.label}</span>
+              <span className="text-lg font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
+                {role.label}
+              </span>
+              <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
+                →
+              </div>
             </motion.button>
           );
         })}

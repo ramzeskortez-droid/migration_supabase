@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AppUser } from '../types';
 import { SupabaseService } from '../services/supabaseService';
+import { useNavigate } from 'react-router-dom';
 
 export const useOperatorAuth = (onLog: (msg: string) => void) => {
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
     const [isAuthChecking, setIsAuthChecking] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -36,8 +38,8 @@ export const useOperatorAuth = (onLog: (msg: string) => void) => {
     const logout = useCallback(() => {
         setCurrentUser(null);
         localStorage.removeItem('operatorToken');
-        window.location.href = '/';
-    }, []);
+        navigate('/');
+    }, [navigate]);
 
     return { currentUser, isAuthChecking, login, logout };
 };

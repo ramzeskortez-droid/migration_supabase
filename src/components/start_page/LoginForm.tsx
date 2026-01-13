@@ -16,6 +16,31 @@ const roleLabels: Record<string, string> = {
   admin: "Менеджер",
 };
 
+// Styles configuration based on role
+const roleStyles: Record<string, { bg: string, text: string, button: string, ring: string, iconBg: string }> = {
+  operator: { 
+    bg: "bg-blue-50", 
+    text: "text-blue-600", 
+    button: "bg-blue-600 hover:bg-blue-700",
+    ring: "focus:ring-blue-500",
+    iconBg: "bg-blue-100"
+  },
+  buyer: { 
+    bg: "bg-emerald-50", 
+    text: "text-emerald-600", 
+    button: "bg-emerald-600 hover:bg-emerald-700",
+    ring: "focus:ring-emerald-500",
+    iconBg: "bg-emerald-100"
+  },
+  admin: { 
+    bg: "bg-violet-50", 
+    text: "text-violet-600", 
+    button: "bg-violet-600 hover:bg-violet-700",
+    ring: "focus:ring-violet-500",
+    iconBg: "bg-violet-100"
+  }
+};
+
 // Demo users configuration
 const demoUsers: Record<string, { name: string, token: string }[]> = {
   operator: [
@@ -28,25 +53,16 @@ const demoUsers: Record<string, { name: string, token: string }[]> = {
   ]
 };
 
-const colors = [
-  "from-pink-400 to-rose-500",
-  "from-blue-400 to-indigo-500",
-  "from-emerald-400 to-green-500",
-  "from-amber-400 to-orange-500",
-  "from-purple-400 to-violet-500",
-];
-
 export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
   const navigate = useNavigate();
   const [selectedUserToken, setSelectedUserToken] = useState<string | null>(null);
-  // Для менеджера (или если нет демо-юзеров) сразу показываем поле ввода
   const [showTokenInput, setShowTokenInput] = useState((demoUsers[role]?.length || 0) === 0);
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!role) return null;
-
+  const styles = roleStyles[role] || roleStyles.operator;
   const users = demoUsers[role] || [];
 
   const handleLogin = async (tokenOverride?: string) => {
@@ -66,7 +82,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
              if (role === 'buyer' && user.role !== 'buyer') throw new Error('Нет прав закупщика');
         }
 
-        // Save session based on role
         if (role === 'operator') {
             localStorage.setItem('operatorToken', user.token);
             navigate('/operator');
@@ -74,16 +89,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
             localStorage.setItem('buyer_auth_token', JSON.stringify(user));
             navigate('/buyer');
         } else if (role === 'admin') {
-            // Assuming Admin uses 'adminToken' or similar - let's check AdminInterface later but for now this is a safe guess if consistent
-            // Actually AdminInterface doesn't seem to have a hook in the same way? 
-            // Let's look at AdminInterface to be sure. 
-            // AdminInterface doesn't have an auth hook in the imports I saw.
-            // Wait, looking at previous read of AdminInterface, it doesn't seem to have auth check logic visible? 
-            // It just renders. Maybe it relies on global auth or something I missed?
-            // Ah, AdminInterface has NO auth check in the code I read earlier!
-            // It seems AdminInterface just renders. 
-            // But if I want to persist it, I should probably save it. 
-            // Let's save 'adminToken' for consistency, though it might not be used yet.
             localStorage.setItem('adminToken', user.token);
             navigate('/admin');
         }
@@ -99,7 +104,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
 
   const handleUserSelect = (userToken: string) => {
     setSelectedUserToken(userToken);
-    // Мгновенный вход для демо-пользователей
     handleLogin(userToken);
   };
 
@@ -108,32 +112,29 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
   };
 
   return (
-    <div className="relative z-10 backdrop-blur-xl bg-white/10 rounded-3xl p-10 shadow-2xl border border-white/20 max-w-md w-full mx-4">
+    <div className="relative bg-white rounded-2xl p-8 shadow-xl border border-slate-200 max-w-md w-full mx-4">
       <button
         onClick={onBack}
-        className="absolute top-6 left-6 text-white/60 hover:text-white transition-colors"
+        className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 transition-colors"
       >
         <ArrowLeft className="w-6 h-6" />
       </button>
 
-      <div className="flex flex-col items-center mb-8 mt-4">
-        <motion.div
-          initial={{ rotate: -180, scale: 0 }}
-          animate={{ rotate: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 200 }}
-          className="w-20 h-20 rounded-full bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center mb-6 backdrop-blur-sm border border-white/30"
+      <div className="flex flex-col items-center mb-8 mt-2">
+        <div
+          className={`w-16 h-16 rounded-full ${styles.iconBg} flex items-center justify-center mb-4`}
         >
-          <Lock className="w-10 h-10 text-white" />
-        </motion.div>
-        <h1 className="text-3xl font-bold text-white mb-2">Вход в систему</h1>
-        <p className="text-white/70">{roleLabels[role]}</p>
+          <Lock className={`w-8 h-8 ${styles.text}`} />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">Вход в систему</h1>
+        <p className="text-slate-500 font-medium">{roleLabels[role]}</p>
       </div>
 
       {error && (
         <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-3 bg-red-500/20 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-100 text-sm font-bold"
+            className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-600 text-sm font-medium"
         >
             <AlertCircle size={18} className="shrink-0" />
             <span>{error}</span>
@@ -143,28 +144,25 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
       {/* User Selection (Demo Users) */}
       {users.length > 0 && (
         <div className="mb-6">
-            <p className="text-white/80 text-sm mb-3 font-medium text-center">Быстрый вход (Демо)</p>
+            <p className="text-slate-400 text-xs uppercase tracking-wider font-bold mb-3 text-center">Быстрый вход</p>
             <div className="grid grid-cols-2 gap-3 justify-center">
             {users.map((user, index) => (
-                <motion.button
+                <button
                 key={user.token}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 * index }}
                 onClick={() => handleUserSelect(user.token)}
-                className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-200 ${
+                className={`flex flex-col items-center p-3 rounded-xl border transition-all duration-200 ${
                     selectedUserToken === user.token
-                    ? "bg-white/30 backdrop-blur-sm border-2 border-white shadow-lg scale-105"
-                    : "bg-white/10 backdrop-blur-sm border-2 border-white/20 hover:bg-white/20"
+                    ? `bg-slate-50 border-slate-300 ring-2 ring-offset-1 ${styles.ring.replace('focus:', '')}`
+                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                 }`}
                 >
                 <div
-                    className={`w-12 h-12 rounded-full bg-gradient-to-br ${colors[index % colors.length]} flex items-center justify-center text-white font-bold text-lg mb-2 shadow-lg`}
+                    className={`w-10 h-10 rounded-full ${styles.bg} flex items-center justify-center ${styles.text} font-bold text-lg mb-2`}
                 >
                     {getUserInitial(user.name)}
                 </div>
-                <span className="text-sm font-medium text-white truncate w-full text-center">{user.name}</span>
-                </motion.button>
+                <span className="text-sm font-medium text-slate-700 w-full text-center truncate">{user.name}</span>
+                </button>
             ))}
             </div>
         </div>
@@ -174,7 +172,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
       {users.length > 0 && (
         <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/20"></div>
+            <div className="w-full border-t border-slate-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
             <button
@@ -183,7 +181,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
                 setSelectedUserToken(null);
                 setError(null);
                 }}
-                className="px-4 py-1 bg-white/10 backdrop-blur-sm text-white/70 rounded-full hover:bg-white/20 hover:text-white transition-all border border-white/20"
+                className="px-4 py-1 bg-white text-slate-400 hover:text-slate-600 transition-colors border border-slate-200 rounded-full text-xs font-medium"
             >
                 или используйте токен
             </button>
@@ -201,13 +199,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
             className="mb-6 overflow-hidden"
             >
             <div className="relative">
-                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
+                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                 type="password"
                 value={token}
                 onChange={(e) => { setToken(e.target.value); setError(null); }}
                 placeholder="Введите ваш токен..."
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:border-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                className={`w-full pl-12 pr-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 ${styles.ring} focus:border-transparent transition-all`}
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                 autoFocus
                 />
@@ -218,14 +216,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
 
       {/* Login Button */}
       <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
         onClick={() => handleLogin()}
         disabled={(!selectedUserToken && !token) || loading}
-        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-white/10 disabled:to-white/10 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-2xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+        className={`w-full ${styles.button} disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg`}
       >
-        {loading ? <Loader2 className="animate-spin" /> : <Lock className="w-5 h-5" />}
-        Войти в систему
+        {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Lock className="w-5 h-5" />}
+        Войти
       </motion.button>
     </div>
   );
