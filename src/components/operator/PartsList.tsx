@@ -112,10 +112,10 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
       
       <div className="space-y-3">
         {/* Header Row */}
-        <div className="grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
+        <div className="grid grid-cols-[30px_2fr_4fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
           <div className={`${headerClass} text-center`}>#</div>
+          <div className={`${headerClass} text-indigo-600 font-black`}>Бренд {requiredFields.brand && <span className="text-red-500">*</span>}</div>
           <div className={headerClass}>Наименование {requiredFields.name && <span className="text-red-500">*</span>}</div>
-          <div className={headerClass}>Бренд {requiredFields.brand && <span className="text-red-500">*</span>}</div>
           <div className={headerClass}>Артикул {requiredFields.article && <span className="text-red-500">*</span>}</div>
           <div className={`${headerClass} text-center`}>Ед. {requiredFields.uom && <span className="text-red-500">*</span>}</div>
           <div className={`${headerClass} text-center`}>Кол-во {requiredFields.quantity && <span className="text-red-500">*</span>}</div>
@@ -143,19 +143,9 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
           const needsFix = dbName && dbName !== brandValue && !part.isNewBrand;
 
           return (
-            <div key={part.id} className="group relative grid grid-cols-[30px_4fr_2fr_3fr_1fr_1fr_1fr] gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
+            <div key={part.id} className="group relative grid grid-cols-[30px_2fr_4fr_3fr_1fr_1fr_1fr] gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-indigo-300 transition-colors">
                <div className="text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
                
-               <div>
-                 <input 
-                    key={`name_${part.id}_${blinkTrigger}`}
-                    value={part.name}
-                    onChange={(e) => updatePart(part.id, 'name', e.target.value)}
-                    placeholder="Наименование"
-                    className={`${inputClass} ${getHighlightClass(part.id, 'name')}`}
-                 />
-               </div>
-
                {/* Brand Input */}
                <div className="relative">
                  <input 
@@ -168,7 +158,7 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                     onFocus={() => setActiveBrandInput(part.id)}
                     onBlur={() => setTimeout(() => setActiveBrandInput(null), 200)}
                     placeholder="Бренд"
-                    className={`${inputClass} pr-8
+                    className={`${inputClass} font-black text-indigo-700 uppercase pr-8
                         ${isError ? 'border-red-500 bg-red-50 text-red-700' : ''}
                         ${isNonStrictMatch ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : ''}
                         ${isStrictMatch ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : ''}
@@ -218,6 +208,16 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                          ))}
                      </div>
                  )}
+               </div>
+
+               <div>
+                 <input 
+                    key={`name_${part.id}_${blinkTrigger}`}
+                    value={part.name}
+                    onChange={(e) => updatePart(part.id, 'name', e.target.value)}
+                    placeholder="Наименование"
+                    className={`${inputClass} ${getHighlightClass(part.id, 'name')}`}
+                 />
                </div>
 
                <div>

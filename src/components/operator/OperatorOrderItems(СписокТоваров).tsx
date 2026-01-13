@@ -7,7 +7,7 @@ interface OperatorOrderItemsProps {
     onCopyItem: (e: React.MouseEvent, item: any, idx: number) => void;
 }
 
-const PRODUCT_GRID = "grid-cols-[90px_1fr_100px_100px_80px_80px_80px]";
+const PRODUCT_GRID = "grid-cols-[90px_100px_1fr_100px_80px_80px_80px]";
 const OFFER_GRID = "grid-cols-[1.2fr_1fr_70px_80px_1.8fr_80px]";
 
 export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, onCopyItem }) => {
@@ -142,8 +142,8 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
             <div className="bg-gray-100 border-b border-gray-300 hidden md:block rounded-t-xl">
                 <div className={`grid ${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                     <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">№</div>
-                    <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
                     <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Бренд</div>
+                    <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
                     <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Артикул</div>
                     <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Кол-во</div>
                     <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Ед.</div>
@@ -184,10 +184,10 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                             </button>
                                         )}
                                     </div>
+                                    <div className="text-indigo-600 font-black uppercase text-[11px] truncate">{item.brand || '-'}</div>
                                     <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">
                                         {item.AdminName || item.name}
                                     </div>
-                                    <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{item.brand || '-'}</div>
                                     <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
                                     <div className="text-gray-700 text-center font-black text-xs">{item.quantity}</div>
                                     <div className="text-gray-600 text-center text-[10px] font-bold uppercase">{item.uom || 'шт'}</div>
@@ -223,7 +223,7 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                                                                 Вариант {wIdx + 1}
                                                             </div>
-                                                            <div className="text-gray-700 font-bold uppercase text-[10px] truncate">{win.brand || '-'}</div>
+                                                            <div className="text-indigo-600 font-black uppercase text-[10px] truncate">{win.brand || '-'}</div>
                                                             <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
                                                             
                                                             {/* Files Column for Offer Item */}
