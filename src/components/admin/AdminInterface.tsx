@@ -373,10 +373,10 @@ export const AdminInterface: React.FC = () => {
       form[`client_email`] = order.clientEmail || '';
       form[`location`] = order.location || '';
       
-      order.items.forEach((item, idx) => { 
-          form[`item_${idx}_name`] = item.AdminName || item.name; 
-          form[`item_${idx}_qty`] = item.AdminQuantity || item.quantity;
-          form[`item_${idx}_files`] = JSON.stringify(item.itemFiles || (item.opPhotoUrl ? [{name: 'Фото', url: item.opPhotoUrl, type: 'image/jpeg'}] : []));
+      order.items.forEach((item) => { 
+          form[`${item.id}_name`] = item.AdminName || item.name; 
+          form[`${item.id}_qty`] = item.AdminQuantity || item.quantity;
+          form[`${item.id}_files`] = JSON.stringify(item.itemFiles || (item.opPhotoUrl ? [{name: 'Фото', url: item.opPhotoUrl, type: 'image/jpeg'}] : []));
       }); 
       setEditForm(form); 
       setOfferEdits({}); // Сброс правок офферов
@@ -385,22 +385,20 @@ export const AdminInterface: React.FC = () => {
   const saveEditing = async (order: Order) => { 
       setIsSubmitting(order.id); 
       
-      // 1. Сохранение изменений в Items (OrderItems)
-      const newItems = order.items.map((item, idx) => {
+      // 1. Сохранение изменений в Items (OrderItems) - используем ID вместо индекса
+      const newItems = order.items.map((item) => {
           let files = [];
-          try { files = JSON.parse(editForm[`item_${idx}_files`] || '[]'); } catch (e) {}
+          try { files = JSON.parse(editForm[`${item.id}_files`] || '[]'); } catch (e) {}
 
           return { 
               ...item, 
-              AdminName: editForm[`item_${idx}_name`], 
-              AdminQuantity: Number(editForm[`item_${idx}_qty`]),
+              AdminName: editForm[`${item.id}_name`], 
+              AdminQuantity: Number(editForm[`${item.id}_qty`]),
               itemFiles: files,
-              opPhotoUrl: files.length > 0 ? files[0].url : (item.opPhotoUrl || null) // Сохраняем обратную совместимость
+              opPhotoUrl: files.length > 0 ? files[0].url : (item.opPhotoUrl || null)
           };
       }); 
       
-      console.log('Saving order items:', newItems);
-
       try { 
           await SupabaseService.updateOrderJson(order.id, newItems); 
           

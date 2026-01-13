@@ -155,8 +155,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                             <div>
                                 {isEditing ? (
                                     <input 
-                                        value={editForm[`item_${idx}_name`]} 
-                                        onChange={e => setEditForm({...editForm, [`item_${idx}_name`]: e.target.value})} 
+                                        value={editForm[`${item.id}_name`] || ''} 
+                                        onChange={e => setEditForm({...editForm, [`${item.id}_name`]: e.target.value})} 
                                         className="w-full px-2 py-1 bg-white border border-indigo-300 rounded text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                     />
                                 ) : (
@@ -168,8 +168,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                 {isEditing ? (
                                     <input 
                                         type="number" 
-                                        value={editForm[`item_${idx}_qty`]} 
-                                        onChange={e => setEditForm({...editForm, [`item_${idx}_qty`]: e.target.value})} 
+                                        value={editForm[`${item.id}_qty`] || ''} 
+                                        onChange={e => setEditForm({...editForm, [`${item.id}_qty`]: e.target.value})} 
                                         className="w-16 px-1 py-1 bg-white border border-indigo-300 rounded text-center text-xs font-bold outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                     />
                                 ) : ( item.quantity )}
@@ -179,8 +179,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                 {isEditing ? (
                                     <div className="h-[34px] w-full flex items-center justify-center bg-white rounded border border-gray-300 overflow-hidden">
                                         <FileDropzone 
-                                            files={(() => { try { return JSON.parse(editForm[`item_${idx}_files`] || '[]'); } catch(e) { return []; } })()}
-                                            onUpdate={(files) => setEditForm({...editForm, [`item_${idx}_files`]: JSON.stringify(files)})}
+                                            files={(() => { try { return JSON.parse(editForm[`${item.id}_files`] || '[]'); } catch(e) { return []; } })()}
+                                            onUpdate={(files) => setEditForm({...editForm, [`${item.id}_files`]: JSON.stringify(files)})}
                                             compact
                                         />
                                     </div>
