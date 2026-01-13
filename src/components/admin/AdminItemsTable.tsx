@@ -161,7 +161,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">{item.AdminName || item.name}</div>
                                 )}
                             </div>
-                            <div className="text-gray-600 font-mono text-[10px] truncate font-black text-indigo-600">{item.brand || '-'}</div>
+                            <div className="text-[11px] truncate font-black text-indigo-600 uppercase">{item.brand || '-'}</div>
                             <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
                             <div className="text-gray-700 text-center font-black text-xs">
                                 {isEditing ? (
