@@ -54,7 +54,8 @@ const MemoizedBuyerOrderRow = memo(({
                          BuyerCurrency: offItem.sellerCurrency ?? 'RUB',
                          weight: offItem.weight || 0,
                          deliveryWeeks: offItem.deliveryWeeks || 0,
-                         photoUrl: offItem.photoUrl
+                         photoUrl: offItem.photoUrl,
+                         supplierSku: offItem.supplierSku
                      };
                  }
                  

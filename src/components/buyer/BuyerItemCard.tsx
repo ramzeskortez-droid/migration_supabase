@@ -210,7 +210,9 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                     disabled={isDisabled || isUnavailable} 
                     value={item.comment || ''} 
                     onChange={e => onUpdate(index, 'comment', e.target.value)} 
-                    className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white outline-none transition-colors ${isReqComment && !item.comment ? 'border-red-300 bg-red-50' : ''}`}
+                    className={`w-full border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none transition-all
+                        ${(isDisabled || isUnavailable) ? 'bg-slate-100 text-gray-500' : 'bg-white text-gray-700 focus:border-indigo-500'} 
+                        ${isReqComment && !item.comment ? 'border-red-300 bg-red-50' : ''}`}
                     placeholder="Ваш комментарий..." 
                 />
             </div>
@@ -225,7 +227,9 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                         disabled={isDisabled || isUnavailable} 
                         value={item.supplierSku || ''} 
                         onChange={e => onUpdate(index, 'supplierSku', e.target.value)} 
-                        className={`w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 transition-all ${isReqSku && !item.supplierSku ? 'border-red-300 bg-red-50' : ''}`} 
+                        className={`w-full border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none transition-all
+                            ${(isDisabled || isUnavailable) ? 'bg-slate-100 text-gray-500' : 'bg-white text-gray-700 focus:border-indigo-500'} 
+                            ${isReqSku && !item.supplierSku ? 'border-red-300 bg-red-50' : ''}`} 
                         placeholder="18510860570 / +86-XX-XXXX-XXX" 
                     />
                 </div>

@@ -263,7 +263,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.clientDeliveryWeeks || baseWeeks);
 
                                         return (
-                                            <div key={oIdx} className={`relative transition-all duration-300 border-l-4 ${isLeader ? "bg-emerald-50 border-l-emerald-500 shadow-inner" : "hover:bg-gray-50 border-l-transparent"}`}>
+                                            <div key={oIdx} className={`relative transition-all duration-300 ${isLeader ? "bg-emerald-50 shadow-inner" : "hover:bg-gray-50"}`}>
                                                 <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
                                                     <div className="flex items-center gap-2 overflow-hidden">
                                                         <div className="flex flex-col min-w-0">
