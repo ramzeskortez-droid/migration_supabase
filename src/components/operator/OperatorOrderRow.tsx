@@ -54,16 +54,16 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
   const formatItemText = (item: any, idx: number, singleLine = false) => {
       const winners = getWinnersForItem(item);
-      const base = `${item.AdminName || item.name} | ${item.brand || '-'} | ${item.article || '-'} | ${item.quantity} ${item.uom || 'шт'}`;
+      const base = `${item.AdminName || item.name} ${item.brand || '-'} ${item.article || '-'} ${item.quantity} ${item.uom || 'шт'}`;
       
       if (singleLine) {
           let result = `Order #${order.id}\n`;
           if (winners.length > 0) {
               winners.forEach((w, wIdx) => {
-                  result += `Вариант ${wIdx + 1}: ${base} | - | ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
+                  result += `Вариант ${wIdx + 1}: ${base} - ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
               });
           } else {
-              result += `${base} | - | -\n`;
+              result += `${base} - -\n`;
           }
           return result.trim();
       } else {
@@ -193,7 +193,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                         onClick={() => onStatusChange(order.id, 'Обработано вручную')}
                         className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-wider shadow-xl transition-all flex items-center gap-2 active:scale-95"
                     >
-                        <Check size={14} /> Завершить обработку
+                        <Check size={14} /> Обработано
                     </button>
                 )}
             </div>

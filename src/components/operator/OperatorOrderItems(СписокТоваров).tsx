@@ -217,7 +217,7 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
 
                                             <div className="min-w-[1000px] divide-y divide-gray-100">
                                                 {winners.map((win, wIdx) => (
-                                                    <div key={wIdx} className="relative transition-all duration-300 border-l-4 border-l-emerald-500 bg-emerald-50/30">
+                                                    <div key={wIdx} className="relative transition-all duration-300 bg-emerald-50/30">
                                                         <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
                                                             <div className="flex items-center gap-2 font-black text-emerald-700 uppercase text-[10px]">
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
