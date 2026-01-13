@@ -30,7 +30,7 @@ export const generateTestOffers = async (orderId: string): Promise<void> => {
             name: item.name,
             quantity: item.quantity,
             price: Math.floor(Math.random() * 10000) + 1000,
-            currency: Math.random() > 0.5 ? 'CNY' : 'RUB',
+            currency: 'CNY',
             delivery_days: (Math.floor(Math.random() * 4) + 2) * 7,
             weight: Math.floor(Math.random() * 5) + 1
         }));

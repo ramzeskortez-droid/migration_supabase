@@ -21,11 +21,12 @@ interface AdminItemsTableProps {
   exchangeRates: ExchangeRates | null;
   offerEdits: Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>;
   onOpenChat: (orderId: string, supplierName?: string) => void;
+  debugMode?: boolean;
 }
 
 export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   order, isEditing, editForm, setEditForm, handleItemChange, handleLocalUpdateRank, 
-  currentStatus, openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat
+  currentStatus, openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat, debugMode
 }) => {
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
@@ -59,7 +60,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   };
 
   // Гибкая сетка для офферов (суммарно 100%)
-  const PRODUCT_GRID = "grid-cols-[40px_1.5fr_80px_100px_60px_50px_120px]";
+  const PRODUCT_GRID = "grid-cols-[40px_100px_1.5fr_100px_60px_50px_120px]";
   const OFFER_GRID = "grid-cols-[1.5fr_1fr_70px_70px_100px_80px_1.2fr_1fr_130px]";
 
   const renderFilesIcon = (files: any[], photoUrl?: string) => {
@@ -110,8 +111,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
         <div className="bg-gray-100 border-b border-gray-300 hidden md:block rounded-t-xl">
             <div className={`grid ${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">№</div>
-                <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Бренд</div>
+                <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Наименование</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">Артикул</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Кол-во</div>
                 <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider text-center">Ед.</div>
@@ -150,6 +151,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                 </div>
                                 <span className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</span>
                             </div>
+                            <div className="text-[11px] truncate font-black text-indigo-600 uppercase">{item.brand || '-'}</div>
                             <div>
                                 {isEditing ? (
                                     <input 
@@ -161,7 +163,6 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">{item.AdminName || item.name}</div>
                                 )}
                             </div>
-                            <div className="text-[11px] truncate font-black text-indigo-600 uppercase">{item.brand || '-'}</div>
                             <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
                             <div className="text-gray-700 text-center font-black text-xs">
                                 {isEditing ? (
@@ -220,25 +221,27 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                             {itemOffers.length === 0 ? (
                                 <div className="p-10 text-center">
                                     <div className="text-[10px] font-black text-slate-300 uppercase italic tracking-widest mb-3">Нет предложений</div>
-                                    <button 
-                                        onClick={async () => {
-                                            if (generating) return;
-                                            setGenerating(true);
-                                            try {
-                                                await SupabaseService.generateTestOffers(order.id);
-                                                queryClient.invalidateQueries({ queryKey: ['order-details', order.id] });
-                                            } catch (e) {
-                                                alert('Ошибка: ' + e);
-                                            } finally {
-                                                setGenerating(false);
-                                            }
-                                        }}
-                                        disabled={generating}
-                                        className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors border border-indigo-200 flex items-center gap-2 mx-auto disabled:opacity-50"
-                                    >
-                                        {generating && <Loader2 className="animate-spin w-3 h-3" />}
-                                        Создать Тестовые Офферы
-                                    </button>
+                                    {debugMode && (
+                                        <button 
+                                            onClick={async () => {
+                                                if (generating) return;
+                                                setGenerating(true);
+                                                try {
+                                                    await SupabaseService.generateTestOffers(order.id);
+                                                    queryClient.invalidateQueries({ queryKey: ['order-details', order.id] });
+                                                } catch (e) {
+                                                    alert('Ошибка: ' + e);
+                                                } finally {
+                                                    setGenerating(false);
+                                                }
+                                            }}
+                                            disabled={generating}
+                                            className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors border border-indigo-200 flex items-center gap-2 mx-auto disabled:opacity-50"
+                                        >
+                                            {generating && <Loader2 className="animate-spin w-3 h-3" />}
+                                            Создать Тестовые Офферы
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="divide-y divide-gray-100">

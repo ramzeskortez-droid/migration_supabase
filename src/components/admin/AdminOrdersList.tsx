@@ -33,7 +33,7 @@ const AdminOrderRow = memo(({
     handleStatusChange, handleNextStep, setAdminModal,
     startEditing, saveEditing, handleFormCP, isSubmitting,
     editForm, setEditForm, handleItemChange, handleLocalUpdateRank,
-    openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat
+    openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat, debugMode
 }: any) => {
     const isEditing = editingOrderId === order.id;
     const [isManual, setIsManual] = useState(false); // Локальный флаг ручной обработки
@@ -296,6 +296,7 @@ const AdminOrderRow = memo(({
                                 exchangeRates={exchangeRates}
                                 offerEdits={offerEdits}
                                 onOpenChat={onOpenChat}
+                                debugMode={debugMode}
                             />
 
                             <div className="flex flex-wrap md:flex-nowrap justify-end gap-2 md:gap-3 mt-6 pt-4 border-t border-slate-200">
@@ -370,11 +371,12 @@ interface AdminOrdersListProps {
   exchangeRates: any;
   offerEdits: any;
   onOpenChat: (orderId: string, supplierName?: string) => void;
+  debugMode?: boolean;
 }
 
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   orders, sortConfig, handleSort, expandedId, setExpandedId,
-  onLoadMore, hasMore, isLoading, exchangeRates, offerEdits, onOpenChat,
+  onLoadMore, hasMore, isLoading, exchangeRates, offerEdits, onOpenChat, debugMode,
   ...rowProps
 }) => {
 
@@ -421,6 +423,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                         exchangeRates={exchangeRates}
                         offerEdits={offerEdits}
                         onOpenChat={onOpenChat}
+                        debugMode={debugMode}
                         {...rowProps}
                     />
                 )}

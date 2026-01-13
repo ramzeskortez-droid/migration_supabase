@@ -477,6 +477,7 @@ export const AdminInterface: React.FC = () => {
                         exchangeRates={exchangeRates}
                         offerEdits={offerEdits}
                         onOpenChat={(orderId, supplierName) => setChatTarget({ isOpen: true, orderId, supplierName })}
+                        debugMode={debugMode}
                       />
                   </div>
               )}
