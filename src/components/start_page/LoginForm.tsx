@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 interface LoginFormProps {
   role: Role;
   onBack: () => void;
+  onSwitchToRegister?: () => void;
 }
 
 const roleLabels: Record<string, string> = {
@@ -53,7 +54,7 @@ const demoUsers: Record<string, { name: string, token: string }[]> = {
   ]
 };
 
-export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack, onSwitchToRegister }) => {
   const navigate = useNavigate();
   const [selectedUserToken, setSelectedUserToken] = useState<string | null>(null);
   const [showTokenInput, setShowTokenInput] = useState((demoUsers[role]?.length || 0) === 0);
@@ -225,6 +226,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack }) => {
         {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Lock className="w-5 h-5" />}
         Войти
       </motion.button>
+      
+      {/* Register Link - Only for non-admin */}
+      {role !== 'admin' && onSwitchToRegister && (
+          <div className="mt-6 text-center">
+            <button
+                onClick={onSwitchToRegister}
+                className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
+            >
+                Нет аккаунта? <span className="underline">Регистрация</span>
+            </button>
+          </div>
+      )}
     </div>
   );
 };
