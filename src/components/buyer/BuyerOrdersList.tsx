@@ -22,6 +22,10 @@ interface BuyerOrdersListProps {
   buyerToken?: string;
   onOpenChat: (orderId: string) => void;
   scrollToId?: string | null;
+  // Pagination
+  onLoadMore: () => void;
+  hasMore: boolean;
+  isLoading: boolean;
 }
 
 // Columns: ID+Sticker (80), Deadline (90), Subject (1.5fr), Item (1fr), Status (110), Date (80), Arrow (30)
@@ -102,11 +106,13 @@ const MemoizedBuyerOrderRow = memo(({
     );
 });
 
+import { Loader2 } from 'lucide-react';
+
 export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 
   editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
   sortConfig, onSort, getOfferStatus, getMyOffer, buyerToken, onOpenChat,
-  scrollToId
+  scrollToId, onLoadMore, hasMore, isLoading
 }) => {
   const virtuosoRef = React.useRef<any>(null);
 
@@ -153,7 +159,9 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
                 ref={virtuosoRef}
                 style={{ height: '100%' }}
                 data={orders}
-                endReached={onLoadMore}
+                endReached={() => {
+                    if (hasMore && !isLoading) onLoadMore();
+                }}
                 itemContent={(index, order) => (
                     <MemoizedBuyerOrderRow 
                         key={order.id}
@@ -171,9 +179,15 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
                     />
                 )}
                 components={{
-                    EmptyPlaceholder: () => (
+                    Footer: () => (
+                        <div className="py-8 flex flex-col items-center gap-2">
+                            {isLoading && <Loader2 className="animate-spin text-slate-300" size={20}/>}  
+                            {!hasMore && orders.length > 0 && <div className="text-[10px] font-bold text-slate-300 uppercase italic text-left w-full px-6">Все заказы загружены</div>}
+                        </div>
+                    ),
+                    EmptyPlaceholder: () => !isLoading ? (
                         <div className="p-12 text-center text-[10px] font-black text-slate-300 uppercase italic tracking-widest">Список пуст</div>
-                    )
+                    ) : null
                 }}
             />
         </div>
