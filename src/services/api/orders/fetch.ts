@@ -64,7 +64,10 @@ export const getOrders = async (
         else query = query.lt('created_at', isoDate);
     } else if (onlyWithMyOffersName) {
         if (buyerTab === 'history') {
-            const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
+            const { data: myOff } = await supabase.from('offers')
+                .select('order_id')
+                .eq('supplier_name', onlyWithMyOffersName)
+                .neq('status', 'Отказ'); // Исключаем отказы
             const ids = myOff?.map(o => o.order_id) || [];
             query = query.in('id', ids.length > 0 ? ids : [0]);
             query = query.eq('status_manager', 'В обработке');
@@ -93,10 +96,24 @@ export const getOrders = async (
             query = query.not('status_manager', 'in', '("Аннулирован","Отказ")');
         }
         else if (buyerTab === 'cancelled') {
-            const { data: myOff } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
-            const ids = myOff?.map(o => o.order_id) || [];
-            query = query.in('id', ids.length > 0 ? ids : [0]);
-            query = query.in('status_manager', ['Аннулирован', 'Отказ']);
+            // 1. Мои явные отказы
+            const { data: myRefusals } = await supabase.from('offers')
+                .select('order_id')
+                .eq('supplier_name', onlyWithMyOffersName)
+                .eq('status', 'Отказ');
+            const refusalIds = myRefusals?.map(o => o.order_id) || [];
+
+            // 2. Глобальные отмены (где я участвовал)
+            const { data: myParticipation } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
+            const partIds = myParticipation?.map(o => o.order_id) || [];
+            
+            // Если есть мои отказы - включаем их. Для остальных проверяем глобальный статус.
+            if (refusalIds.length > 0) {
+                 query = query.or(`id.in.(${refusalIds.join(',')}),and(id.in.(${partIds.length > 0 ? partIds.join(',') : 0}),status_manager.in.("Аннулирован","Отказ"))`);
+            } else {
+                 query = query.in('id', partIds.length > 0 ? partIds : [0]);
+                 query = query.in('status_manager', ['Аннулирован', 'Отказ']);
+            }
         }
         else if (buyerTab === 'archive') {
             const { data: myOffers } = await supabase.from('offers')

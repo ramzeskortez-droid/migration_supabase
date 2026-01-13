@@ -396,14 +396,14 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 )}
             </div>
 
-            {!myOffer && !order.isProcessed && (
+            {!myOffer && !order.isProcessed && !isAllDeclined && (
                 <button 
                     disabled={!isValid || isSubmitting} 
                     onClick={handlePreSubmit} 
-                    className={`px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center gap-3 active:scale-95 ${isValid && !isSubmitting ? (isAllDeclined ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-200' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300') : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
+                    className={`px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center gap-3 active:scale-95 ${isValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
                 >
-                    {isValid ? (isAllDeclined ? 'Отказаться от заказа' : 'Отправить предложение') : 'Заполните все поля'} 
-                    {isAllDeclined ? <XCircle size={18}/> : <CheckCircle size={18}/>}
+                    {isValid ? 'Отправить предложение' : 'Заполните все поля'} 
+                    <CheckCircle size={18}/>
                 </button>
             )}
         </div>
