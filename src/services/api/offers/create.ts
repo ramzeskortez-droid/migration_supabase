@@ -17,7 +17,7 @@ export const createOffer = async (orderId: string, sellerName: string, items: an
 
     const offerItemsToInsert = items.map(item => ({
       offer_id: offerData.id, name: item.name, quantity: item.offeredQuantity || item.quantity || 1,
-      price: item.sellerPrice || item.BuyerPrice || 0, currency: item.sellerCurrency || item.BuyerCurrency || 'RUB',
+      price: item.sellerPrice || item.BuyerPrice || 0, currency: item.sellerCurrency || item.BuyerCurrency || 'CNY',
       delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
       weight: item.weight || 0, photo_url: item.photoUrl || '', 
       item_files: item.itemFiles || [],
