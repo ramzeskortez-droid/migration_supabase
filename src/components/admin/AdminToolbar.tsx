@@ -8,12 +8,10 @@ interface AdminToolbarProps {
   activeTab: AdminTab;
   setActiveTab: (tab: AdminTab) => void;
   statusCounts: Record<string, number>;
-  onRefresh: () => void;
-  isSyncing: boolean;
 }
 
 export const AdminToolbar: React.FC<AdminToolbarProps> = ({
-  searchQuery, setSearchQuery, activeTab, setActiveTab, statusCounts, onRefresh, isSyncing
+  searchQuery, setSearchQuery, activeTab, setActiveTab, statusCounts
 }) => {
   return (
     <>
@@ -42,7 +40,6 @@ export const AdminToolbar: React.FC<AdminToolbarProps> = ({
                   );
               })}
           </div>
-          <button onClick={onRefresh} className="mb-2 p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition-all flex items-center gap-2 shrink-0 shadow-sm"><RefreshCw size={14} className={isSyncing ? "animate-spin" : ""}/></button>
       </div>
     </>
   );

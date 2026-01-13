@@ -319,12 +319,6 @@ export const BuyerInterface: React.FC = () => {
                         availableBrands={availableBrands}
                         historyBrands={quickBrands} 
                         counts={tabCounts} 
-                        onRefresh={() => {
-                            refetch();
-                            fetchCounts();
-                            queryClient.invalidateQueries({ queryKey: ['buyerStats'] });
-                        }} 
-                        isSyncing={isLoading || isFetchingNextPage}
                     />
                     <BuyerOrdersList 
                         orders={orders}

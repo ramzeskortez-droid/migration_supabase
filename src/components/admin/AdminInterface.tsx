@@ -452,8 +452,6 @@ export const AdminInterface: React.FC = () => {
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                         statusCounts={statusCounts}
-                        onRefresh={() => refetch()}
-                        isSyncing={isLoading || isFetchingNextPage}
                       />
 
                       <AdminOrdersList 

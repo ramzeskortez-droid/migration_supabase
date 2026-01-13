@@ -12,14 +12,11 @@ interface BuyerToolbarProps {
   availableBrands: string[]; // (Unused for now, we use search)
   historyBrands?: string[]; 
   counts: { new: number, history: number, won: number, lost: number, archive: number };
-  onRefresh: () => void;
-  isSyncing: boolean;
 }
 
 export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
   activeTab, setActiveTab, searchQuery, setSearchQuery, 
-  activeBrands = [], setActiveBrands, availableBrands = [], historyBrands = [], counts, 
-  onRefresh, isSyncing
+  activeBrands = [], setActiveBrands, availableBrands = [], historyBrands = [], counts
 }) => {
   const [brandSearch, setBrandSearch] = useState('');
   const [localSearch, setLocalSearch] = useState(searchQuery); 
@@ -231,12 +228,6 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
                 </button>
             </div>
          </div>
-         <button 
-            onClick={onRefresh} 
-            className="mb-2 p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all flex items-center gap-2 shadow-sm shrink-0"
-         >
-            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''}/>
-         </button>
       </div>
 
       {showBrandDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowBrandDropdown(false)}></div>}
