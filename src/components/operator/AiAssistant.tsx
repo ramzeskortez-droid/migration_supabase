@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Loader2, Sparkles, Save, FileText } from 'lucide-react';
 import { Part, OrderInfo } from './types';
+import { supabase } from '../../lib/supabaseClient';
 
 interface AiAssistantProps {
   onImport: (newParts: Part[]) => void;
@@ -12,8 +13,6 @@ interface AiAssistantProps {
   isFormValid?: boolean;
   debugMode?: boolean;
 }
-
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
 export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, isFormValid = true, debugMode = false }) => {
   const [inputText, setInputText] = useState('');
@@ -60,58 +59,14 @@ E‑mail:\telena.kaknibud@pochta.ru`;
     try {
       const estimatedInputTokens = Math.ceil(inputText.length / 4);
       
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            {
-              role: "system",
-              content: "You are a specialized assistant for extracting auto parts data and order details. You always return valid JSON."
-            },
-            {
-              role: "user",
-              content: `Проанализируй текст заявки на автозапчасти.
-        Текст: "${inputText}"
-        
-        Задача 1: Извлечь список позиций с максимальной точностью.
-        
-        Задача 2: Извлечь метаданные заявки:
-        - Дедлайн (deadline): YYYY-MM-DD.
-        - Регион (region).
-        - Город (city).
-        - Email клиента (email).
-        - Имя клиента (client_name).
-        - Телефон (client_phone).
-        - Тема письма (email_subject): Возьми из строки "ТЕМА ПИСЬМА: ..." или определи по контексту.
-
-        Верни JSON объект:
-        {
-          "order_info": {
-            "deadline": "", "region": "", "city": "", "email": "", 
-            "client_name": "", "client_phone": "", "email_subject": ""
-          },
-          "parts": [
-            { "name": "...", "brand": "...", "article": "...", "quantity": 0, "uom": "..." }
-          ]
-        }`
-            }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1
-        })
+      const { data, error } = await supabase.functions.invoke('process-email', {
+        body: { text: inputText }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`China_nai_bot API Error: ${response.status} ${JSON.stringify(errorData)}`);
+      if (error) {
+        throw new Error(`Edge Function Error: ${error.message}`);
       }
 
-      const data = await response.json();
       const jsonText = data.choices?.[0]?.message?.content;
       
       if (jsonText) {
