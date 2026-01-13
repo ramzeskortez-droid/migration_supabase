@@ -6,14 +6,26 @@ export const updateOrderMetadata = async (orderId: string, metadata: { client_na
 };
 
 export const updateOrderJson = async (orderId: string, newItems: any[]): Promise<void> => {
-    const itemsToInsert = newItems.map(item => ({
-      order_id: Number(orderId), name: item.AdminName || item.name, quantity: item.AdminQuantity || item.quantity,
-      comment: item.comment, category: item.category, photo_url: item.photo_url,
-      brand: item.brand, article: item.article, uom: item.uom,
-      item_files: item.itemFiles || []
-    }));
-    await supabase.from('order_items').delete().eq('order_id', orderId);
-    await supabase.from('order_items').insert(itemsToInsert);
+    // Обновляем существующие позиции по ID, чтобы не ломать связи с офферами
+    const updates = newItems.map(item => {
+        if (!item.id) return null;
+        
+        return supabase.from('order_items').update({
+            name: item.AdminName || item.name, 
+            quantity: item.AdminQuantity || item.quantity,
+            comment: item.comment, 
+            category: item.category, 
+            photo_url: item.photo_url,
+            brand: item.brand, 
+            article: item.article, 
+            uom: item.uom,
+            item_files: item.itemFiles || []
+        }).eq('id', item.id);
+    }).filter(Boolean);
+
+    if (updates.length > 0) {
+        await Promise.all(updates);
+    }
 };
 
 export const updateOrderItemPrice = async (itemId: string, updates: { adminPrice?: number, isManualPrice?: boolean }): Promise<void> => {

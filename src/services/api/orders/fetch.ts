@@ -2,7 +2,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { Order, OrderStatus, RowType, WorkflowStatus } from '../../../types';
 
 export const getOrders = async (
-    cursor?: number, 
+    cursor: number = 0, // Now represents PAGE INDEX (0, 1, 2...)
     limit: number = 50, 
     sortBy: string = 'id', 
     sortDirection: 'asc' | 'desc' = 'desc',
@@ -15,14 +15,14 @@ export const getOrders = async (
     buyerToken?: string, 
     excludeOffersFrom?: string,
     buyerTab?: 'new' | 'hot' | 'history' | 'won' | 'lost' | 'cancelled',
-    operatorTab?: 'processing' | 'trading' // Новый аргумент
+    operatorTab?: 'processing' | 'trading' 
 ): Promise<{ data: Order[], nextCursor?: number }> => {
     
+    // ... (rest of filtering logic remains same) ...
     let matchingIds: any[] = [];
     const q = searchQuery.trim();
 
     if (q) {
-        // Всегда ищем по позициям (название, бренд, артикул, коммент)
         const { data: items } = await supabase
             .from('order_items')
             .select('order_id')
@@ -67,7 +67,7 @@ export const getOrders = async (
             const { data: myOff } = await supabase.from('offers')
                 .select('order_id')
                 .eq('supplier_name', onlyWithMyOffersName)
-                .neq('status', 'Отказ'); // Исключаем отказы
+                .neq('status', 'Отказ');
             const ids = myOff?.map(o => o.order_id) || [];
             query = query.in('id', ids.length > 0 ? ids : [0]);
             query = query.eq('status_manager', 'В обработке');
@@ -96,18 +96,15 @@ export const getOrders = async (
             query = query.not('status_manager', 'in', '("Аннулирован","Отказ")');
         }
         else if (buyerTab === 'cancelled') {
-            // 1. Мои явные отказы
             const { data: myRefusals } = await supabase.from('offers')
                 .select('order_id')
                 .eq('supplier_name', onlyWithMyOffersName)
                 .eq('status', 'Отказ');
             const refusalIds = myRefusals?.map(o => o.order_id) || [];
 
-            // 2. Глобальные отмены (где я участвовал)
             const { data: myParticipation } = await supabase.from('offers').select('order_id').eq('supplier_name', onlyWithMyOffersName);
             const partIds = myParticipation?.map(o => o.order_id) || [];
             
-            // Если есть мои отказы - включаем их. Для остальных проверяем глобальный статус.
             if (refusalIds.length > 0) {
                  query = query.or(`id.in.(${refusalIds.join(',')}),and(id.in.(${partIds.length > 0 ? partIds.join(',') : 0}),status_manager.in.("Аннулирован","Отказ"))`);
             } else {
@@ -177,11 +174,12 @@ export const getOrders = async (
         query = query.or(orFilters.join(','));
     }
 
-    if (cursor) {
-        if (sortDirection === 'desc') query = query.lt('id', cursor);
-        else query = query.gt('id', cursor);
-    }
+    // --- Pagination using Range (Offset) ---
+    const from = cursor * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
 
+    // --- Sorting ---
     const columnMap: Record<string, string> = {
         'id': 'id',
         'date': 'created_at',
@@ -197,7 +195,7 @@ export const getOrders = async (
         query = query.order('id', { ascending: sortDirection === 'asc' });
     }
     
-    const { data, error } = await query.limit(limit);
+    const { data, error } = await query;
     if (error) throw error;
 
     let labelsMap: Record<string, any> = {};
@@ -213,18 +211,14 @@ export const getOrders = async (
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         const orderDate = new Date(order.created_at);
         
-        // Логика статусов для Оператора
         const hasOffers = order.offers && order.offers.length > 0;
         const isTrading = hasOffers && order.status_manager === 'В обработке';
-        
-        // Отключаем логику ГОРИТ для Оператора (ownerToken)
         const isHot = !ownerToken && order.status_manager === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
         
-        // Подмена статуса для Оператора
         let displayStatus = order.status_manager;
         if (ownerToken) {
              if (isTrading) displayStatus = 'Идут торги';
-             else if (isHot) displayStatus = 'ГОРИТ'; // Вдруг решим вернуть
+             else if (isHot) displayStatus = 'ГОРИТ'; 
         } else {
              if (isHot) displayStatus = 'ГОРИТ';
         }
@@ -247,7 +241,7 @@ export const getOrders = async (
             ownerId: order.owner_id,
             deadline: order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : undefined,
             isManualProcessing: order.is_manual_processing,
-            refusalReason: order.refusal_reason, // Mapped field
+            refusalReason: order.refusal_reason,
             order_files: order.order_files,
             buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: (order.order_items as any[])?.sort((a, b) => a.id - b.id).map((i: any) => ({
@@ -267,12 +261,12 @@ export const getOrders = async (
             isProcessed: order.status_manager !== 'В обработке' && order.status_manager !== 'ОТКРЫТ'
         } as unknown as Order;
     })
-    // Фильтрация на клиенте для 'processing' (исключаем те, что ушли в торги)
     .filter(o => {
         if (operatorTab === 'processing') return o.statusManager !== 'Идут торги';
         return true;
     });
     
-    const nextCursor = data.length === limit ? data[data.length - 1].id : undefined;
+    // Page Index + 1 if we have full page, otherwise undefined (end)
+    const nextCursor = data.length === limit ? cursor + 1 : undefined;
     return { data: mappedData, nextCursor };
 };

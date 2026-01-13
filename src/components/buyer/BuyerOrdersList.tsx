@@ -153,6 +153,7 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
                 ref={virtuosoRef}
                 style={{ height: '100%' }}
                 data={orders}
+                endReached={onLoadMore}
                 itemContent={(index, order) => (
                     <MemoizedBuyerOrderRow 
                         key={order.id}
