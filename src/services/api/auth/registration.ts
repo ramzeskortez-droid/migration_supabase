@@ -1,7 +1,7 @@
 import { supabase } from '../../../lib/supabaseClient';
 import { AppUser } from '../../../types';
 
-export const generateInviteCode = async (role: 'operator' | 'buyer'): Promise<string> => {
+export const generateInviteCode = async (role: 'operator' | 'buyer' | 'admin'): Promise<string> => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const { error } = await supabase.rpc('create_invite_code', { p_code: code, p_role: role });
     if (error) throw error;
@@ -18,7 +18,7 @@ export const getActiveInvites = async (): Promise<any[]> => {
     return data;
 };
 
-export const registerUser = async (name: string, token: string, phone: string, role: 'operator' | 'buyer', inviteCode: string): Promise<AppUser> => {
+export const registerUser = async (name: string, token: string, phone: string, role: 'operator' | 'buyer' | 'admin', inviteCode: string): Promise<AppUser> => {
     // 1. Создаем пользователя (pending)
     const { data: user, error: userError } = await supabase
         .from('app_users')

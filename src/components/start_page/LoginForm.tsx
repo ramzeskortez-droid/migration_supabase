@@ -227,8 +227,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onBack, onSwitchToRe
         Войти
       </motion.button>
       
-      {/* Register Link - Only for non-admin */}
-      {role !== 'admin' && onSwitchToRegister && (
+      {/* Register Link */}
+      {onSwitchToRegister && (
           <div className="mt-6 text-center">
             <button
                 onClick={onSwitchToRegister}

@@ -27,17 +27,27 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onBack, onSwit
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  if (!role || role === 'admin') return null; // Admin usually doesn't register this way
+  if (!role) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     setError(null);
   };
 
+  const validatePhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    return digits.length >= 10;
+  };
+
   const handleRegister = async () => {
     if (!formData.name || !formData.token || !formData.inviteCode) {
       setError("Заполните обязательные поля");
       return;
+    }
+
+    if (!validatePhone(formData.phone)) {
+        setError("Введите корректный номер телефона (минимум 10 цифр)");
+        return;
     }
 
     setLoading(true);
@@ -48,7 +58,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onBack, onSwit
         formData.name,
         formData.token,
         formData.phone,
-        role as 'operator' | 'buyer', // Safe cast as we checked admin above
+        role as 'operator' | 'buyer' | 'admin', 
         formData.inviteCode
       );
       setSuccess(true);
@@ -67,8 +77,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onBack, onSwit
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Заявка отправлена!</h2>
         <p className="text-slate-500 mb-6">
-          Ваш аккаунт создан и ожидает активации менеджером. <br/>
-          Сообщите ваш токен (<b>{formData.token}</b>) менеджеру.
+          Ваш аккаунт создан и ожидает активации. <br/>
+          Сообщите ваш токен (<b>{formData.token}</b>) администратору.
         </p>
         <button
           onClick={onSwitchToLogin}
