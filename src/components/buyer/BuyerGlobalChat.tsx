@@ -255,6 +255,7 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                                 orderId={selectedOrder}
                                 supplierName={selectedSupplier}
                                 currentUserRole={currentUserRole}
+                                currentUserName={currentSupplierName} // FIX: Pass the actual name
                                 onNavigateToOrder={handleNavigate}
                                 onRead={handleRead}
                             />

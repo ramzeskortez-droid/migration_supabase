@@ -12,8 +12,9 @@ export const markChatAsRead = async (orderId: string, supplierName: string, read
         // 2. Системные сообщения (ADMIN -> OPERATOR) по этому заказу
         query = query.or(`and(sender_name.eq."${escapedName}",sender_role.eq.SUPPLIER),and(sender_role.eq.ADMIN,recipient_name.eq.OPERATOR)`);
     } else {
-        // Поставщик читает: сообщения от ADMIN/OPERATOR к нему
-        query = query.eq('sender_role', 'ADMIN').eq('recipient_name', escapedName);
+        // Поставщик читает: сообщения от ADMIN, MANAGER или OPERATOR
+        // Используем sender_role in ('ADMIN', 'MANAGER', 'OPERATOR')
+        query = query.in('sender_role', ['ADMIN', 'MANAGER', 'OPERATOR']).eq('recipient_name', escapedName);
     }
     
     const { error } = await query;
