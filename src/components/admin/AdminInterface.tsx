@@ -48,13 +48,21 @@ export const AdminInterface: React.FC = () => {
   const [isDbLoading, setIsDbLoading] = useState(false);
   const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>>({});
   const [debugMode, setDebugMode] = useState(false);
+  const [adminUser, setAdminUser] = useState<AppUser | null>(null);
   
   // Чат
   const [chatTarget, setChatTarget] = useState<{ isOpen: boolean, orderId: string, supplierName?: string } | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
 
-  // --- Header Logic ---
+  // --- Auth & Header Logic ---
+  useEffect(() => {
+      const token = localStorage.getItem('adminToken');
+      if (token) {
+          SupabaseService.loginWithToken(token).then(setAdminUser).catch(console.error);
+      }
+  }, []);
+
   const handleLogout = () => {
       localStorage.removeItem('adminToken');
       navigate('/');
@@ -124,7 +132,7 @@ export const AdminInterface: React.FC = () => {
             {/* Profile */}
             <div className="flex items-center gap-3 pl-6 border-l border-slate-100 h-8">
                 <div className="text-right hidden sm:block">
-                    <div className="text-xs font-bold text-slate-900">Manager</div>
+                    <div className="text-xs font-bold text-slate-900">{adminUser?.name || 'Manager'}</div>
                     <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Администратор</div>
                 </div>
                 <div className="h-9 w-9 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-sm">
@@ -141,7 +149,7 @@ export const AdminInterface: React.FC = () => {
         </div>
       );
       return () => setHeader(null);
-  }, [debugMode, unreadChatCount, showLogs, isDbLoading, seedProgress]);
+  }, [debugMode, unreadChatCount, showLogs, isDbLoading, seedProgress, adminUser]);
 
   // Загрузка счетчика непрочитанных
   const fetchUnreadCount = async () => {
@@ -492,7 +500,7 @@ export const AdminInterface: React.FC = () => {
                   isOpen={chatTarget.isOpen}
                   onClose={() => setChatTarget(null)}
                   currentUserRole="ADMIN"
-                  currentUserName="Manager"
+                  currentUserName={adminUser?.name || 'Manager'}
                   initialOrderId={chatTarget.orderId}
                   initialSupplierFilter={chatTarget.supplierName}
                   onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
@@ -505,7 +513,7 @@ export const AdminInterface: React.FC = () => {
                   isOpen={isGlobalChatOpen}
                   onClose={() => setIsGlobalChatOpen(false)}
                   currentUserRole="ADMIN"
-                  currentUserName="Manager"
+                  currentUserName={adminUser?.name || 'Manager'}
                   onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
                   onNavigateToOrder={handleNavigateToOrder}
               />
