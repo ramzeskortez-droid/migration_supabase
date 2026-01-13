@@ -21,7 +21,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setCurr
         className={`flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap ${currentView === 'listing' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
       >
         <div className="shrink-0"><ClipboardList size={18} /></div>
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">Листинг</span>
+        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">Заявки</span>
       </button>
 
       <button 
