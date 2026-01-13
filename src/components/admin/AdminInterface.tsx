@@ -399,6 +399,8 @@ export const AdminInterface: React.FC = () => {
           };
       }); 
       
+      console.log('Saving order items:', newItems);
+
       try { 
           await SupabaseService.updateOrderJson(order.id, newItems); 
           
