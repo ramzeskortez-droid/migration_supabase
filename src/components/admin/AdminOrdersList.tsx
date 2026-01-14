@@ -370,7 +370,7 @@ interface AdminOrdersListProps {
   toggleRegistry: (id: string) => void;
   exchangeRates: any;
   offerEdits: any;
-  onOpenChat: (orderId: string, supplierName?: string) => void;
+  onOpenChat: (orderId: string, supplierName?: string, supplierId?: string) => void;
   debugMode?: boolean;
 }
 

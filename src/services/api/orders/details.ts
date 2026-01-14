@@ -6,7 +6,7 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
         .from('orders')
         .select(`
           id, order_files, is_manual_processing, refusal_reason, order_items (*),
-          offers (id, status, created_at, supplier_name, supplier_phone, supplier_files, offer_items (*))
+          offers (id, status, created_at, supplier_name, supplier_phone, supplier_files, created_by, offer_items (*))
         `)
         .eq('id', orderId)
         .single();
@@ -27,6 +27,7 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
       status: offer.status as any, // Mapped status
       clientName: offer.supplier_name, clientPhone: offer.supplier_phone,
       supplier_files: offer.supplier_files,
+      ownerId: offer.created_by, // Mapped Supplier UUID
       createdAt: new Date(offer.created_at).toLocaleString('ru-RU'),
       items: offer.offer_items.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
         id: oi.id, order_item_id: oi.order_item_id, name: oi.name, quantity: oi.quantity,

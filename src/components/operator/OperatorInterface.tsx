@@ -233,6 +233,7 @@ export const OperatorInterface: React.FC = () => {
         currentUserName={currentUser?.name}
         onNavigateToOrder={handleNavigateToOrder}
         onMessageRead={handleMessageRead}
+        initialSupplierId={undefined} // Пока не открываем конкретный чат по ID
       />
     </div>
   );

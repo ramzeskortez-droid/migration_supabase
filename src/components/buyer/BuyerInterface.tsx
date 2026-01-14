@@ -229,9 +229,11 @@ export const BuyerInterface: React.FC = () => {
   };
 
   const [initialChatOrder, setInitialChatOrder] = useState<string | null>(null);
+  const [initialTargetRole, setInitialTargetRole] = useState<'OPERATOR' | 'MANAGER' | undefined>(undefined);
 
-  const handleOpenChat = useCallback((orderId?: string) => {
+  const handleOpenChat = useCallback((orderId?: string, targetRole?: 'OPERATOR' | 'MANAGER') => {
       setInitialChatOrder(orderId || null);
+      setInitialTargetRole(targetRole);
       setIsGlobalChatOpen(true);
   }, []);
 
@@ -340,8 +342,10 @@ export const BuyerInterface: React.FC = () => {
                     onClose={() => setIsGlobalChatOpen(false)}
                     currentUserRole="SUPPLIER"
                     currentSupplierName={buyerAuth.name}
+                    currentSupplierId={buyerAuth.id} // NEW
                     onNavigateToOrder={handleNavigateToOrder}
                     initialOrderId={initialChatOrder}
+                    initialTargetRole={initialTargetRole}
                     onMessageRead={handleMessageRead}
                 />
             </>

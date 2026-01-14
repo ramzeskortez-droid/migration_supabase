@@ -20,7 +20,7 @@ interface AdminItemsTableProps {
   toggleRegistry: (id: string) => void;
   exchangeRates: ExchangeRates | null;
   offerEdits: Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>;
-  onOpenChat: (orderId: string, supplierName?: string) => void;
+  onOpenChat: (orderId: string, supplierName?: string, supplierId?: string) => void;
   debugMode?: boolean;
 }
 
@@ -133,7 +133,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                         (!i.order_item_id && i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
                     ); 
                     if (matching) {
-                        itemOffers.push({ offerId: off.id, clientName: off.clientName, supplierFiles: off.supplier_files, item: matching }); 
+                        itemOffers.push({ offerId: off.id, clientName: off.clientName, supplierFiles: off.supplier_files, item: matching, ownerId: off.ownerId }); 
                     }
                 } 
             }
@@ -270,7 +270,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-black text-gray-900 uppercase text-[10px] truncate" title={off.clientName}>{off.clientName}</span>
                                                                 <button 
-                                                                    onClick={() => onOpenChat(order.id, off.clientName)}
+                                                                    onClick={() => onOpenChat(order.id, off.clientName, off.ownerId)}
                                                                     className="text-indigo-400 hover:text-indigo-600 transition-colors"
                                                                     title="Чат с поставщиком"
                                                                 >

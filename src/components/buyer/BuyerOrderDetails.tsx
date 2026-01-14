@@ -16,7 +16,7 @@ interface BuyerOrderDetailsProps {
   isSubmitting: boolean;
   myOffer: any;
   statusInfo: any;
-  onOpenChat: (orderId: string) => void;
+  onOpenChat: (orderId: string, targetRole?: 'OPERATOR' | 'MANAGER') => void;
 }
 
 export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({ 
@@ -373,7 +373,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
         <div className="sticky bottom-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 -mx-6 -mb-6 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-[100]">
             <div className="flex gap-3">
                 <button 
-                    onClick={() => onOpenChat(order.id)}
+                    onClick={() => onOpenChat(order.id, 'OPERATOR')}
                     className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all text-xs font-black uppercase border-2 border-indigo-100"
                 >
                     <MessageCircle size={16} /> Оператор

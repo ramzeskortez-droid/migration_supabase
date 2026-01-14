@@ -20,7 +20,7 @@ interface BuyerOrdersListProps {
   getOfferStatus: (order: Order) => { label: string, color: string, icon: React.ReactNode };
   getMyOffer: (order: Order) => any;
   buyerToken?: string;
-  onOpenChat: (orderId: string) => void;
+  onOpenChat: (orderId: string, targetRole?: 'OPERATOR' | 'MANAGER') => void;
   scrollToId?: string | null;
   // Pagination
   onLoadMore: () => void;

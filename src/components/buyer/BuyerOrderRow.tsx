@@ -18,7 +18,7 @@ interface BuyerOrderRowProps {
   isSubmitting: boolean;
   buyerToken?: string;
   gridCols?: string;
-  onOpenChat: (orderId: string) => void;
+  onOpenChat: (orderId: string, targetRole?: 'OPERATOR' | 'MANAGER') => void;
 }
 
 const STICKER_COLORS = [

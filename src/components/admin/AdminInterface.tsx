@@ -51,7 +51,7 @@ export const AdminInterface: React.FC = () => {
   const [adminUser, setAdminUser] = useState<AppUser | null>(null);
   
   // Чат
-  const [chatTarget, setChatTarget] = useState<{ isOpen: boolean, orderId: string, supplierName?: string } | null>(null);
+  const [chatTarget, setChatTarget] = useState<{ isOpen: boolean, orderId: string, supplierName?: string, supplierId?: string } | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
 
@@ -489,7 +489,7 @@ export const AdminInterface: React.FC = () => {
                         toggleRegistry={toggleRegistry}
                         exchangeRates={exchangeRates}
                         offerEdits={offerEdits}
-                        onOpenChat={(orderId, supplierName) => setChatTarget({ isOpen: true, orderId, supplierName })}
+                        onOpenChat={(orderId, supplierName, supplierId) => setChatTarget({ isOpen: true, orderId, supplierName, supplierId })}
                         debugMode={debugMode}
                       />
                   </div>
@@ -504,6 +504,7 @@ export const AdminInterface: React.FC = () => {
                   currentUserName={adminUser?.name || 'Manager'}
                   initialOrderId={chatTarget.orderId}
                   initialSupplierFilter={chatTarget.supplierName}
+                  initialSupplierId={chatTarget.supplierId}
                   onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
                   onNavigateToOrder={handleNavigateToOrder}
               />

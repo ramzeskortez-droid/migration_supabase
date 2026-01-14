@@ -13,9 +13,10 @@ interface GlobalChatWindowProps {
   onMessageRead?: (count: number) => void;
   initialOrderId?: string;
   initialSupplierFilter?: string;
+  initialSupplierId?: string; // UUID поставщика для выбора чата
 }
 
-export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, onMessageRead, initialOrderId, initialSupplierFilter }) => {
+export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, onMessageRead, initialOrderId, initialSupplierFilter, initialSupplierId }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
   const [unreadCounts, setUnreadCounts] = useState({ active: 0, archive: 0 }); // NEW: Counts for tabs
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -53,7 +54,16 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
           
           if (initialOrderId) {
               setSelectedOrder(initialOrderId);
-              if (initialSupplierFilter) {
+              // Если передан ID, ищем имя поставщика по этому ID в загруженных тредах
+              if (initialSupplierId) {
+                  // Поиск в загруженных тредах имени поставщика по ID
+                  const orderThreads = activeTab === 'active' ? activeData[initialOrderId] : archiveData[initialOrderId];
+                  if (orderThreads) {
+                      const foundName = Object.keys(orderThreads).find(name => orderThreads[name].supplierId === initialSupplierId);
+                      if (foundName) setSelectedSupplier(foundName);
+                      else if (initialSupplierFilter) setSelectedSupplier(initialSupplierFilter); // Fallback
+                  }
+              } else if (initialSupplierFilter) {
                   setSelectedSupplier(initialSupplierFilter);
               }
           }
@@ -85,7 +95,7 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
               SupabaseService.unsubscribeFromChat(channel);
           };
       }
-  }, [isOpen, activeTab, initialOrderId, initialSupplierFilter]);
+  }, [isOpen, activeTab, initialOrderId, initialSupplierFilter, initialSupplierId]);
 
 
   const handleNavigate = React.useCallback((oid: string) => {
@@ -217,7 +227,8 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                                             >
                                                 <div className="flex flex-col overflow-hidden">
                                                     <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1">
-                                                        <User size={10}/> {supplier}
+                                                        <User size={10}/> 
+                                                        {currentUserRole === 'OPERATOR' ? `Чат с закупщиком - ${supplier}` : supplier}
                                                     </span>
                                                     <span className={`text-[9px] truncate ${selectedSupplier === supplier ? 'text-indigo-200' : 'text-slate-400'}`}>
                                                         {info.lastMessage}
@@ -256,6 +267,7 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                             <ChatWindow 
                                 orderId={selectedOrder}
                                 supplierName={selectedSupplier}
+                                supplierId={threads[selectedOrder]?.[selectedSupplier]?.supplierId} // Pass UUID
                                 currentUserRole={currentUserRole}
                                 currentUserName={currentUserName}
                                 onNavigateToOrder={handleNavigate}
