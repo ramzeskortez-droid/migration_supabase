@@ -17,12 +17,12 @@ serve(async (req) => {
     )
 
     const client = new ImapFlow({
-      host: 'imap.gmail.com',
+      host: 'imap.mail.ru',
       port: 993,
       secure: true,
       auth: {
-        user: 'kortez.pc@gmail.com',
-        pass: 'qgbt qonr bcqq eaxk' // Пароль с пробелами, как вы и дали
+        user: 'china.flow@mail.ru',
+        pass: '3BH5D67YlJ4qYW24j5rR'
       },
       logger: false
     });

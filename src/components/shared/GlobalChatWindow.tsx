@@ -264,17 +264,30 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                             </p>
                         </div>
                         <div className="flex-grow overflow-hidden">
-                            <ChatWindow 
-                                orderId={selectedOrder}
-                                supplierName={selectedSupplier}
-                                supplierId={threads[selectedOrder]?.[selectedSupplier]?.supplierId} // Pass UUID
-                                currentUserRole={currentUserRole}
-                                currentUserName={currentUserName}
-                                onNavigateToOrder={handleNavigate}
-                                onRead={handleRead}
-                                isArchived={activeTab === 'archive'}
-                                onArchiveUpdate={fetchThreads}
-                            />
+                            {(() => {
+                                // Determine thread role for filtering
+                                let threadRole: 'OPERATOR' | 'MANAGER' | 'ADMIN' | undefined = undefined;
+                                if (currentUserRole === 'OPERATOR') {
+                                    if (selectedSupplier === 'Менеджер') threadRole = 'MANAGER';
+                                } else if (currentUserRole === 'ADMIN') {
+                                    if (selectedSupplier === 'OPERATOR' || selectedSupplier === 'Оператор') threadRole = 'OPERATOR';
+                                }
+                                
+                                return (
+                                    <ChatWindow 
+                                        orderId={selectedOrder}
+                                        supplierName={selectedSupplier}
+                                        supplierId={threads[selectedOrder]?.[selectedSupplier]?.supplierId} // Pass UUID
+                                        currentUserRole={currentUserRole}
+                                        currentUserName={currentUserName}
+                                        threadRole={threadRole} // Pass calculated role
+                                        onNavigateToOrder={handleNavigate}
+                                        onRead={handleRead}
+                                        isArchived={activeTab === 'archive'}
+                                        onArchiveUpdate={fetchThreads}
+                                    />
+                                );
+                            })()}
                         </div>
                     </div>
                 ) : (

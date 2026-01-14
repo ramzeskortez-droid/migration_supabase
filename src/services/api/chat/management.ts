@@ -106,9 +106,13 @@ export const getGlobalChatThreads = async (
             
             // Защита от системных имен в заголовках тредов
             if (['OPERATOR', 'ADMIN', 'MANAGER', 'Оператор', 'Менеджер'].includes(threadKey)) {
-                // Если имя системное, значит что-то пошло не так с определением имени поставщика.
-                // Пытаемся найти нормальное имя или оставляем как есть, но это сигнал об ошибке данных.
-                // В контексте Админа threadKey ДОЛЖЕН быть именем поставщика.
+                if (currentUserRole === 'OPERATOR') {
+                    // Check if sender is Admin OR Manager
+                    const isManagerMsg = ['ADMIN', 'MANAGER'].includes(msg.sender_role) || ['ADMIN', 'MANAGER'].includes(msg.recipient_name);
+                    threadKey = isManagerMsg ? 'Менеджер' : 'Оператор';
+                } else {
+                    threadKey = 'Оператор';
+                }
             }
         }
 

@@ -250,7 +250,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           const nameToSearch = currentUserRole === 'SUPPLIER' ? currentUserName : supplierName;
           
           console.log('Fetching messages:', { orderId, nameToSearch, targetId, threadRole, currentUserRole });
-          const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, nameToSearch, targetId, threadRole);
+          const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, nameToSearch, targetId, threadRole, currentUserRole);
           setMessages(data);
       } catch (e) {
           console.error(e);

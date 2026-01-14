@@ -5,7 +5,8 @@ export const getChatMessages = async (
     offerId?: string, 
     supplierName?: string, 
     supplierId?: string, 
-    interlocutorRole?: 'OPERATOR' | 'MANAGER' | 'ADMIN'
+    interlocutorRole?: 'OPERATOR' | 'MANAGER' | 'ADMIN',
+    currentUserRole?: 'ADMIN' | 'SUPPLIER' | 'OPERATOR' // NEW
 ): Promise<any[]> => {
     let query = supabase.from('chat_messages').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
     
@@ -16,6 +17,11 @@ export const getChatMessages = async (
             // Исправленная логика: используем один OR для всех условий ролей
             // Убрали recipient_role, так как колонки нет в БД
             query = query.or('sender_role.eq.OPERATOR,recipient_name.eq.OPERATOR,recipient_name.eq.Оператор');
+            
+            // SECURITY FIX: Если Менеджер смотрит чат с Оператором, он не должен видеть сообщения от Закупщика
+            if (currentUserRole === 'ADMIN') {
+                query = query.neq('sender_role', 'SUPPLIER');
+            }
         } else {
             // Manager/Admin
             // sender is Admin/Manager OR recipient is Admin/Manager
