@@ -28,3 +28,17 @@ dist-ssr
 .env
 .env.local
 .env.*
+
+# Legacy & Local Dumps
+_legacy/
+*.csv
+*.sql
+
+# Local Scripts
+*.bat
+!GEMINI_PROXY_ONLY.bat
+
+# Temporary
+temp/
+commit_msg.txt
+correct_msg.txt
