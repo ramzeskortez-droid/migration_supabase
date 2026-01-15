@@ -54,67 +54,76 @@ E‑mail:\telena.kaknibud@pochta.ru`;
   const handleProcess = async () => {
     if (!inputText.trim()) return;
     setIsProcessing(true);
-    onLog(`Запуск обработки AI (China_nai_bot)...`);
+    onLog(`Запуск обработки AI (Edge Function)...`);
 
     try {
-      const estimatedInputTokens = Math.ceil(inputText.length / 4);
-      
       const { data, error } = await supabase.functions.invoke('process-email', {
         body: { text: inputText }
       });
 
       if (error) {
-        throw new Error(`Edge Function Error: ${error.message}`);
+          console.error("Supabase Invoke Error:", error);
+          throw new Error(error.message || "Ошибка вызова функции");
       }
 
-      const jsonText = data.choices?.[0]?.message?.content;
+      if (data.error) {
+          throw new Error(`Groq API: ${data.details || data.error}`);
+      }
+
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("Пустой ответ от AI");
       
-      if (jsonText) {
-        const parsedData = JSON.parse(jsonText);
-        
-        if (parsedData.order_info) {
-             const updates: Partial<OrderInfo> = {};
-             if (parsedData.order_info.deadline) updates.deadline = parsedData.order_info.deadline;
-             if (parsedData.order_info.region) updates.region = parsedData.order_info.region;
-             if (parsedData.order_info.city) updates.city = parsedData.order_info.city;
-             if (parsedData.order_info.email) updates.email = parsedData.order_info.email;
-             if (parsedData.order_info.client_name) updates.clientName = parsedData.order_info.client_name;
-             if (parsedData.order_info.client_phone) updates.clientPhone = parsedData.order_info.client_phone;
-             if (parsedData.order_info.email_subject) updates.emailSubject = parsedData.order_info.email_subject;
-             
-             onUpdateOrderInfo(updates);
-             onLog(`AI: Данные заголовка извлечены.`);
-        }
-
-        if (parsedData.parts && Array.isArray(parsedData.parts)) {
-          const newParts = parsedData.parts.map((p: any, index: number) => {
-            return {
-              id: Date.now() + index,
-              name: p.name || '',
-              article: p.article || '',
-              brand: p.brand || '', 
-              uom: p.uom || 'шт',
-              quantity: p.quantity || 1
-            };
-          });
-          
-          onImport(newParts);
-          setInputText(''); 
-          onLog(`AI: Добавлено ${newParts.length} позиций.`);
-        } else {
-          onLog(`Обработано: детали не найдены`);
-        }
-        
-        const outputTokens = data.usage?.total_tokens || Math.ceil(jsonText.length / 4) + estimatedInputTokens;
-        onStats(outputTokens);
+      let parsedData;
+      try {
+          parsedData = JSON.parse(content);
+      } catch (e) {
+          console.error("JSON Parse Error:", content);
+          throw new Error("Некорректный JSON от AI");
       }
+
+      handleAiResult(parsedData);
 
     } catch (error) {
-      console.error("Error processing request:", error);
+      console.error("AI Processing Error:", error);
       onLog(`Ошибка: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Ошибка AI: ${error instanceof Error ? error.message : 'Сбой'}`);
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleAiResult = (parsedData: any) => {
+    if (parsedData.order_info) {
+        const updates: Partial<OrderInfo> = {};
+        if (parsedData.order_info.deadline) updates.deadline = parsedData.order_info.deadline;
+        if (parsedData.order_info.region) updates.region = parsedData.order_info.region;
+        if (parsedData.order_info.city) updates.city = parsedData.order_info.city;
+        if (parsedData.order_info.email) updates.email = parsedData.order_info.email;
+        if (parsedData.order_info.client_name) updates.clientName = parsedData.order_info.client_name;
+        if (parsedData.order_info.client_phone) updates.clientPhone = parsedData.order_info.client_phone;
+        if (parsedData.order_info.email_subject) updates.emailSubject = parsedData.order_info.email_subject;
+        
+        onUpdateOrderInfo(updates);
+        onLog(`AI: Данные заголовка извлечены.`);
+    }
+
+    if (parsedData.parts && Array.isArray(parsedData.parts)) {
+      const newParts = parsedData.parts.map((p: any, index: number) => ({
+        id: Date.now() + index,
+        name: p.name || '',
+        article: p.article || '',
+        brand: p.brand || '', 
+        uom: p.uom || 'шт',
+        quantity: p.quantity || 1
+      }));
+      
+      onImport(newParts);
+      setInputText(''); 
+      onLog(`AI: Добавлено ${newParts.length} позиций.`);
+    } else {
+      onLog(`Обработано: детали не найдены`);
+    }
+    setIsProcessing(false);
   };
 
   return (
