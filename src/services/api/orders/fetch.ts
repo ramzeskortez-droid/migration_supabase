@@ -49,7 +49,7 @@ export const getOrders = async (
         refusal_reason,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
-        offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks, weight))
+        offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, locked_at, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks, weight))
     `);
 
     if (buyerTab === 'new' || buyerTab === 'hot') {
@@ -249,7 +249,7 @@ export const getOrders = async (
                 itemFiles: i.item_files || []
             })) || [],
             offers: order.offers?.map((o: any) => ({
-                id: o.id, status: o.status, clientName: o.supplier_name, supplier_files: o.supplier_files, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
+                id: o.id, status: o.status, clientName: o.supplier_name, supplier_files: o.supplier_files, locked_at: o.locked_at, items: o.offer_items?.sort((a: any, b: any) => a.id - b.id).map((oi: any) => ({
                     id: oi.id, order_item_id: oi.order_item_id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPrice: oi.admin_price,

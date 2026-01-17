@@ -372,11 +372,13 @@ interface AdminOrdersListProps {
   offerEdits: any;
   onOpenChat: (orderId: string, supplierName?: string, supplierId?: string) => void;
   debugMode?: boolean;
+  offerEditTimeout?: number;
 }
 
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   orders, sortConfig, handleSort, expandedId, setExpandedId,
   onLoadMore, hasMore, isLoading, exchangeRates, offerEdits, onOpenChat, debugMode,
+  offerEditTimeout,
   ...rowProps
 }) => {
 
@@ -424,6 +426,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                         offerEdits={offerEdits}
                         onOpenChat={onOpenChat}
                         debugMode={debugMode}
+                        offerEditTimeout={offerEditTimeout}
                         {...rowProps}
                     />
                 )}

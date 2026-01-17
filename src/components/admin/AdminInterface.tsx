@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 import { SupabaseService } from '../../services/supabaseService';
 import { Order, OrderStatus, Currency, RankType, ActionLog, AdminModalState, AdminTab, ExchangeRates, WorkflowStatus, AppUser } from '../../types';
 import { CheckCircle2, AlertCircle, Settings, FileText, Send, ShoppingCart, CreditCard, Truck, PackageCheck, User, LogOut, Ban, MessageCircle } from 'lucide-react';
@@ -48,6 +49,7 @@ export const AdminInterface: React.FC = () => {
   const [isDbLoading, setIsDbLoading] = useState(false);
   const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>>({});
   const [debugMode, setDebugMode] = useState(false);
+  const [offerEditTimeout, setOfferEditTimeout] = useState(5);
   const [adminUser, setAdminUser] = useState<AppUser | null>(null);
   
   // Чат
@@ -169,7 +171,19 @@ export const AdminInterface: React.FC = () => {
           }
       }, 'admin-global-notifications');
 
-      return () => { SupabaseService.unsubscribeFromChat(channel); };
+      // ПОДПИСКА НА БЛОКИРОВКИ ОФФЕРОВ (REAL-TIME)
+      const lockChannel = supabase
+          .channel('offers-locks')
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'offers' }, (payload) => {
+              console.log('Real-time offer lock update:', payload.new);
+              queryClient.invalidateQueries({ queryKey: ['order-details', String(payload.new.order_id)] });
+          })
+          .subscribe();
+
+      return () => { 
+          SupabaseService.unsubscribeFromChat(channel); 
+          supabase.removeChannel(lockChannel);
+      };
   }, []);
   
   // Сортировка
@@ -491,6 +505,7 @@ export const AdminInterface: React.FC = () => {
                         offerEdits={offerEdits}
                         onOpenChat={(orderId, supplierName, supplierId) => setChatTarget({ isOpen: true, orderId, supplierName, supplierId })}
                         debugMode={debugMode}
+                        offerEditTimeout={offerEditTimeout}
                       />
                   </div>
               )}
@@ -528,7 +543,29 @@ export const AdminInterface: React.FC = () => {
                           <div className="text-center space-y-4">
                               <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto"><AlertCircle size={24}/></div>
                               <div><h3 className="text-lg font-black uppercase text-slate-800">Внимание!</h3><p className="text-xs font-bold text-slate-500 mt-2">Не выбраны закупщики для позиций:</p><ul className="mt-2 text-[10px] font-bold text-red-500 uppercase bg-red-50 p-2 rounded-lg text-left">{adminModal.missingItems?.map(i => <li key={i}>• {i}</li>)}</ul><p className="text-[10px] text-slate-400 mt-2">Утвердить КП с неполным комплектом?</p></div>
-                              <div className="grid grid-cols-2 gap-3"><button onClick={() => setAdminModal(null)} className="py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase">Отмена</button><button onClick={() => executeApproval(adminModal.orderId!)} className="py-3 rounded-xl bg-indigo-600 text-white font-black text-xs uppercase shadow-lg">Всё равно утвердить</button></div>
+                              <div className="grid grid-cols-2 gap-3"><button onClick={() => setAdminModal(null)} className="py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase">Отмена</button><button onClick={() => executeApproval(adminModal.orderId!, adminModal.missingItems?.includes('MANUAL'))} className="py-3 rounded-xl bg-indigo-600 text-white font-black text-xs uppercase shadow-lg">Всё равно утвердить</button></div>
+                          </div>
+                      ) : (adminModal as any).type === 'LOCK_CONFLICT' ? (
+                          <div className="text-center space-y-4">
+                              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto animate-pulse"><Clock size={32}/></div>
+                              <div>
+                                  <h3 className="text-lg font-black uppercase text-slate-800 leading-tight">Закупщики вносят правки</h3>
+                                  <p className="text-xs font-bold text-slate-500 mt-2 italic">
+                                      {(adminModal as any).lockedSuppliers?.join(', ')} сейчас редактируют свои предложения.
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 mt-4 leading-relaxed uppercase font-bold">
+                                      Если вы утвердите КП сейчас, закупщики <span className="text-red-500">не смогут</span> сохранить свои изменения.
+                                  </p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 pt-2">
+                                  <button onClick={() => setAdminModal(null)} className="py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase hover:bg-slate-200 transition-colors">Подождать</button>
+                                  <button 
+                                      onClick={() => executeApproval(adminModal.orderId!, adminModal.missingItems?.includes('MANUAL'))} 
+                                      className="py-3 rounded-xl bg-red-600 text-white font-black text-xs uppercase shadow-lg shadow-red-200 hover:bg-red-700 transition-colors"
+                                  >
+                                      Утвердить жестко
+                                  </button>
+                              </div>
                           </div>
                       ) : (
                           <div className="space-y-4">

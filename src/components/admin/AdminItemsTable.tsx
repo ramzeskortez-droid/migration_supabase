@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ChevronRight, ChevronDown, FileImage, Camera, Check, Edit2, 
-  ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle, FileText, Paperclip, Folder
+  ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle, FileText, Paperclip, Folder, RefreshCw
 } from 'lucide-react';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
 import { FileDropzone } from '../shared/FileDropzone';
@@ -22,14 +22,34 @@ interface AdminItemsTableProps {
   offerEdits: Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>;
   onOpenChat: (orderId: string, supplierName?: string, supplierId?: string) => void;
   debugMode?: boolean;
+  offerEditTimeout?: number;
 }
 
 export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
   order, isEditing, editForm, setEditForm, handleItemChange, handleLocalUpdateRank, 
-  currentStatus, openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat, debugMode
+  currentStatus, openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat, debugMode,
+  offerEditTimeout = 5
 }) => {
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
+
+  const isOfferLocked = (lockedAt: string | null) => {
+      if (!lockedAt) return false;
+      const lockTime = new Date(lockedAt).getTime();
+      const now = new Date().getTime();
+      const diffMin = Math.abs(now - lockTime) / (60 * 1000);
+      
+      console.log('Lock Debug:', { 
+          lockedAt, 
+          lockTime, 
+          now, 
+          diffMin, 
+          offerEditTimeout, 
+          isLocked: diffMin < offerEditTimeout 
+      });
+
+      return diffMin < offerEditTimeout;
+  };
 
   const calculatePrice = (sellerPrice: number, sellerCurrency: Currency, weight: number) => {
     if (!exchangeRates) return 0;
@@ -132,8 +152,26 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                         (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
                         (!i.order_item_id && i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
                     ); 
+                    
+                    const isLocked = isOfferLocked((off as any).locked_at);
+
                     if (matching) {
-                        itemOffers.push({ offerId: off.id, clientName: off.clientName, supplierFiles: off.supplier_files, item: matching, ownerId: off.ownerId }); 
+                        itemOffers.push({ 
+                            offerId: off.id, 
+                            clientName: off.clientName, 
+                            supplierFiles: off.supplier_files, 
+                            item: matching, 
+                            ownerId: off.ownerId,
+                            isLocked
+                        }); 
+                    } else if (isLocked) {
+                        // ФАНТОМНАЯ СТРОКА (Закупщик редактирует, но позиции еще нет)
+                        itemOffers.push({
+                            offerId: off.id,
+                            clientName: off.clientName,
+                            isPhantom: true,
+                            ownerId: off.ownerId
+                        });
                     }
                 } 
             }
@@ -246,6 +284,19 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                             ) : (
                                 <div className="divide-y divide-gray-100">
                                     {itemOffers.map((off, oIdx) => {
+                                        if (off.isPhantom) {
+                                            return (
+                                                <div key={`phantom-${oIdx}`} className="bg-indigo-50/20 px-6 py-4 flex items-center justify-between border-l-4 border-l-indigo-400">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                                                        <span className="text-[10px] font-black text-indigo-900 uppercase">{off.clientName}</span>
+                                                        <span className="text-[10px] font-bold text-indigo-400 italic">Вносит предложение по этой позиции...</span>
+                                                    </div>
+                                                    <Loader2 size={14} className="animate-spin text-indigo-300" />
+                                                </div>
+                                            );
+                                        }
+
                                         const isLeader = off.item.is_winner || off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER';
                                         
                                         const autoPrice = calculatePrice(off.item.sellerPrice, off.item.sellerCurrency, off.item.weight);
@@ -264,6 +315,17 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
 
                                         return (
                                             <div key={oIdx} className={`relative transition-all duration-300 ${isLeader ? "bg-emerald-50 shadow-inner" : "hover:bg-gray-50"}`}>
+                                                
+                                                {/* LOCK OVERLAY */}
+                                                {off.isLocked && (
+                                                    <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[1px] flex items-center justify-center group/lock cursor-help">
+                                                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-lg border border-indigo-100">
+                                                            <RefreshCw size={14} className="text-indigo-500 animate-spin" />
+                                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">Закупщик вносит изменения...</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
                                                     <div className="flex items-center gap-2 overflow-hidden">
                                                         <div className="flex flex-col min-w-0">
@@ -344,8 +406,9 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                     <div className="flex justify-end pr-2">
                                                         {(currentStatus === 'В обработке' || currentStatus === 'Ручная обработка') ? (
                                                             <button
+                                                                disabled={off.isLocked}
                                                                 onClick={() => handleLocalUpdateRank(order.id, off.offerId, off.item.id, item.id, off.item.rank || '', off.item.sellerPrice, off.item.sellerCurrency, off.item.adminComment, off.item.deliveryRate, currentPriceRub, currentWeeks)}
-                                                                className={`w-full py-2 px-3 rounded-xl font-black uppercase text-[9px] transition-all shadow-md ${isLeader ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                                                                className={`w-full py-2 px-3 rounded-xl font-black uppercase text-[9px] transition-all shadow-md ${off.isLocked ? "bg-gray-100 text-gray-300 cursor-not-allowed shadow-none" : isLeader ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                                                             >
                                                                 {isLeader ? ( <span className="flex items-center justify-center gap-1"><Check size={12} strokeWidth={3} /> Лидер</span> ) : ( "Выбрать" )}
                                                             </button>
