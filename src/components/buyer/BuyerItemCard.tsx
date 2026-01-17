@@ -55,6 +55,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
       onDrop,
       noClick: true,
       noKeyboard: true,
+      multiple: true,
       disabled: isDisabled || isUnavailable
   });
 

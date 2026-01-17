@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Trash2, Plus, CheckCircle, AlertTriangle, Loader2, RefreshCw, UploadCloud } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, AlertTriangle, Loader2, RefreshCw, UploadCloud, ShieldCheck } from 'lucide-react';
 import { Part } from './types';
 import { FileDropzone } from '../shared/FileDropzone';
 import { SupabaseService } from '../../services/supabaseService';
 import { useDropzone } from 'react-dropzone';
+import { useOfficialBrands } from '../../hooks/useOfficialBrands';
 
 interface PartsListProps {
   parts: Part[];
@@ -22,7 +23,6 @@ const PartRow: React.FC<{
     updatePart: (id: number, field: keyof Part, value: any) => void;
     updatePartFields: (id: number, updates: Partial<Part>) => void;
     removePart: (id: number) => void;
-    // Brand Logic Props
     brandCache: Record<string, string | null>;
     validating: Set<number>;
     suggestions: string[];
@@ -30,15 +30,15 @@ const PartRow: React.FC<{
     setActiveBrandInput: (id: number | null) => void;
     setSuggestions: (s: string[]) => void;
     setBrandCache: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
-    // Styling Props
     requiredFields: any;
     getHighlightClass: (partId: number, field: string) => string;
     inputClass: string;
     blinkTrigger: number;
+    officialBrands: Set<string>;
 }> = ({ 
     part, idx, updatePart, updatePartFields, removePart, 
     brandCache, validating, suggestions, activeBrandInput, setActiveBrandInput, setSuggestions, setBrandCache,
-    requiredFields, getHighlightClass, inputClass, blinkTrigger
+    requiredFields, getHighlightClass, inputClass, blinkTrigger, officialBrands
 }) => {
     // Local Dropzone
     const onDrop = useCallback(async (acceptedFiles: File[], fileRejections: any[], event: any) => {
@@ -47,7 +47,8 @@ const PartRow: React.FC<{
         const newFiles: any[] = [];
         await Promise.all(acceptedFiles.map(async (file) => {
             try {
-                const publicUrl = await SupabaseService.uploadFile(file, 'attachments');
+                // Используем 'orders' так как 'attachments' не в списке разрешенных типов
+                const publicUrl = await SupabaseService.uploadFile(file, 'orders');
                 newFiles.push({ 
                     name: file.name, 
                     url: publicUrl, 
@@ -72,7 +73,8 @@ const PartRow: React.FC<{
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         noClick: true,
-        noKeyboard: true
+        noKeyboard: true,
+        multiple: true
     });
 
     const brandValue = part.brand?.trim() || '';
@@ -84,6 +86,9 @@ const PartRow: React.FC<{
                              (!isStrictMatch && !dbName && suggestions.length > 0 && activeBrandInput === part.id);
     const isError = brandValue.length > 0 && !isStrictMatch && !isNonStrictMatch && !isChecking;
     const needsFix = dbName && dbName !== brandValue && !part.isNewBrand;
+    
+    // Official Check
+    const isOfficial = officialBrands.has(brandValue.toLowerCase());
 
     return (
         <div 
@@ -92,7 +97,6 @@ const PartRow: React.FC<{
         >
             <input {...getInputProps()} />
             
-            {/* DRAG OVERLAY */}
             {isDragActive && (
                 <div className="absolute inset-0 z-[200] bg-indigo-600/90 backdrop-blur-sm rounded-lg flex items-center justify-center gap-2 animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
                     <UploadCloud size={24} className="text-white animate-bounce" />
@@ -102,7 +106,6 @@ const PartRow: React.FC<{
 
             <div className="text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
             
-            {/* Brand Input */}
             <div className="relative">
                 <input 
                 key={`brand_${part.id}_${blinkTrigger}`}
@@ -114,17 +117,20 @@ const PartRow: React.FC<{
                 onFocus={() => setActiveBrandInput(part.id)}
                 onBlur={() => setTimeout(() => setActiveBrandInput(null), 200)}
                 placeholder="Бренд"
-                className={`${inputClass} font-black text-indigo-700 uppercase pr-8
+                className={`${inputClass} font-black uppercase pr-8
                     ${isError ? 'border-red-500 bg-red-50 text-red-700' : ''}
                     ${isNonStrictMatch ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : ''}
-                    ${isStrictMatch ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : ''}
+                    ${isStrictMatch ? (isOfficial ? 'border-amber-400 bg-amber-50 text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2' : 'border-emerald-500 bg-emerald-50 text-emerald-700') : 'text-indigo-700'}
                     ${getHighlightClass(part.id, 'brand')}
                 `}
+                title={isOfficial ? "Официальный представитель" : ""}
                 />
                 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 {isChecking && <Loader2 size={12} className="animate-spin text-slate-400" />}
-                {isStrictMatch && <CheckCircle size={14} className="text-emerald-500" />}
+                {isStrictMatch && (
+                    isOfficial ? <ShieldCheck size={14} className="text-amber-500" /> : <CheckCircle size={14} className="text-emerald-500" />
+                )}
                 {isNonStrictMatch && <AlertTriangle size={14} className="text-yellow-500" />}
                 {needsFix && (
                     <button 
@@ -146,22 +152,25 @@ const PartRow: React.FC<{
                 )}
                 </div>
 
-                {/* Suggestions */}
                 {activeBrandInput === part.id && suggestions.length > 0 && (
                     <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
-                        {suggestions.map(s => (
-                            <div 
-                            key={s}
-                            onClick={() => {
-                                updatePart(part.id, 'brand', s);
-                                setBrandCache(prev => ({ ...prev, [s.toLowerCase()]: s }));
-                                setSuggestions([]);
-                            }}
-                            className="px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
-                            >
-                            {s}
-                            </div>
-                        ))}
+                        {suggestions.map(s => {
+                            const isSugOfficial = officialBrands.has(s.toLowerCase());
+                            return (
+                                <div 
+                                key={s}
+                                onClick={() => {
+                                    updatePart(part.id, 'brand', s);
+                                    setBrandCache(prev => ({ ...prev, [s.toLowerCase()]: s }));
+                                    setSuggestions([]);
+                                }}
+                                className="px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer flex items-center justify-between"
+                                >
+                                <span>{s}</span>
+                                {isSugOfficial && <ShieldCheck size={12} className="text-amber-500" />}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -240,6 +249,9 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [brandCache, setBrandCache] = useState<Record<string, string | null>>({});
   const [validating, setValidating] = useState<Set<number>>(new Set());
+  const { data: officialBrands } = useOfficialBrands();
+  
+  const req = requiredFields as any;
 
   const getHighlightClass = (partId: number, field: string) => {
       if (highlightedFields.has(`part_${partId}_${field}`)) {
@@ -325,12 +337,12 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
       <div className="space-y-3">
         <div className="grid grid-cols-[30px_2fr_4fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
           <div className={`${headerClass} text-center`}>#</div>
-          <div className={`${headerClass} text-indigo-600 font-black`}>Бренд {requiredFields.brand && <span className="text-red-500">*</span>}</div>
-          <div className={headerClass}>Наименование {requiredFields.name && <span className="text-red-500">*</span>}</div>
-          <div className={headerClass}>Артикул {requiredFields.article && <span className="text-red-500">*</span>}</div>
-          <div className={`${headerClass} text-center`}>Ед. {requiredFields.uom && <span className="text-red-500">*</span>}</div>
-          <div className={`${headerClass} text-center`}>Кол-во {requiredFields.quantity && <span className="text-red-500">*</span>}</div>
-          <div className={`${headerClass} text-center`}>Фото {requiredFields.photos && <span className="text-red-500">*</span>}</div>
+          <div className={`${headerClass} text-indigo-600 font-black`}>Бренд {req.brand && <span className="text-red-500">*</span>}</div>
+          <div className={headerClass}>Наименование {req.name && <span className="text-red-500">*</span>}</div>
+          <div className={headerClass}>Артикул {req.article && <span className="text-red-500">*</span>}</div>
+          <div className={`${headerClass} text-center`}>Ед. {req.uom && <span className="text-red-500">*</span>}</div>
+          <div className={`${headerClass} text-center`}>Кол-во {req.quantity && <span className="text-red-500">*</span>}</div>
+          <div className={`${headerClass} text-center`}>Фото {req.photos && <span className="text-red-500">*</span>}</div>
         </div>
 
         {parts.map((part, idx) => (
@@ -348,10 +360,11 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
                 setActiveBrandInput={setActiveBrandInput}
                 setSuggestions={setSuggestions}
                 setBrandCache={setBrandCache}
-                requiredFields={requiredFields}
+                requiredFields={req}
                 getHighlightClass={getHighlightClass}
                 inputClass={inputClass}
                 blinkTrigger={blinkTrigger}
+                officialBrands={officialBrands || new Set()}
             />
         ))}
 

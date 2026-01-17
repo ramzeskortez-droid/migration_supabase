@@ -42,6 +42,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     const [isBrandsValid, setIsBrandsValid] = useState(false);
     const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
     const [requiredFields, setRequiredFields] = useState<any>({ name: true, brand: true }); // Defaults
+    const req = requiredFields as any;
     const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
     const [blinkTrigger, setBlinkTrigger] = useState(0);
 
@@ -49,8 +50,8 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     const onDrop = useCallback((acceptedFiles: File[]) => {
         acceptedFiles.forEach(async (file) => {
             try {
-                // Прямая загрузка в Supabase (как это делалось в OrderFilesUpload)
-                const publicUrl = await SupabaseService.uploadFile(file, 'attachments'); // Используем attachments бакет (как у оператора)
+                // Прямая загрузка в Supabase
+                const publicUrl = await SupabaseService.uploadFile(file, 'orders'); // Исправлено: 'orders' вместо 'attachments'
                 
                 setOrderFiles(prev => [...prev, {
                     name: file.name,
@@ -69,7 +70,8 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     const { getRootProps, getInputProps, isDragActive, open } = useDropzone({ 
         onDrop, 
         noClick: true, // Клик по контейнеру не открывает диалог, только кнопка
-        noKeyboard: true
+        noKeyboard: true,
+        multiple: true
     });
 
     useEffect(() => {
@@ -188,25 +190,25 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
         const highlighted = new Set<string>();
         
         // 1. Header Fields
-        if (requiredFields.client_name && !orderInfo.clientName?.trim()) { errors.push('Имя клиента'); highlighted.add('clientName'); }
-        if (requiredFields.client_phone && !orderInfo.clientPhone?.trim()) { errors.push('Телефон'); highlighted.add('clientPhone'); }
-        if (requiredFields.client_email && !orderInfo.clientEmail?.trim()) { errors.push('Почта'); highlighted.add('clientEmail'); }
-        if (requiredFields.location && !orderInfo.city?.trim()) { errors.push('Адрес/Город'); highlighted.add('city'); }
-        if (requiredFields.email_subject && !orderInfo.emailSubject?.trim()) { errors.push('Тема письма'); highlighted.add('emailSubject'); }
+        if (req.client_name && !orderInfo.clientName?.trim()) { errors.push('Имя клиента'); highlighted.add('clientName'); }
+        if (req.client_phone && !orderInfo.clientPhone?.trim()) { errors.push('Телефон'); highlighted.add('clientPhone'); }
+        if (req.client_email && !orderInfo.clientEmail?.trim()) { errors.push('Почта'); highlighted.add('clientEmail'); }
+        if (req.location && !orderInfo.city?.trim()) { errors.push('Адрес/Город'); highlighted.add('city'); }
+        if (req.email_subject && !orderInfo.emailSubject?.trim()) { errors.push('Тема письма'); highlighted.add('emailSubject'); }
 
         // 2. Parts Fields
         parts.forEach((p, idx) => {
-            if (requiredFields.name && !p.name?.trim()) { errors.push(`Поз. ${idx+1}: Наименование`); highlighted.add(`part_${p.id}_name`); }
-            if (requiredFields.brand && !p.brand?.trim()) { errors.push(`Поз. ${idx+1}: Бренд`); highlighted.add(`part_${p.id}_brand`); }
-            if (requiredFields.article && !p.article?.trim()) { errors.push(`Поз. ${idx+1}: Артикул`); highlighted.add(`part_${p.id}_article`); }
-            if (requiredFields.quantity && (!p.quantity || p.quantity <= 0)) { errors.push(`Поз. ${idx+1}: Кол-во`); highlighted.add(`part_${p.id}_quantity`); }
-            if (requiredFields.photos && (!p.itemFiles?.length && !p.photoUrl)) {
+            if (req.name && !p.name?.trim()) { errors.push(`Поз. ${idx+1}: Наименование`); highlighted.add(`part_${p.id}_name`); }
+            if (req.brand && !p.brand?.trim()) { errors.push(`Поз. ${idx+1}: Бренд`); highlighted.add(`part_${p.id}_brand`); }
+            if (req.article && !p.article?.trim()) { errors.push(`Поз. ${idx+1}: Артикул`); highlighted.add(`part_${p.id}_article`); }
+            if (req.quantity && (!p.quantity || p.quantity <= 0)) { errors.push(`Поз. ${idx+1}: Кол-во`); highlighted.add(`part_${p.id}_quantity`); }
+            if (req.photos && (!p.itemFiles?.length && !p.photoUrl)) {
                  // Check if orderFiles exists (общие фото могут считаться зачет)
                  if (orderFiles.length === 0) { errors.push(`Поз. ${idx+1}: Фото/Файлы`); highlighted.add(`part_${p.id}_photos`); }
             }
         });
 
-        if (requiredFields.brand && !isBrandsValid) errors.push('Бренды должны быть из базы (зеленые)');
+        if (req.brand && !isBrandsValid) errors.push('Бренды должны быть из базы (зеленые)');
 
         return { errors, highlighted };
     };
