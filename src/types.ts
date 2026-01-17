@@ -150,6 +150,7 @@ export interface Brand {
   id: number;
   name: string;
   created_by?: string;
+  official?: boolean;
 }
 
 export type AdminTab = 'new' | 'manual' | 'kp_sent' | 'ready_to_buy' | 'supplier_confirmed' | 'awaiting_payment' | 'in_transit' | 'completed' | 'annulled' | 'refused' | 'archive';

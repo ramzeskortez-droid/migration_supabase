@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Copy, Camera, FileText, Paperclip } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Camera, FileText, Paperclip, ShieldCheck } from 'lucide-react';
 import { Order } from '../../types';
+import { useOfficialBrands } from '../../hooks/useOfficialBrands';
 
 interface OperatorOrderItemsProps {
     order: Order;
@@ -12,6 +13,26 @@ const OFFER_GRID = "grid-cols-[1.2fr_1fr_70px_80px_1.8fr_80px]";
 
 export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, onCopyItem }) => {
     const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+    const { data: officialBrands } = useOfficialBrands();
+
+    const isOfficial = (brand?: string) => {
+        if (!brand) return false;
+        return officialBrands?.has(brand.trim().toLowerCase());
+    };
+
+    const renderBrand = (brand?: string, className: string = "") => {
+        const official = isOfficial(brand);
+        const baseClass = official 
+            ? "text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2 cursor-help" 
+            : className || "text-indigo-600";
+        
+        return (
+            <div className={`font-black uppercase truncate flex items-center gap-1 ${baseClass}`} title={official ? "Официальный представитель" : brand}>
+                {brand || '-'}
+                {official && <ShieldCheck size={10} className="text-amber-600 shrink-0" />}
+            </div>
+        );
+    };
 
     const toggleItem = (itemId: string) => {
         setOpenItems(prev => {
@@ -21,7 +42,9 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
             return next;
         });
     };
-
+    
+    // ... rest of the code ...
+    
     const formatPrice = (val?: number) => {
         if (!val) return '0';
         return new Intl.NumberFormat('ru-RU').format(val);
@@ -184,7 +207,10 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                             </button>
                                         )}
                                     </div>
-                                    <div className="text-indigo-600 font-black uppercase text-[11px] truncate">{item.brand || '-'}</div>
+                                    
+                                    {/* BRAND */}
+                                    {renderBrand(item.brand, "text-indigo-600 text-[11px]")}
+                                    
                                     <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">
                                         {item.AdminName || item.name}
                                     </div>
@@ -223,7 +249,7 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                                                                 Вариант {wIdx + 1}
                                                             </div>
-                                                            <div className="text-indigo-600 font-black uppercase text-[10px] truncate">{win.brand || '-'}</div>
+                                                            {renderBrand(win.brand, "text-indigo-600 text-[10px]")}
                                                             <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
                                                             
                                                             {/* Files Column for Offer Item */}

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { 
   ChevronRight, ChevronDown, FileImage, Camera, Check, Edit2, 
-  ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle, FileText, Paperclip, Folder
+  ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle, FileText, Paperclip, Folder, ShieldCheck
 } from 'lucide-react';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
 import { FileDropzone } from '../shared/FileDropzone';
 import { useQueryClient } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
+import { useOfficialBrands } from '../../hooks/useOfficialBrands';
 
 interface AdminItemsTableProps {
   order: Order;
@@ -30,6 +31,12 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
+  const { data: officialBrands } = useOfficialBrands();
+
+  const isOfficial = (brand?: string) => {
+      if (!brand) return false;
+      return officialBrands?.has(brand.trim().toLowerCase());
+  };
 
   const calculatePrice = (sellerPrice: number, sellerCurrency: Currency, weight: number) => {
     if (!exchangeRates) return 0;
@@ -123,6 +130,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
         {order.items.map((item, idx) => {
             const isExpanded = openRegistry.has(item.name);
             const isLast = idx === order.items.length - 1;
+            const official = isOfficial(item.brand);
             
             // Сбор офферов для текущей позиции
             const itemOffers: any[] = []; 
@@ -151,7 +159,16 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                 </div>
                                 <span className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</span>
                             </div>
-                            <div className="text-[11px] truncate font-black text-indigo-600 uppercase">{item.brand || '-'}</div>
+                            
+                            {/* BRAND */}
+                            <div 
+                                className={`text-[11px] truncate font-black uppercase flex items-center gap-1 ${official ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2 cursor-help' : 'text-indigo-600'}`}
+                                title={official ? "Официальный представитель" : item.brand}
+                            >
+                                {item.brand || '-'}
+                                {official && <ShieldCheck size={10} className="text-amber-600 shrink-0" />}
+                            </div>
+
                             <div>
                                 {isEditing ? (
                                     <input 
