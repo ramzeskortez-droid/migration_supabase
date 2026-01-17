@@ -63,13 +63,13 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       
   }, [isDisabled]);
 
-  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({ 
-      onDrop, 
-      noClick: true, 
-      noKeyboard: true,
-      disabled: isDisabled
-  });
-
+    const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+        onDrop,
+        noClick: true,
+        noKeyboard: true,
+        multiple: true,
+        disabled: isDisabled
+    });
   useEffect(() => {
       SupabaseService.getSystemSettings('buyer_required_fields').then(res => {
           if (res) setRequiredFields(res);

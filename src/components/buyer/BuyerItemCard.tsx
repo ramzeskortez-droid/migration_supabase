@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
-import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud } from 'lucide-react';
+import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud, ShieldCheck } from 'lucide-react';
 import { FileDropzone } from '../shared/FileDropzone';
 import { useDropzone } from 'react-dropzone';
 import { SupabaseService } from '../../services/supabaseService';
+import { useOfficialBrands } from '../../hooks/useOfficialBrands';
 
 interface BuyerItemCardProps {
   item: any;
@@ -17,6 +18,9 @@ interface BuyerItemCardProps {
 }
 
 export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, index, onUpdate, isDisabled, orderId, bestStats, onCopy, requiredFields = {} }) => {
+  const { data: officialBrands } = useOfficialBrands();
+  
+  const req = requiredFields as any; // Explicit cast to avoid TS errors with default value
   
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
@@ -51,6 +55,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
       onDrop,
       noClick: true,
       noKeyboard: true,
+      multiple: true,
       disabled: isDisabled || isUnavailable
   });
 
@@ -80,6 +85,8 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
   };
 
   const opBrand = displayItem.brand || '-';
+  const isOpBrandOfficial = officialBrands?.has(opBrand?.trim().toLowerCase());
+
   const opArticle = displayItem.article || '-';
   const opUom = displayItem.uom || 'шт';
   const opPhoto = displayItem.opPhotoUrl || displayItem.photoUrl;
@@ -129,12 +136,12 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
   const hasPrice = item.BuyerPrice > 0;
   
   const isReqPrice = false; // Price is the trigger, it shouldn't show as "error" if empty
-  const isReqWeight = hasPrice && (requiredFields.weight !== false);
-  const isReqWeeks = hasPrice && (requiredFields.delivery_weeks !== false);
-  const isReqQty = hasPrice && (requiredFields.quantity === true);
-  const isReqComment = hasPrice && (requiredFields.comment === true);
-  const isReqSku = hasPrice && (requiredFields.supplier_sku === true);
-  const isReqImages = hasPrice && (requiredFields.images === true);
+  const isReqWeight = hasPrice && (req.weight !== false);
+  const isReqWeeks = hasPrice && (req.delivery_weeks !== false);
+  const isReqQty = hasPrice && (req.quantity === true);
+  const isReqComment = hasPrice && (req.comment === true);
+  const isReqSku = hasPrice && (req.supplier_sku === true);
+  const isReqImages = hasPrice && (req.images === true);
 
   const getInputClass = (field: string, value: any) => {
       const base = "w-full text-center font-bold text-xs bg-white border border-gray-200 rounded md:rounded-lg py-1.5 md:py-2 px-1 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all";
@@ -171,7 +178,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
         <div className="grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100 rounded-t-xl">
             <div className={`text-sm font-mono font-bold text-center ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>#{index + 1}</div>
             
-            <div className={`text-xs font-black uppercase truncate ${isUnavailable ? 'text-red-400 line-through' : 'text-indigo-600'}`} title={opBrand}>{opBrand}</div>
+            <div className={`text-xs font-black uppercase truncate flex items-center gap-1 ${isUnavailable ? 'text-red-400 line-through' : (isOpBrandOfficial ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2 cursor-help' : 'text-indigo-600')}`} title={isOpBrandOfficial ? "Официальный представитель" : opBrand}>
+                {opBrand}
+                {isOpBrandOfficial && !isUnavailable && <ShieldCheck size={12} className="text-amber-600 shrink-0" />}
+            </div>
 
             <div className="flex flex-col">
                 <span className={`font-black text-sm uppercase ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`}>
@@ -194,6 +204,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
         </div>
 
         {/* КОНТЕЙНЕР НИЖНЕЙ ЧАСТИ С ОВЕРЛЕЕМ ПРИ ОТКАЗЕ */}
+
         <div className="relative">
             {/* 2. БЛОК ЗАКУПЩИКА */}
             <div className={`mx-6 mt-4 mb-4 rounded-lg overflow-hidden border border-slate-200 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>

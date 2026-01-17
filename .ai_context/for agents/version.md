@@ -1,5 +1,20 @@
 # Version History
 
+## 1.18.121 - Feature: Official Brands Management
+- **Admin Interface:**
+  - В разделе "Бренды" добавлены табы "Все бренды" и "Официалы".
+  - Реализован чекбокс "Официал" при создании и редактировании бренда.
+  - Добавлена визуальная индикация официальных брендов в списке (иконка щита, цветовое выделение).
+- **Global UI Styling:**
+  - Реализована глобальная подсветка официальных брендов (Amber color + Underline + Tooltip).
+  - Поддержка в интерфейсе Оператора (`OperatorOrderItems`).
+  - Поддержка в интерфейсе Закупщика (`BuyerItemCard`).
+  - Поддержка в интерфейсе Менеджера (`AdminItemsTable`).
+- **Core Logic:**
+  - Создан хук `useOfficialBrands` для кеширования списка официалов.
+  - Обновлены API функции (`addBrand`, `updateBrand`, `getBrandsFull`, `getOfficialBrands`).
+  - В `types.ts` добавлено поле `official` для интерфейса `Brand`.
+
 ## 1.18.120 - Feature: Offer Amendment & Locking System
 - **Buyer Workflow:**
   - Реализована кнопка "Изменить / Дополнить" для уже отправленных предложений.

@@ -27,14 +27,22 @@ export async function getBrandsList(): Promise<string[]> {
     return data?.map((b: any) => b.name) || [];
 }
 
-export async function getBrandsFull(page: number = 1, limit: number = 100, search: string = '', sortField: string = 'id', sortDirection: 'asc' | 'desc' = 'desc'): Promise<{ data: Brand[], count: number }> {
+export async function getBrandsFull(page: number = 1, limit: number = 100, search: string = '', sortField: string = 'id', sortDirection: 'asc' | 'desc' = 'desc', onlyOfficial: boolean = false): Promise<{ data: Brand[], count: number }> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
     let query = supabase.from('brands').select('*', { count: 'exact' });
     if (search) query = query.ilike('name', `%${search}%`);
+    if (onlyOfficial) query = query.eq('official', true);
+    
     const { data, error, count } = await query.order(sortField, { ascending: sortDirection === 'asc' }).range(from, to);
     if (error) throw error;
     return { data: data || [], count: count || 0 };
+}
+
+export async function getOfficialBrands(): Promise<string[]> {
+    const { data, error } = await supabase.from('brands').select('name').eq('official', true);
+    if (error) throw error;
+    return data?.map((b: any) => b.name) || [];
 }
 
 export async function getSupplierUsedBrands(supplierName: string): Promise<string[]> {

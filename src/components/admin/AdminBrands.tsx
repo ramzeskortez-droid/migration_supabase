@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { SupabaseService } from '../../services/supabaseService';
 import { Brand } from '../../types';
-import { Trash2, Edit2, Plus, Check, X, Loader2, Search, User, Tag, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, Edit2, Plus, Check, X, Loader2, Search, User, Tag, AlertCircle, ArrowUp, ArrowDown, ShieldCheck } from 'lucide-react';
 import { Pagination } from '../Pagination';
 import { Toast } from '../shared/Toast';
 
@@ -28,13 +28,16 @@ export const AdminBrands: React.FC = () => {
     const [itemsPerPage, setItemsPerPage] = useState(100);
     const [sortField, setSortField] = useState('id');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+    const [activeTab, setActiveTab] = useState<'all' | 'official'>('all'); // TABS
     
     const [isAddingMode, setIsAddingMode] = useState(false);
     const [newBrandName, setNewBrandName] = useState('');
+    const [newBrandOfficial, setNewBrandOfficial] = useState(false); // New state for add
     const [isAdding, setIsAdding] = useState(false);
     
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editName, setEditName] = useState('');
+    const [editOfficial, setEditOfficial] = useState(false); // New state for edit
     
     const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
 
@@ -47,7 +50,8 @@ export const AdminBrands: React.FC = () => {
                 itemsPerPage, 
                 search,
                 sortField,
-                sortDirection
+                sortDirection,
+                activeTab === 'official' // Pass filter
             );
             setBrands(data);
             setTotalCount(count);
@@ -57,7 +61,7 @@ export const AdminBrands: React.FC = () => {
                 setAbsoluteTotal(count);
             } else {
                 // Если поиск есть, запрашиваем абсолютный тотал отдельно
-                const { count: absCount } = await SupabaseService.getBrandsFull(1, 1, '');
+                const { count: absCount } = await SupabaseService.getBrandsFull(1, 1, '', 'id', 'desc', activeTab === 'official');
                 setAbsoluteTotal(absCount);
             }
 
@@ -68,9 +72,9 @@ export const AdminBrands: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, itemsPerPage, search, sortField, sortDirection]);
+    }, [currentPage, itemsPerPage, search, sortField, sortDirection, activeTab]);
 
-    useEffect(() => { loadBrands(); }, [currentPage, itemsPerPage, sortField, sortDirection]);
+    useEffect(() => { loadBrands(); }, [currentPage, itemsPerPage, sortField, sortDirection, activeTab]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -78,6 +82,15 @@ export const AdminBrands: React.FC = () => {
         }, 500);
         return () => clearTimeout(handler);
     }, [search]);
+
+    // Reset page when tab changes
+    useEffect(() => { setCurrentPage(1); }, [activeTab]);
+    
+    // Set default official status when adding in official tab
+    useEffect(() => {
+        if (activeTab === 'official') setNewBrandOfficial(true);
+        else setNewBrandOfficial(false);
+    }, [activeTab]);
 
     const similarBrands = useMemo(() => findSimilar(newBrandName, brands), [newBrandName, brands]);
 
@@ -96,8 +109,9 @@ export const AdminBrands: React.FC = () => {
         
         setIsAdding(true);
         try {
-            await SupabaseService.addBrand(name, 'Admin');
+            await SupabaseService.addBrand(name, 'Admin', newBrandOfficial);
             setNewBrandName('');
+            setNewBrandOfficial(activeTab === 'official');
             setIsAddingMode(false);
             setToast({ message: `Бренд "${name}" успешно добавлен`, type: 'success' });
             
@@ -118,7 +132,7 @@ export const AdminBrands: React.FC = () => {
         const name = editName.trim();
         if (!name) return;
         try {
-            await SupabaseService.updateBrand(id, name);
+            await SupabaseService.updateBrand(id, name, editOfficial);
             setEditingId(null);
             setToast({ message: 'Бренд обновлен', type: 'success' });
             loadBrands();
@@ -157,6 +171,23 @@ export const AdminBrands: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="flex p-1 bg-slate-200 rounded-xl">
+                    <button 
+                        onClick={() => setActiveTab('all')}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === 'all' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Все бренды
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('official')}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 ${activeTab === 'official' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <ShieldCheck size={12} />
+                        Официалы
+                    </button>
+                </div>
+
                 <div className="flex w-full md:w-auto gap-2">
                     <button 
                         onClick={() => setIsAddingMode(!isAddingMode)}
@@ -172,7 +203,7 @@ export const AdminBrands: React.FC = () => {
             <div className={`p-3 border-b transition-colors shrink-0 ${isAddingMode ? 'bg-indigo-50/50 border-indigo-100' : 'bg-slate-50 border-slate-100'}`}>
                 {isAddingMode ? (
                     <div className="space-y-3">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                             <input 
                                 value={newBrandName}
                                 onChange={e => setNewBrandName(e.target.value)}
@@ -182,6 +213,16 @@ export const AdminBrands: React.FC = () => {
                                 className="flex-grow px-4 py-2 bg-white border border-indigo-200 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 shadow-sm"
                                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
                             />
+                            
+                            {/* Official Toggle for New Brand */}
+                            <label className="flex items-center gap-2 px-3 py-2 bg-white border border-indigo-100 rounded-xl cursor-pointer select-none hover:border-amber-300 transition-colors">
+                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${newBrandOfficial ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-slate-300'}`}>
+                                    {newBrandOfficial && <Check size={10} strokeWidth={4} />}
+                                </div>
+                                <input type="checkbox" className="hidden" checked={newBrandOfficial} onChange={e => setNewBrandOfficial(e.target.checked)} />
+                                <span className={`text-[10px] font-black uppercase ${newBrandOfficial ? 'text-amber-600' : 'text-slate-400'}`}>Официал</span>
+                            </label>
+
                             <button 
                                 onClick={handleAdd}
                                 disabled={isAdding || !newBrandName.trim()}
@@ -215,7 +256,7 @@ export const AdminBrands: React.FC = () => {
                         <input 
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Поиск по всей базе брендов..."
+                            placeholder={activeTab === 'official' ? "Поиск по официалам..." : "Поиск по всей базе брендов..."}
                             className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all shadow-sm"
                         />
                     </div>
@@ -239,6 +280,7 @@ export const AdminBrands: React.FC = () => {
                                     {sortField === 'name' && (sortDirection === 'asc' ? <ArrowUp size={10}/> : <ArrowDown size={10}/>)}
                                 </div>
                             </th>
+                            <th className="px-6 py-3">Статус</th>
                             <th className="px-6 py-3">Кем создан</th>
                             <th className="px-6 py-3 text-right">Действия</th>
                         </tr>
@@ -246,7 +288,7 @@ export const AdminBrands: React.FC = () => {
                     <tbody className="divide-y divide-slate-50">
                         {loading && brands.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="px-6 py-12 text-center">
+                                <td colSpan={5} className="px-6 py-12 text-center">
                                     <div className="flex flex-col items-center gap-3">
                                         <Loader2 className="animate-spin text-indigo-500" size={32} />
                                         <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Загрузка...</span>
@@ -255,14 +297,14 @@ export const AdminBrands: React.FC = () => {
                             </tr>
                         ) : brands.length === 0 && !loading ? (
                             <tr>
-                                <td colSpan={4} className="px-6 py-12 text-center text-xs font-bold text-slate-400 uppercase italic">Бренды не найдены</td>
+                                <td colSpan={5} className="px-6 py-12 text-center text-xs font-bold text-slate-400 uppercase italic">Бренды не найдены</td>
                             </tr>
                         ) : brands.map(brand => (
                             <tr key={brand.id} className="hover:bg-slate-50/50 transition-colors group">
                                 <td className="px-6 py-1.5 text-[10px] font-mono text-slate-300">#{brand.id}</td>
                                 <td className="px-6 py-1.5">
                                     {editingId === brand.id ? (
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 items-center">
                                             <input 
                                                 value={editName}
                                                 onChange={e => setEditName(e.target.value)}
@@ -272,7 +314,35 @@ export const AdminBrands: React.FC = () => {
                                             />
                                         </div>
                                     ) : (
-                                        <span className="text-xs font-black text-slate-700 tracking-tight">{brand.name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-xs font-black tracking-tight ${brand.official ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2' : 'text-slate-700'}`}>
+                                                {brand.name}
+                                            </span>
+                                            {brand.official && (
+                                                <div className="bg-amber-100 text-amber-600 p-0.5 rounded-full" title="Официальный представитель">
+                                                    <ShieldCheck size={10} strokeWidth={3} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="px-6 py-1.5">
+                                    {editingId === brand.id ? (
+                                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                            <div className={`w-3 h-3 rounded border flex items-center justify-center transition-colors ${editOfficial ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-slate-300'}`}>
+                                                {editOfficial && <Check size={8} strokeWidth={4} />}
+                                            </div>
+                                            <input type="checkbox" className="hidden" checked={editOfficial} onChange={e => setEditOfficial(e.target.checked)} />
+                                            <span className={`text-[9px] font-black uppercase ${editOfficial ? 'text-amber-600' : 'text-slate-400'}`}>Офиц.</span>
+                                        </label>
+                                    ) : (
+                                        brand.official ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 text-[9px] font-black uppercase tracking-wider">
+                                                Официал
+                                            </span>
+                                        ) : (
+                                            <span className="text-[9px] font-bold text-slate-300 uppercase">Обычный</span>
+                                        )
                                     )}
                                 </td>
                                 <td className="px-6 py-1.5">
@@ -299,7 +369,11 @@ export const AdminBrands: React.FC = () => {
                                         ) : (
                                             <>
                                                 <button 
-                                                    onClick={() => { setEditingId(brand.id); setEditName(brand.name); }}
+                                                    onClick={() => { 
+                                                        setEditingId(brand.id); 
+                                                        setEditName(brand.name); 
+                                                        setEditOfficial(!!brand.official); 
+                                                    }}
                                                     className="p-1.5 bg-slate-50 text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                                                 >
                                                     <Edit2 size={14} />
