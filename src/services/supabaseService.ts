@@ -15,6 +15,7 @@ import * as chatRealtimeApi from './api/chat/realtime';
 import * as chatManagementApi from './api/chat/management';
 import * as chatStatsApi from './api/chat/stats';
 import * as offersCreateApi from './api/offers/create';
+import * as offersEditApi from './api/offers/edit';
 import * as offersManageApi from './api/offers/manage';
 import * as offersRankingApi from './api/offers/ranking';
 import * as ordersFetchApi from './api/orders/fetch';
@@ -84,7 +85,10 @@ export class SupabaseService {
 
   // --- OFFERS ---
   static createOffer = offersCreateApi.createOffer;
+  static editOffer = offersEditApi.editOffer;
   static updateOfferItem = offersManageApi.updateOfferItem;
+  static lockOffer = offersManageApi.lockOffer;
+  static unlockOffer = offersManageApi.unlockOffer;
   static generateTestOffers = offersManageApi.generateTestOffers;
   static updateRank = offersRankingApi.updateRank;
 

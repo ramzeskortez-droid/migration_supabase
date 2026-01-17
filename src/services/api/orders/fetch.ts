@@ -49,7 +49,7 @@ export const getOrders = async (
         refusal_reason,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
-        offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks))
+        offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks, weight))
     `);
 
     if (buyerTab === 'new' || buyerTab === 'hot') {
@@ -253,6 +253,7 @@ export const getOrders = async (
                     id: oi.id, order_item_id: oi.order_item_id, name: oi.name, is_winner: oi.is_winner, quantity: oi.quantity, offeredQuantity: oi.quantity,
                     sellerPrice: oi.price, sellerCurrency: oi.currency,
                     adminPrice: oi.admin_price,
+                    weight: oi.weight,
                     deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
                     clientDeliveryWeeks: oi.client_delivery_weeks,
                     photoUrl: oi.photo_url, itemFiles: oi.item_files, supplierSku: oi.supplier_sku, adminComment: oi.admin_comment

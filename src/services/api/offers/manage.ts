@@ -6,6 +6,16 @@ export const updateOfferItem = async (itemId: string, updates: { admin_comment?:
   if (error) throw error;
 };
 
+export const lockOffer = async (offerId: string): Promise<void> => {
+    const { error } = await supabase.rpc('lock_offer', { p_offer_id: Number(offerId) });
+    if (error) throw error;
+};
+
+export const unlockOffer = async (offerId: string): Promise<void> => {
+    const { error } = await supabase.rpc('unlock_offer', { p_offer_id: Number(offerId) });
+    if (error) throw error;
+};
+
 export const generateTestOffers = async (orderId: string): Promise<void> => {
     const { data: items } = await supabase.from('order_items').select('*').eq('order_id', orderId);
     if (!items || items.length === 0) return;

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X, UploadCloud, Plus } from 'lucide-react';
+import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X, UploadCloud, Plus, Edit2 } from 'lucide-react';
 import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
@@ -7,6 +7,8 @@ import { DebugCopyModal } from '../shared/DebugCopyModal';
 import { ConfirmationModal } from '../shared/ConfirmationModal'; 
 import { SupabaseService } from '../../services/supabaseService';
 import { useDropzone } from 'react-dropzone';
+import { useQueryClient } from '@tanstack/react-query';
+import { createPortal } from 'react-dom';
 
 interface BuyerOrderDetailsProps {
   order: Order;
@@ -22,6 +24,7 @@ interface BuyerOrderDetailsProps {
 export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({ 
   order, editingItems, setEditingItems, onSubmit, isSubmitting, myOffer, statusInfo, onOpenChat 
 }) => { 
+  const queryClient = useQueryClient();
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
       isOpen: false, title: '', content: ''
   });
@@ -30,16 +33,18 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   const [requiredFields, setRequiredFields] = useState<any>({}); 
   const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
   const [supplierFiles, setSupplierFiles] = useState<any[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTimeout, setEditTimeout] = useState(5);
 
   const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
-  const isDisabled = order.isProcessed === true || !!myOffer;
+  const isDisabled = (order.isProcessed === true || (!!myOffer && !isEditing));
 
   // --- GLOBAL DROPZONE LOGIC ---
   const onDrop = useCallback((acceptedFiles: File[]) => {
       if (isDisabled) return;
       
       const newFiles = acceptedFiles.map(file => ({
-          file, // Raw File object for upload
+          file, 
           name: file.name,
           url: URL.createObjectURL(file),
           type: file.type,
@@ -69,10 +74,94 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       SupabaseService.getSystemSettings('buyer_required_fields').then(res => {
           if (res) setRequiredFields(res);
       });
+      SupabaseService.getSystemSettings('offer_edit_timeout').then(res => {
+          if (res) setEditTimeout(Number(res));
+      });
       if (myOffer?.supplier_files) {
           setSupplierFiles(myOffer.supplier_files);
       }
   }, [myOffer]);
+
+  // --- EDITING LOGIC ---
+  const handleStartEdit = async () => {
+      if (!myOffer) return;
+      
+      console.log('START EDIT DEBUG:', { orderItems: order.items, myOfferItems: myOffer.items });
+
+      // 1. Проверка дедлайна (3 дня - таймаут - 2 мин)
+      const createdAt = new Date(order.createdAt);
+      const autoCloseDate = new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const timeRemainingMs = autoCloseDate.getTime() - now.getTime();
+      const minRequiredMs = (editTimeout + 2) * 60 * 1000;
+
+      if (timeRemainingMs < minRequiredMs) {
+          setToast({ message: 'Редактирование недоступно: заказ скоро будет закрыт автоматически.', type: 'error' });
+          return;
+      }
+
+      // 2. Блокировка в БД
+      try {
+          await SupabaseService.lockOffer(myOffer.id);
+      } catch (e) {
+          console.error('Lock failed', e);
+      }
+
+      // 3. Маппинг данных из существующего оффера в editingItems
+      const mappedItems = order.items.map(oi => {
+          const match = myOffer.items?.find((mi: any) => 
+              (mi.order_item_id && String(mi.order_item_id) === String(oi.id)) || 
+              (!mi.order_item_id && mi.name === oi.name)
+          );
+          if (match) {
+              return {
+                  ...oi,
+                  BuyerPrice: match.sellerPrice, // Fixed: match.price was undefined
+                  weight: match.weight,
+                  deliveryWeeks: match.deliveryWeeks || (match.delivery_days ? match.delivery_days / 7 : 0),
+                  offeredQuantity: match.offeredQuantity || match.quantity,
+                  supplierSku: match.supplierSku,
+                  comment: match.adminComment || match.comment, // Try adminComment first? No, supplier edit their own comment
+                  itemFiles: match.itemFiles || [],
+                  offerItemId: match.id 
+              };
+          }
+          return { ...oi, offeredQuantity: 0 }; // Позиция не была заполнена
+      });
+
+      setEditingItems(mappedItems);
+      setIsEditing(true);
+      setToast({ message: 'Режим редактирования включен. У вас есть ' + editTimeout + ' мин.', type: 'success' });
+  };
+
+  const handleCancelEdit = async () => {
+      if (!myOffer) return;
+      try {
+          await SupabaseService.unlockOffer(myOffer.id);
+          setIsEditing(false);
+          // Сброс данных к состоянию "только чтение" произойдет при ререндере, 
+          // так как isDisabled снова станет true и BuyerItemCard покажет данные из myOffer.
+      } catch (e) {
+          setIsEditing(false);
+      }
+  };
+
+  const handleSaveEdit = async () => {
+      if (!isValid) {
+          setToast({ message: 'Заполните поля для выбранных позиций!', type: 'error' });
+          return;
+      }
+      try {
+          console.log('Saving Offer Items:', editingItems);
+          await SupabaseService.editOffer(myOffer.id, editingItems, supplierFiles);
+          setIsEditing(false);
+          setToast({ message: 'Изменения сохранены!', type: 'success' });
+          queryClient.invalidateQueries({ queryKey: ['orders'] });
+          queryClient.invalidateQueries({ queryKey: ['order-details', order.id] });
+      } catch (e: any) {
+          setToast({ message: 'Ошибка: ' + e.message, type: 'error' });
+      }
+  };
 
   const BuyerAuth = useMemo(() => {
       try { return JSON.parse(localStorage.getItem('Buyer_auth') || 'null'); } catch { return null; } 
@@ -194,10 +283,11 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             <div className="absolute inset-0 z-[50] m-4 border-8 border-indigo-500/50 border-dashed rounded-3xl bg-indigo-500/10 backdrop-blur-[2px] pointer-events-none transition-all duration-300" />
         )}
 
-        {toast && (
-            <div className="fixed top-4 right-4 z-50">
+        {toast && createPortal(
+            <div className="fixed top-24 right-6 z-[9999] animate-in slide-in-from-right-10 fade-in duration-300">
                 <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-            </div>
+            </div>,
+            document.body
         )}
 
         <DebugCopyModal 
@@ -386,7 +476,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 >
                     <MessageCircle size={16} /> Оператор
                 </button>
-                {!order.isProcessed && (
+                {!order.isProcessed && !isEditing && (
                     <button 
                         onClick={() => setShowRefuseModal(true)}
                         className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all text-xs font-black uppercase border border-red-100"
@@ -394,7 +484,15 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                         <XCircle size={16} /> Отказаться
                     </button>
                 )}
-                {!order.isProcessed && (
+                {isEditing && (
+                    <button 
+                        onClick={handleCancelEdit}
+                        className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-all text-xs font-black uppercase border border-slate-200"
+                    >
+                        Отмена
+                    </button>
+                )}
+                {!order.isProcessed && !isEditing && (
                     <button 
                         onClick={handleCopyAll}
                         className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all text-xs font-black uppercase"
@@ -404,16 +502,29 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 )}
             </div>
 
-            {!myOffer && !order.isProcessed && !isAllDeclined && (
-                <button 
-                    disabled={!isValid || isSubmitting} 
-                    onClick={handlePreSubmit} 
-                    className={`px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center gap-3 active:scale-95 ${isValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
-                >
-                    {isValid ? 'Отправить предложение' : 'Заполните поля'} 
-                    <CheckCircle size={18}/>
-                </button>
-            )}
+            <div className="flex items-center gap-4">
+                {/* Кнопка ИЗМЕНИТЬ / ДОПОЛНИТЬ */}
+                {!!myOffer && !order.isProcessed && !isEditing && (
+                    <button 
+                        onClick={handleStartEdit}
+                        className="px-8 py-4 rounded-xl bg-white border-2 border-indigo-600 text-indigo-600 font-black text-xs uppercase shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2"
+                    >
+                        <Edit2 size={18} /> Изменить / Дополнить
+                    </button>
+                )}
+
+                {/* Основная кнопка ОТПРАВИТЬ / СОХРАНИТЬ */}
+                {(!myOffer || isEditing) && !order.isProcessed && !isAllDeclined && (
+                    <button 
+                        disabled={!isValid || isSubmitting} 
+                        onClick={isEditing ? handleSaveEdit : handlePreSubmit} 
+                        className={`px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center gap-3 active:scale-95 ${isValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
+                    >
+                        {isEditing ? 'Сохранить изменения' : (isValid ? 'Отправить предложение' : 'Заполните поля')} 
+                        <CheckCircle size={18}/>
+                    </button>
+                )}
+            </div>
         </div>
 
         {order.isProcessed && (

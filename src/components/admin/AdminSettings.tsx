@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SupabaseService } from '../../services/supabaseService';
-import { Save, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Save, AlertCircle, Loader2, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { Toast } from '../shared/Toast';
 
 const AccordionSection = ({ title, children, defaultOpen = false }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) => {
@@ -36,19 +36,21 @@ export const AdminSettings: React.FC = () => {
     const loadSettings = async () => {
         setLoading(true);
         try {
-            const [buyerFields, operatorFields, debugMode] = await Promise.all([
+            const [buyerFields, operatorFields, debugMode, editTimeout] = await Promise.all([
                 SupabaseService.getSystemSettings('buyer_required_fields'),
                 SupabaseService.getSystemSettings('operator_required_fields'),
-                SupabaseService.getSystemSettings('debug_mode')
+                SupabaseService.getSystemSettings('debug_mode'),
+                SupabaseService.getSystemSettings('offer_edit_timeout')
             ]);
             setSettings({
                 buyer_required_fields: buyerFields || { supplier_sku: false },
-                operator_required_fields: operatorFields || { name: true, brand: true }, // Default required
-                debug_mode: debugMode || false
+                operator_required_fields: operatorFields || { name: true, brand: true }, 
+                debug_mode: debugMode || false,
+                offer_edit_timeout: editTimeout || 5
             });
         } catch (e) {
             setToast({ message: 'Ошибка загрузки настроек', type: 'error' });
-            setSettings({ buyer_required_fields: {}, operator_required_fields: { name: true, brand: true }, debug_mode: false });
+            setSettings({ buyer_required_fields: {}, operator_required_fields: { name: true, brand: true }, debug_mode: false, offer_edit_timeout: 5 });
         } finally {
             setLoading(false);
         }
@@ -60,11 +62,11 @@ export const AdminSettings: React.FC = () => {
             await Promise.all([
                 SupabaseService.updateSystemSettings('buyer_required_fields', settings.buyer_required_fields, 'Manager'),
                 SupabaseService.updateSystemSettings('operator_required_fields', settings.operator_required_fields, 'Manager'),
-                SupabaseService.updateSystemSettings('debug_mode', settings.debug_mode, 'Manager')
+                SupabaseService.updateSystemSettings('debug_mode', settings.debug_mode, 'Manager'),
+                SupabaseService.updateSystemSettings('offer_edit_timeout', settings.offer_edit_timeout, 'Manager')
             ]);
             setToast({ message: 'Настройки сохранены. Перезагрузка...', type: 'success' });
             
-            // Принудительная перезагрузка для обновления UI всех компонентов
             setTimeout(() => {
                 window.location.reload();
             }, 800);
@@ -81,6 +83,34 @@ export const AdminSettings: React.FC = () => {
             {toast && <div className="fixed top-4 right-4 z-[9999]"><Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} /></div>}
 
             <h1 className="text-2xl font-black text-slate-800 mb-8 uppercase tracking-tight">Настройки системы</h1>
+
+            {/* Секция Редактирования Офферов */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <Clock className="text-blue-600" />
+                    <h2 className="text-lg font-bold text-slate-700">Настройки редактирования офферов</h2>
+                </div>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                            Время на редактирование (мин)
+                        </label>
+                        <input 
+                            type="number"
+                            min="1"
+                            max="60"
+                            value={settings?.offer_edit_timeout || 5}
+                            onChange={(e) => setSettings({ ...settings, offer_edit_timeout: Number(e.target.value) })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                            Время, в течение которого оффер будет заблокирован для менеджера, если закупщик начал редактирование.
+                            Также влияет на то, за сколько минут до автоматического закрытия заказа редактирование становится недоступным (+2 мин).
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
                 <div className="flex items-center gap-3 mb-6">
