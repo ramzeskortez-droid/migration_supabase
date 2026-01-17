@@ -1,12 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X, UploadCloud, Plus } from 'lucide-react';
 import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
 import { DebugCopyModal } from '../shared/DebugCopyModal';
-import { ConfirmationModal } from '../shared/ConfirmationModal'; // Added
+import { ConfirmationModal } from '../shared/ConfirmationModal'; 
 import { SupabaseService } from '../../services/supabaseService';
-import { FileDropzone } from '../shared/FileDropzone';
+import { useDropzone } from 'react-dropzone';
 
 interface BuyerOrderDetailsProps {
   order: Order;
@@ -25,11 +25,45 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({
       isOpen: false, title: '', content: ''
   });
-  const [showRefuseModal, setShowRefuseModal] = useState(false); // Added state
+  const [showRefuseModal, setShowRefuseModal] = useState(false); 
   
   const [requiredFields, setRequiredFields] = useState<any>({}); 
   const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
   const [supplierFiles, setSupplierFiles] = useState<any[]>([]);
+
+  const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
+  const isDisabled = order.isProcessed === true || !!myOffer;
+
+  // --- GLOBAL DROPZONE LOGIC ---
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+      if (isDisabled) return;
+      
+      const newFiles = acceptedFiles.map(file => ({
+          file, // Raw File object for upload
+          name: file.name,
+          url: URL.createObjectURL(file),
+          type: file.type,
+          size: file.size
+      }));
+
+      // Upload automatically
+      newFiles.forEach(async (f) => {
+          try {
+             const publicUrl = await SupabaseService.uploadFile(f.file, 'offers');
+             setSupplierFiles(prev => [...prev, { name: f.name, url: publicUrl, type: f.type, size: f.size }]);
+          } catch (e) {
+             setToast({ message: `Ошибка загрузки ${f.name}`, type: 'error' });
+          }
+      });
+      
+  }, [isDisabled]);
+
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({ 
+      onDrop, 
+      noClick: true, 
+      noKeyboard: true,
+      disabled: isDisabled
+  });
 
   useEffect(() => {
       SupabaseService.getSystemSettings('buyer_required_fields').then(res => {
@@ -44,41 +78,39 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       try { return JSON.parse(localStorage.getItem('Buyer_auth') || 'null'); } catch { return null; } 
   }, []);
 
-  const isValid = editingItems.every(item => {
-      if (item.offeredQuantity === 0) return true;
-      
-      // Default to TRUE for critical fields if settings are not yet loaded or initialized
-      const reqPrice = requiredFields.price !== false;
-      const reqWeight = requiredFields.weight !== false;
-      const reqWeeks = requiredFields.delivery_weeks !== false;
-      const reqQty = requiredFields.quantity === true;
-      const reqComment = requiredFields.comment === true;
-      const reqSku = requiredFields.supplier_sku === true;
-      const reqImages = requiredFields.images === true;
+  const isValid = useMemo(() => {
+      const hasAtLeastOneOffer = editingItems.some(item => item.BuyerPrice && item.BuyerPrice > 0);
+      if (!hasAtLeastOneOffer) return false;
 
-      if (reqPrice && (!item.BuyerPrice || item.BuyerPrice <= 0)) return false;
-      if (reqWeight && (!item.weight || item.weight <= 0)) return false;
-      if (reqWeeks && (!item.deliveryWeeks || item.deliveryWeeks < 4)) return false;
-      if (reqQty && (!item.offeredQuantity || item.offeredQuantity <= 0)) return false;
-      
-      if (reqSku && (!item.supplierSku || item.supplierSku.trim().length === 0)) return false;
-      if (reqComment && (!item.comment || item.comment.trim().length === 0)) return false;
-      if (reqImages && (!item.itemFiles || item.itemFiles.length === 0)) return false;
+      return editingItems.every(item => {
+          if (!item.BuyerPrice || item.BuyerPrice <= 0) return true;
 
-      return true;
-  });
+          const reqWeight = requiredFields.weight !== false;
+          const reqWeeks = requiredFields.delivery_weeks !== false;
+          const reqQty = requiredFields.quantity === true;
+          const reqComment = requiredFields.comment === true;
+          const reqSku = requiredFields.supplier_sku === true;
+          const reqImages = requiredFields.images === true;
+
+          if (reqWeight && (!item.weight || item.weight <= 0)) return false;
+          if (reqWeeks && (!item.deliveryWeeks || item.deliveryWeeks < 4)) return false;
+          if (reqQty && (!item.offeredQuantity || item.offeredQuantity <= 0)) return false;
+          
+          if (reqSku && (!item.supplierSku || item.supplierSku.trim().length === 0)) return false;
+          if (reqComment && (!item.comment || item.comment.trim().length === 0)) return false;
+          if (reqImages && (!item.itemFiles || item.itemFiles.length === 0)) return false;
+
+          return true;
+      });
+  }, [editingItems, requiredFields]);
 
   const handlePreSubmit = async () => {
-      // Re-validate just in case (though button is disabled)
       if (!isValid) {
-          setToast({ message: 'Заполните все обязательные поля!', type: 'error' });
+          setToast({ message: 'Заполните поля для выбранных позиций!', type: 'error' });
           return;
       }
       await onSubmit(order.id, editingItems, supplierFiles);
   };
-
-  const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
-  const isDisabled = order.isProcessed === true || !!myOffer;
 
   const handleUpdateItem = (idx: number, field: string, value: any) => {
       const newItems = [...editingItems];
@@ -91,7 +123,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       const newItems = [...editingItems];
       const newFiles = [...(newItems[itemIdx].itemFiles || [])];
       newFiles.splice(fileIdx, 1);
-      newItems[itemIdx] = { ...newItems[itemIdx], itemFiles: newFiles };
+      newItems[itemIdx] = { ...newItems[idx], itemFiles: newFiles };
       setEditingItems(newItems);
   };
 
@@ -114,12 +146,15 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   };
 
   const handleCopyItem = (item: any) => {
-      const content = `Order #${order.id}\n` + formatItemText(item);
+      const content = `Order #${order.id}
+` + formatItemText(item);
       setCopyModal({ isOpen: true, title: 'Копирование позиции', content });
   };
 
   const handleCopyAll = () => {
-      let fullText = `Order #${order.id}\n\n`;
+      let fullText = `Order #${order.id}
+
+`;
       editingItems.forEach((item, idx) => {
           fullText += formatItemText(item, idx);
       });
@@ -148,7 +183,17 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   );
 
   return (
-    <div className="bg-gray-50 p-6 min-h-screen">
+    <div 
+        {...getRootProps()} 
+        className="bg-gray-50 p-6 min-h-screen relative outline-none transition-all duration-300"
+    >
+        <input {...getInputProps()} />
+        
+        {/* GLOBAL DRAG OVERLAY */}
+        {isDragActive && (
+            <div className="absolute inset-0 z-[50] m-4 border-8 border-indigo-500/50 border-dashed rounded-3xl bg-indigo-500/10 backdrop-blur-[2px] pointer-events-none transition-all duration-300" />
+        )}
+
         {toast && (
             <div className="fixed top-4 right-4 z-50">
                 <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
@@ -200,15 +245,15 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 </div>
                 <div>
                     <div className="text-gray-400 mb-1 uppercase font-bold text-[10px]">Тема письма</div>
-                    <div className="font-medium text-gray-700 uppercase truncate" title={order.items?.[0]?.comment?.match(/\[(Тема|S): (.*?)\]/)?.[2]}>
-                        {order.items?.[0]?.comment?.match(/\[(Тема|S): (.*?)\]/)?.[2] || '-'}
+                    <div className="font-medium text-gray-700 uppercase truncate" title={order.items?.[0]?.comment?.match(/\((Тема|S): (.*?)\)/)?.[2]}>
+                        {order.items?.[0]?.comment?.match(/\((Тема|S): (.*?)\)/)?.[2] || '-'}
                     </div>
                 </div>
             </div>
         </div>
 
         {/* 2. ТАБЛИЦА ТОВАРОВ */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 relative z-[60]">
             <div className="hidden md:grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[10px] font-black text-gray-500 uppercase tracking-wider rounded-t-xl">
                 <div className="text-center">№</div>
                 <div>Бренд</div>
@@ -224,7 +269,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     <BuyerItemCard 
                         key={idx} 
                         item={item}
-                        sourceItem={order.items?.[idx]} // Данные из order (который включает details)
+                        sourceItem={order.items?.[idx]} 
                         index={idx} 
                         onUpdate={handleUpdateItem}
                         isDisabled={isDisabled}
@@ -237,18 +282,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             </div>
         </div>
 
-        {/* 3. ДРОПЗОНА (Общая) */}
-        {!isDisabled && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                <FileDropzone 
-                    files={supplierFiles}
-                    onUpdate={setSupplierFiles}
-                    label="Добавить общие файлы к заказу (счета, сертификаты)"
-                />
-            </div>
-        )}
-
-        {/* 4. СПИСОК ФАЙЛОВ (1-в-1 как у Менеджера) */}
+        {/* 4. СПИСОК ФАЙЛОВ */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
             <div className="flex items-center gap-3 mb-4 pb-2 border-b border-gray-100">
                 <Paperclip size={16} className="text-slate-400"/>
@@ -259,20 +293,14 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 {/* Файлы от Оператора */}
                 {(() => {
                     const allOpFiles: any[] = [];
-                    
-                    // 1. Общие файлы заказа
                     if (order.order_files) {
                         order.order_files.forEach(f => allOpFiles.push({...f, typeLabel: 'Общий'}));
                     }
-
-                    // 2. Файлы позиций
                     order.items?.forEach((item, idx) => {
                         let currentFiles = item.itemFiles || [];
-                        // Fallback
                         if (currentFiles.length === 0 && item.opPhotoUrl) {
                             currentFiles = [{ name: 'Фото', url: item.opPhotoUrl, type: 'image/jpeg' }];
                         }
-
                         currentFiles.forEach(f => {
                             allOpFiles.push({ ...f, typeLabel: `Поз. ${item.AdminName || item.name}` });
                         });
@@ -288,15 +316,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                                             <span className="text-slate-400 font-medium text-[10px] uppercase shrink-0 mt-0.5 bg-white px-1.5 rounded border border-slate-200">
                                                 {file.typeLabel}
                                             </span>
-                                            <a 
-                                                href={file.url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="hover:underline break-all leading-tight"
-                                                title={file.name}
-                                            >
-                                                {file.name}
-                                            </a>
+                                            <a href={file.url} target="_blank" rel="noopener noreferrer" className="hover:underline break-all leading-tight" title={file.name}>{file.name}</a>
                                         </div>
                                     ))}
                                 </div>
@@ -307,16 +327,12 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     );
                 })()}
 
-                {/* Файлы от Закупщика (Ваши файлы) */}
+                {/* Файлы от Закупщика */}
                 {(() => {
                     const allMyFiles: any[] = [];
-                    
-                    // 1. Общие файлы (из стейта supplierFiles)
                     supplierFiles.forEach((f, idx) => {
                         allMyFiles.push({ ...f, typeLabel: 'Общий', source: 'general', idx });
                     });
-
-                    // 2. Файлы позиций (из стейта editingItems)
                     editingItems.forEach((item, itemIdx) => {
                         const files = item.itemFiles || [];
                         files.forEach((f: any, fIdx: number) => {
@@ -335,15 +351,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                                                 <span className="text-emerald-400/80 font-medium text-[10px] uppercase shrink-0 mt-0.5 bg-white px-1.5 rounded border border-emerald-100">
                                                     {file.typeLabel}
                                                 </span>
-                                                <a 
-                                                    href={file.url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="hover:underline break-all leading-tight"
-                                                    title={file.name}
-                                                >
-                                                    {file.name}
-                                                </a>
+                                                <a href={file.url} target="_blank" rel="noopener noreferrer" className="hover:underline break-all leading-tight" title={file.name}>{file.name}</a>
                                             </div>
                                             {!isDisabled && (
                                                 <button 
@@ -361,7 +369,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                                     ))}
                                 </div>
                             ) : (
-                                <span className="text-xs text-slate-300 italic pl-2">— добавьте файлы в позиции или ниже —</span>
+                                <span className="text-xs text-slate-300 italic pl-2">— перетащите файлы в любое место на странице —</span>
                             )}
                         </div>
                     );
@@ -402,7 +410,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     onClick={handlePreSubmit} 
                     className={`px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center gap-3 active:scale-95 ${isValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
                 >
-                    {isValid ? 'Отправить предложение' : 'Заполните все поля'} 
+                    {isValid ? 'Отправить предложение' : 'Заполните поля'} 
                     <CheckCircle size={18}/>
                 </button>
             )}

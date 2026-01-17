@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { OrderInfoForm } from './OrderInfoForm';
 import { OrderFilesUpload } from './OrderFilesUpload';
 import { PartsList } from './PartsList';
@@ -9,6 +9,8 @@ import { SupabaseService } from '../../services/supabaseService';
 import { Toast } from '../shared/Toast';
 import { AppUser } from '../../types';
 import { createPortal } from 'react-dom';
+import { useDropzone } from 'react-dropzone';
+import { UploadCloud } from 'lucide-react';
 
 interface OperatorOrderCreationProps {
     currentUser: AppUser | null;
@@ -42,6 +44,33 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     const [requiredFields, setRequiredFields] = useState<any>({ name: true, brand: true }); // Defaults
     const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
     const [blinkTrigger, setBlinkTrigger] = useState(0);
+
+    // --- GLOBAL DROPZONE LOGIC ---
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        acceptedFiles.forEach(async (file) => {
+            try {
+                // Прямая загрузка в Supabase (как это делалось в OrderFilesUpload)
+                const publicUrl = await SupabaseService.uploadFile(file, 'attachments'); // Используем attachments бакет (как у оператора)
+                
+                setOrderFiles(prev => [...prev, {
+                    name: file.name,
+                    url: publicUrl,
+                    size: file.size,
+                    type: file.type
+                }]);
+                onLog(`Файл ${file.name} загружен через Drag-n-Drop.`);
+            } catch (e: any) {
+                console.error(e);
+                setToast({ message: `Ошибка загрузки ${file.name}`, type: 'error' });
+            }
+        });
+    }, [onLog]);
+
+    const { getRootProps, getInputProps, isDragActive, open } = useDropzone({ 
+        onDrop, 
+        noClick: true, // Клик по контейнеру не открывает диалог, только кнопка
+        noKeyboard: true
+    });
 
     useEffect(() => {
         SupabaseService.getSystemSettings('operator_required_fields').then(res => {
@@ -313,7 +342,14 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     }, []);
 
     return (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10">
+        <div {...getRootProps()} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 space-y-10 relative outline-none">
+            <input {...getInputProps()} />
+            
+            {/* DRAG OVERLAY */}
+            {isDragActive && (
+                <div className="absolute inset-0 z-[50] bg-indigo-500/10 border-8 border-indigo-500/50 border-dashed m-4 rounded-3xl backdrop-blur-[2px] pointer-events-none transition-all duration-300" />
+            )}
+
             {toast && createPortal(
                 <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
                     <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type as any} duration={1000} />
@@ -340,6 +376,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 })}
                 onRemoveItemFile={handleRemoveItemFile}
                 required={requiredFields.photos}
+                onOpenFileDialog={open} // Передаем функцию открытия диалога
             />
             
             <PartsList 

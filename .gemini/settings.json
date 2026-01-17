@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "my-db": {
+      "type": "sse",
+      "url": "https://1688.broker/mcp/sse"
+    }
+  },
+  "context": {
+    "initialized": true
+  }
+}

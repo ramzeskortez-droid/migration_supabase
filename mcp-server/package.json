@@ -1,0 +1,18 @@
+{
+  "name": "supabase-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Self-Hosted Supabase",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "zod": "^3.23.8"
+  }
+}

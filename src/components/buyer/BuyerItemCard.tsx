@@ -1,6 +1,8 @@
-import React from 'react';
-import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage } from 'lucide-react';
+import React, { useCallback } from 'react';
+import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud } from 'lucide-react';
 import { FileDropzone } from '../shared/FileDropzone';
+import { useDropzone } from 'react-dropzone';
+import { SupabaseService } from '../../services/supabaseService';
 
 interface BuyerItemCardProps {
   item: any;
@@ -19,6 +21,39 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
   
+  // --- LOCAL DROPZONE LOGIC ---
+  const onDrop = useCallback(async (acceptedFiles: File[], fileRejections: any[], event: any) => {
+      if (isDisabled || isUnavailable) return;
+      event.stopPropagation(); 
+      
+      const newFiles: any[] = [];
+      await Promise.all(acceptedFiles.map(async (file) => {
+          try {
+              const publicUrl = await SupabaseService.uploadFile(file, 'offers');
+              newFiles.push({ 
+                  name: file.name, 
+                  url: publicUrl, 
+                  type: file.type, 
+                  size: file.size 
+              });
+          } catch (e) {
+              console.error('File upload failed', e);
+          }
+      }));
+
+      if (newFiles.length > 0) {
+          const currentFiles = item.itemFiles || [];
+          onUpdate(index, 'itemFiles', [...currentFiles, ...newFiles]);
+      }
+  }, [isDisabled, isUnavailable, item.itemFiles, index, onUpdate]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+      onDrop,
+      noClick: true,
+      noKeyboard: true,
+      disabled: isDisabled || isUnavailable
+  });
+
   // Используем sourceItem для данных оператора, если он есть (приоритет), иначе item
   const displayItem = sourceItem || item;
 
@@ -116,7 +151,19 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
   };
 
   return (
-    <div className={`mb-6 bg-white border border-gray-200 rounded-xl shadow-sm transition-all relative ${isWinner ? 'ring-2 ring-emerald-500 shadow-md' : ''} ${isUnavailable ? 'border-red-200' : ''}`}>
+    <div 
+        {...getRootProps()}
+        className={`mb-6 bg-white border border-gray-200 rounded-xl shadow-sm transition-all relative ${isWinner ? 'ring-2 ring-emerald-500 shadow-md' : ''} ${isUnavailable ? 'border-red-200' : ''} ${isDragActive ? 'ring-4 ring-indigo-500 bg-indigo-50/50' : ''}`}
+    >
+        <input {...getInputProps()} />
+
+        {/* LOCAL DRAG OVERLAY */}
+        {isDragActive && (
+            <div className="absolute inset-0 z-[200] bg-indigo-600/90 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-2 animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+                <UploadCloud size={40} className="text-white animate-bounce" />
+                <span className="text-white font-black uppercase text-sm tracking-tighter">Добавить в Позицию #{index + 1}</span>
+            </div>
+        )}
         
         {/* 1. ИНФО ОПЕРАТОРА */}
         <div className="grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100 rounded-t-xl">

@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { Upload, X, FileText, ExternalLink } from 'lucide-react';
+import React from 'react';
+import { X, ExternalLink, Plus } from 'lucide-react';
 
 interface UploadedFile {
   name: string;
@@ -14,69 +13,13 @@ interface OrderFilesUploadProps {
   setFiles: (files: UploadedFile[]) => void;
   onLog?: (message: string) => void;
   itemFiles?: { file: UploadedFile, label: string }[];
-  onRemoveItemFile?: (url: string) => void; // Добавлено: коллбэк для удаления файла позиции
+  onRemoveItemFile?: (url: string) => void;
   required?: boolean;
+  onOpenFileDialog?: () => void; // Функция открытия диалога выбора файла
 }
 
-export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFiles, onLog, itemFiles = [], onRemoveItemFile, required }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleUpload = async (selectedFiles: FileList | File[]) => {
-    setIsUploading(true);
-    const newFiles = [...files];
-
-    for (const file of Array.from(selectedFiles)) {
-      try {
-        if (onLog) onLog(`Загрузка файла: ${file.name}...`);
-        
-        // Загружаем в папку temp
-        const fileExt = file.name.split('.').pop();
-        const fileName = `temp/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-        
-        const { data, error } = await supabase.storage
-          .from('attachments')
-          .upload(fileName, file);
-
-        if (error) throw error;
-
-        const { data: urlData } = supabase.storage
-          .from('attachments')
-          .getPublicUrl(fileName);
-
-        newFiles.push({
-          name: file.name,
-          url: urlData.publicUrl,
-          size: file.size,
-          type: file.type
-        });
-        
-        if (onLog) onLog(`Файл ${file.name} успешно загружен.`);
-      } catch (error: any) {
-        console.error('Upload error:', error);
-        if (onLog) onLog(`Ошибка загрузки ${file.name}: ${error.message}`);
-      }
-    }
-
-    setFiles(newFiles);
-    setIsUploading(false);
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleUpload(e.dataTransfer.files);
-    }
-  };
-
-  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleUpload(e.target.files);
-    }
-  };
-
+export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFiles, onLog, itemFiles = [], onRemoveItemFile, required, onOpenFileDialog }) => {
+  
   const removeFile = (index: number) => {
     const newFiles = [...files];
     newFiles.splice(index, 1);
@@ -87,17 +30,29 @@ export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFi
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-        <h2 className="font-bold text-slate-800 tracking-tight uppercase text-xs">
-            Файлы по заявке {required && <span className="text-red-500">*</span>}
-        </h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+            <h2 className="font-bold text-slate-800 tracking-tight uppercase text-xs">
+                Файлы по заявке {required && <span className="text-red-500">*</span>}
+            </h2>
+        </div>
+        
+        {/* Кнопка добавления (если передан обработчик) */}
+        {onOpenFileDialog && (
+            <button 
+                onClick={onOpenFileDialog}
+                className="flex items-center gap-1 text-[10px] font-black uppercase text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100"
+            >
+                <Plus size={12} strokeWidth={3} />
+                Добавить файлы
+            </button>
+        )}
       </div>
 
       {/* Отображение загруженных файлов в строку */}
-      {hasAnyFiles && (
+      {hasAnyFiles ? (
         <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Загруженные файлы:</div>
           <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm font-medium text-indigo-600">
             {/* Общие файлы */}
             {files.map((file, idx) => (
@@ -153,46 +108,11 @@ export const OrderFilesUpload: React.FC<OrderFilesUploadProps> = ({ files, setFi
             ))}
           </div>
         </div>
+      ) : (
+          <div className="text-[10px] text-slate-400 italic pl-4 py-2 border-l-2 border-slate-100">
+              Нет файлов. Перетащите их в любое место окна или нажмите "Добавить".
+          </div>
       )}
-
-      {/* Область загрузки (Dropzone) */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`
-          relative border-2 border-dashed rounded-2xl py-10 px-6 transition-all cursor-pointer
-          flex flex-col items-center justify-center gap-3
-          ${isDragging ? 'border-indigo-400 bg-indigo-50/50' : 'border-slate-200 bg-white hover:border-slate-300'}
-          ${isUploading ? 'opacity-50 pointer-events-none' : ''}
-        `}
-      >
-        <input 
-          type="file" 
-          multiple 
-          className="hidden" 
-          ref={fileInputRef}
-          onChange={onFileSelect}
-        />
-        
-        <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-          {isUploading ? (
-            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <Upload size={24} />
-          )}
-        </div>
-
-        <div className="text-center">
-          <p className="text-sm font-bold text-slate-700">
-            {isUploading ? 'Загрузка файлов...' : 'Выбрать файлы или перетащить'}
-          </p>
-          <p className="text-xs text-slate-400 font-medium mt-1">
-            PDF, Excel, Фото и др.
-          </p>
-        </div>
-      </div>
     </div>
   );
 };
