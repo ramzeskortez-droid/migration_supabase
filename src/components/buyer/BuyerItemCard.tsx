@@ -125,14 +125,16 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
       );
   };
 
-  // Determine requirement status (defaulting logic matches BuyerOrderDetails)
-  const isReqPrice = requiredFields.price !== false;
-  const isReqWeight = requiredFields.weight !== false;
-  const isReqWeeks = requiredFields.delivery_weeks !== false;
-  const isReqQty = requiredFields.quantity === true;
-  const isReqComment = requiredFields.comment === true;
-  const isReqSku = requiredFields.supplier_sku === true;
-  const isReqImages = requiredFields.images === true;
+  // Determine requirement status: fields become mandatory ONLY if price is entered
+  const hasPrice = item.BuyerPrice > 0;
+  
+  const isReqPrice = false; // Price is the trigger, it shouldn't show as "error" if empty
+  const isReqWeight = hasPrice && (requiredFields.weight !== false);
+  const isReqWeeks = hasPrice && (requiredFields.delivery_weeks !== false);
+  const isReqQty = hasPrice && (requiredFields.quantity === true);
+  const isReqComment = hasPrice && (requiredFields.comment === true);
+  const isReqSku = hasPrice && (requiredFields.supplier_sku === true);
+  const isReqImages = hasPrice && (requiredFields.images === true);
 
   const getInputClass = (field: string, value: any) => {
       const base = "w-full text-center font-bold text-xs bg-white border border-gray-200 rounded md:rounded-lg py-1.5 md:py-2 px-1 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all";
