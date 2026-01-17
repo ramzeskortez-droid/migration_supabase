@@ -42,3 +42,8 @@ _legacy/
 temp/
 commit_msg.txt
 correct_msg.txt
+
+# Access documents
+ДОСТУПЫ/
+"ДОСТУПЫ access.md"
+"ДОСТУПЫ/access.md"

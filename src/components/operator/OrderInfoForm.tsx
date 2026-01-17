@@ -15,7 +15,7 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
   const handleChange = (field: keyof OrderInfo, value: string) => {
     // Валидация
     if (field === 'clientName' && value.length > 20) return;
-    if (field === 'city' && value.length > 40) return;
+    if (field === 'city' && value.length > 200) return; // Увеличили лимит для полного адреса
     if (field === 'clientPhone') {
         const raw = value.replace(/[^\d+()-\s]/g, '');
         if (raw.length > 20) return; 

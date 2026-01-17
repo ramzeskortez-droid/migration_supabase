@@ -15,7 +15,7 @@ interface Email {
 }
 
 interface EmailWidgetProps {
-    onImportToAI: (text: string) => void;
+    onImportToAI: (data: any) => void;
     onLinkToOrder: (emailId: string) => void;
     currentUserId?: string;
 }
@@ -88,20 +88,24 @@ export const EmailWidget: React.FC<EmailWidgetProps> = ({ onImportToAI, onLinkTo
     }, [activeTab]);
 
     const handleProcess = async (email: Email) => {
-        // Если письмо не заблокировано или заблокировано кем-то другим (что странно, кнопка должна быть скрыта),
-        // но мы пробуем заблокировать.
         if (activeTab === 'new' && currentUserId) {
             try {
                 await SupabaseService.lockEmail(email.id, currentUserId);
             } catch (e) {
                 console.error("Lock error", e);
-                // Если не удалось заблокировать (гонка), выходим
                 return; 
             }
         }
 
-        const fullText = `ТЕМА ПИСЬМА: ${email.subject}\n\nСОДЕРЖИМОЕ:\n${email.body}`;
-        onImportToAI(fullText);
+        const fullText = `From: ${email.from_address}\nSubject: ${email.subject}\n\n${email.body}`;
+        
+        // Передаем объект с данными
+        onImportToAI({
+            text: fullText,
+            email: email.from_address,
+            subject: email.subject
+        });
+        
         onLinkToOrder(email.id);
     };
 

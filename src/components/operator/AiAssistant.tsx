@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, Sparkles, Save, FileText } from 'lucide-react';
 import { Part, OrderInfo } from './types';
 import { supabase } from '../../lib/supabaseClient';
+
+// Помощник для извлечения чистого email (вынесен наружу)
+const cleanEmail = (str: string) => {
+    if (!str) return '';
+    const match = str.match(/<(.+?)>/) || str.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    return match ? (match[1] || match[2]) : str.trim();
+};
 
 interface AiAssistantProps {
   onImport: (newParts: Part[]) => void;
@@ -17,11 +24,35 @@ interface AiAssistantProps {
 export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrderInfo, onLog, onStats, onCreateOrder, isSaving, isFormValid = true, debugMode = false }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [startTime, setStartTime] = useState<number>(0);
+
+  // Сброс при маунте
+  useEffect(() => { setIsProcessing(false); }, []);
 
   // Слушаем импорт из почты
-  React.useEffect(() => {
+  useEffect(() => {
       const handleImport = (e: any) => {
-          if (e.detail) setInputText(e.detail);
+          const detail = e.detail;
+          if (typeof detail === 'string') {
+              setInputText(detail);
+          } else if (detail && typeof detail === 'object') {
+              if (detail.text) setInputText(detail.text);
+              
+              console.log("Importing email data:", detail); 
+
+              const updates: Partial<OrderInfo> = {};
+              if (detail.email) {
+                  const email = cleanEmail(detail.email);
+                  updates.email = email;
+                  updates.clientEmail = email; 
+              }
+              if (detail.subject) updates.emailSubject = detail.subject;
+              
+              if (Object.keys(updates).length > 0) {
+                  onUpdateOrderInfo(updates);
+                  onLog('Email и тема подставлены.');
+              }
+          }
       };
       window.addEventListener('importEmailText', handleImport);
       return () => window.removeEventListener('importEmailText', handleImport);
@@ -30,31 +61,23 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
   const handleEmulate = () => {
       const template = `Добрый день!
 ТЕМА: ЗАЯВКА 24121414
-Подскажите, пожалуйста, по наличию и ценам на оборудование Danfoss и совместимые аналоги. Нужно до 15.01 организовать поставку в город Грязи, Грязинский р-н, Липецкая обл, Россия.
+Подскажите, пожалуйста, по наличию и ценам на оборудование Danfoss.
 
 Позиции к запросу:
-
-Комплект кабелей гнездовых 3 м\tDanfoss\t027H0438\t3\tшт
-Электропривод\tICAD\t1200B\tс\tдисплеем\tDanfoss\t027H0491\t2\tшт
-Кабель\tсигнальный\t5\tм\tCarel\tNTCCAB050\t1\tкомплект
-Датчик\tтемпературы\tуниверсальный\tEliwell\tTAC100\t6\tшт
-Модуль\tпитания\tдля\tICAD\t600/900\tDanfoss\t027H0502\t2\tуп
-
-Просьба указать наличие, цену с\tНДС, сроки поставки и доступные аналоги (если какие‑то позиции отсутствуют).
-При наличии прайса\tили\tтехнических описаний\t—\tпришлите, пожалуйста, в\tответ.
-
-С уважением,
-Елена
-Тел:\t+7\t(900)\t123‑45‑67
-E‑mail:\telena.kaknibud@pochta.ru`;
+Комплект кабелей гнездовых 3 м\tDanfoss\t027H0438\t3\шт
+Электропривод\tICAD\t1200B\tDanfoss\t027H0491\t2\шт`;
       setInputText(template);
       onLog('Текст тестовой заявки вставлен.');
   };
 
   const handleProcess = async () => {
+    console.log("Button clicked. Text length:", inputText.length);
     if (!inputText.trim()) return;
+    
     setIsProcessing(true);
-    onLog(`Запуск обработки AI (Edge Function)...`);
+    const start = performance.now();
+    setStartTime(start);
+    onLog(`Запуск обработки AI...`);
 
     try {
       const { data, error } = await supabase.functions.invoke('process-email', {
@@ -67,7 +90,7 @@ E‑mail:\telena.kaknibud@pochta.ru`;
       }
 
       if (data.error) {
-          throw new Error(`Groq API: ${data.details || data.error}`);
+          throw new Error(`AI API: ${data.details || data.error}`);
       }
 
       const content = data.choices?.[0]?.message?.content;
@@ -81,7 +104,7 @@ E‑mail:\telena.kaknibud@pochta.ru`;
           throw new Error("Некорректный JSON от AI");
       }
 
-      handleAiResult(parsedData);
+      handleAiResult(parsedData, start);
 
     } catch (error) {
       console.error("AI Processing Error:", error);
@@ -92,37 +115,56 @@ E‑mail:\telena.kaknibud@pochta.ru`;
     }
   };
 
-  const handleAiResult = (parsedData: any) => {
+  const handleAiResult = (parsedData: any, start = 0) => {
+    const duration = ((performance.now() - start) / 1000).toFixed(2);
+
     if (parsedData.order_info) {
         const updates: Partial<OrderInfo> = {};
         if (parsedData.order_info.deadline) updates.deadline = parsedData.order_info.deadline;
-        if (parsedData.order_info.region) updates.region = parsedData.order_info.region;
-        if (parsedData.order_info.city) updates.city = parsedData.order_info.city;
-        if (parsedData.order_info.email) updates.email = parsedData.order_info.email;
+        
+        // Адрес (пишем везде)
+        if (parsedData.order_info.full_address && parsedData.order_info.full_address.length > 5) {
+            updates.region = parsedData.order_info.full_address;
+            updates.city = parsedData.order_info.full_address;
+        } else {
+            if (parsedData.order_info.region) updates.region = parsedData.order_info.region;
+            if (parsedData.order_info.city) updates.city = parsedData.order_info.city;
+        }
+
+        // Email: Обновляем только если AI нашел валидный email
+        if (parsedData.order_info.email) {
+            const email = cleanEmail(parsedData.order_info.email);
+            if (email.includes('@')) {
+                updates.email = email;
+                updates.clientEmail = email;
+            }
+        }
+        
         if (parsedData.order_info.client_name) updates.clientName = parsedData.order_info.client_name;
         if (parsedData.order_info.client_phone) updates.clientPhone = parsedData.order_info.client_phone;
-        if (parsedData.order_info.email_subject) updates.emailSubject = parsedData.order_info.email_subject;
         
         onUpdateOrderInfo(updates);
         onLog(`AI: Данные заголовка извлечены.`);
     }
 
     if (parsedData.parts && Array.isArray(parsedData.parts)) {
+      const timestamp = Date.now();
       const newParts = parsedData.parts.map((p: any, index: number) => ({
-        id: Date.now() + index,
-        name: p.name || '',
-        article: p.article || '',
+        id: timestamp + index + Math.floor(Math.random() * 100000),
+        name: p.name || p.description || '',
+        article: p.article || p.part_number || '',
         brand: p.brand || '', 
         uom: p.uom || 'шт',
         quantity: p.quantity || 1
       }));
       
       onImport(newParts);
-      setInputText(''); 
       onLog(`AI: Добавлено ${newParts.length} позиций.`);
     } else {
       onLog(`Обработано: детали не найдены`);
     }
+    
+    onLog(`✅ Обработано за ${duration} сек.`);
     setIsProcessing(false);
   };
 

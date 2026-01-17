@@ -147,10 +147,10 @@ export const OperatorInterface: React.FC = () => {
       };
   }, [currentUser, isGlobalChatOpen]);
 
-  const handleImportEmail = (text: string) => {
-      setToast({ message: 'Текст письма передан в ассистент', type: 'info' });
-      addLog('Импорт текста из почты...');
-      const event = new CustomEvent('importEmailText', { detail: text });
+  const handleImportEmail = (data: any) => {
+      setToast({ message: 'Данные письма переданы в ассистент', type: 'info' });
+      addLog('Импорт письма...');
+      const event = new CustomEvent('importEmailText', { detail: data });
       window.dispatchEvent(event);
   };
 
