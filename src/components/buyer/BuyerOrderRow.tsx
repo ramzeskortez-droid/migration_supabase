@@ -68,7 +68,7 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
   }), [order, details]);
 
   const containerStyle = isExpanded 
-    ? "border-l-indigo-600 ring-1 ring-indigo-600 shadow-xl bg-white relative z-10 rounded-xl my-3 mx-4" 
+    ? "border-l-4 border-l-indigo-600 ring-1 ring-indigo-600/10 shadow-xl bg-white relative z-10 rounded-none md:rounded-xl my-2 md:my-3 mx-0 md:mx-4" 
     : "hover:bg-slate-50 border-l-transparent border-b-4 md:border-b border-slate-200 last:border-0";
 
   const displayItems = (editingItems && editingItems.length > 0) ? editingItems : (details?.items || []);

@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud, ShieldCheck } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
+import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud, ShieldCheck, MoreVertical } from 'lucide-react';
 import { FileDropzone } from '../shared/FileDropzone';
 import { useDropzone } from 'react-dropzone';
 import { SupabaseService } from '../../services/supabaseService';
@@ -19,8 +19,9 @@ interface BuyerItemCardProps {
 
 export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, index, onUpdate, isDisabled, orderId, bestStats, onCopy, requiredFields = {} }) => {
   const { data: officialBrands } = useOfficialBrands();
+  const [showMenu, setShowMenu] = useState(false);
   
-  const req = requiredFields as any; // Explicit cast to avoid TS errors with default value
+  const req = requiredFields as any; 
   
   const isUnavailable = item.offeredQuantity === 0;
   const isWinner = item.rank === 'ЛИДЕР' || item.rank === 'LEADER';
@@ -175,7 +176,38 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
         )}
         
         {/* 1. ИНФО ОПЕРАТОРА */}
-        <div className="grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100 rounded-t-xl">
+        {/* MOBILE VIEW */}
+        <div className="md:hidden p-4 bg-white border-b border-gray-100 rounded-t-xl space-y-3">
+            <div className="flex justify-between items-start">
+                <div className="text-sm font-mono font-bold text-gray-400">#{index + 1}</div>
+                <div className={`text-xs font-black uppercase truncate flex items-center gap-1 ${isUnavailable ? 'text-red-400 line-through' : (isOpBrandOfficial ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2' : 'text-indigo-600')}`}>
+                    {opBrand}
+                    {isOpBrandOfficial && !isUnavailable && <ShieldCheck size={12} className="text-amber-600" />}
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <span className={`font-black text-sm uppercase break-words leading-tight ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`}>
+                    {item.AdminName || item.name}
+                </span>
+                {item.adminComment && (
+                    <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded w-fit">
+                        Менеджер: {item.adminComment}
+                    </div>
+                )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                <div className="flex gap-3 text-xs text-gray-500">
+                    <span className="font-mono bg-slate-50 px-1.5 rounded">{opArticle}</span>
+                    <span className="font-bold">{item.quantity} {opUom}</span>
+                </div>
+                {renderFilesIcon(displayItem.itemFiles, opPhoto)}
+            </div>
+        </div>
+
+        {/* DESKTOP VIEW */}
+        <div className="hidden md:grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100 rounded-t-xl">
             <div className={`text-sm font-mono font-bold text-center ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>#{index + 1}</div>
             
             <div className={`text-xs font-black uppercase truncate flex items-center gap-1 ${isUnavailable ? 'text-red-400 line-through' : (isOpBrandOfficial ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2 cursor-help' : 'text-indigo-600')}`} title={isOpBrandOfficial ? "Официальный представитель" : opBrand}>
@@ -230,27 +262,38 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
 
                 <div className="bg-slate-50 px-4 py-3 grid grid-cols-1 md:grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-3 md:gap-4 items-center">
                     
-                    {/* Mobile Actions Header */}
-                    <div className="md:hidden flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
-                        <div className="text-xs font-black text-slate-400 uppercase">Действия с позицией</div>
-                        <div className="flex items-center gap-2">
-                            {onCopy && !isDisabled && (
-                                <button 
-                                    onClick={() => onCopy(item, index)}
-                                    className="p-2 text-indigo-500 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-                                    title="Копировать"
-                                >
-                                    <Copy size={16} />
-                                </button>
-                            )}
+                    {/* Mobile Actions Header (Dropdown) */}
+                    <div className="md:hidden flex justify-between items-center mb-2 pb-2 border-b border-slate-200 relative">
+                        <div className="text-xs font-black text-slate-400 uppercase">Данные предложения</div>
+                        <div className="relative">
                             <button 
-                                onClick={toggleUnavailable} 
-                                disabled={isDisabled} 
-                                className={`p-2 rounded-lg transition-colors border border-transparent ${isUnavailable ? 'bg-red-600 text-white' : 'text-red-500 bg-red-50 hover:bg-red-100'}`} 
-                                title={isUnavailable ? "Вернуть" : "Отказаться"}
+                                onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                                className="p-1.5 rounded-lg hover:bg-white text-slate-400 hover:text-indigo-600 transition-colors"
                             >
-                                <Ban size={16} />
+                                <MoreVertical size={16} />
                             </button>
+                            
+                            {showMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)}></div>
+                                    <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-40 w-48 overflow-hidden animate-in fade-in zoom-in-95 origin-top-right">
+                                        {onCopy && !isDisabled && (
+                                            <button 
+                                                onClick={() => { onCopy(item, index); setShowMenu(false); }}
+                                                className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b border-slate-50"
+                                            >
+                                                <Copy size={14} className="text-indigo-500"/> Копировать позицию
+                                            </button>
+                                        )}
+                                        <button 
+                                            onClick={() => { toggleUnavailable(); setShowMenu(false); }}
+                                            className={`w-full text-left px-4 py-3 text-xs font-bold flex items-center gap-2 ${isUnavailable ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-600 hover:bg-red-50'}`}
+                                        >
+                                            {isUnavailable ? <><FileText size={14}/> Вернуть в работу</> : <><Ban size={14}/> Отказаться от позиции</>}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 

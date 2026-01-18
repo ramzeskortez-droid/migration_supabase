@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X, UploadCloud, Plus, Edit2 } from 'lucide-react';
+import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X, UploadCloud, Plus, Edit2, Menu, MoreHorizontal } from 'lucide-react';
 import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
@@ -29,6 +29,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       isOpen: false, title: '', content: ''
   });
   const [showRefuseModal, setShowRefuseModal] = useState(false); 
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   const [requiredFields, setRequiredFields] = useState<any>({}); 
   const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
@@ -274,7 +275,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   return (
     <div 
         {...getRootProps()} 
-        className="bg-gray-50 p-6 min-h-screen relative outline-none transition-all duration-300"
+        className="bg-gray-50 p-2 md:p-6 min-h-screen relative outline-none transition-all duration-300"
     >
         <input {...getInputProps()} />
         
@@ -314,7 +315,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
         />
 
         {/* 1. Блок Информации */}
-        <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
+        <div className="bg-white rounded-lg p-4 md:p-6 mb-4 md:mb-6 shadow-sm border border-gray-200">
             <div className="flex items-center gap-2 mb-4">
                 <FileText size={18} className="text-gray-600" />
                 <h3 className="font-semibold text-gray-700 uppercase text-sm">Информация по заявке</h3>
@@ -373,7 +374,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
         </div>
 
         {/* 4. СПИСОК ФАЙЛОВ */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 mb-8">
             <div className="flex items-center gap-3 mb-4 pb-2 border-b border-gray-100">
                 <Paperclip size={16} className="text-slate-400"/>
                 <h3 className="text-xs font-black uppercase text-slate-500 tracking-tight">Вложения</h3>
@@ -468,8 +469,10 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
         </div>
 
         {/* 5. ФУТЕР ДЕЙСТВИЙ */}
-        <div className="sticky bottom-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 -mx-6 -mb-6 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-[100]">
-            <div className="flex gap-3">
+        <div className="sticky bottom-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 -mx-2 -mb-2 md:-mx-6 md:-mb-6 flex gap-3 justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-[100]">
+            
+            {/* DESKTOP ACTIONS (LEFT) */}
+            <div className="hidden md:flex gap-3">
                 <button 
                     onClick={() => onOpenChat(order.id, 'OPERATOR')}
                     className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all text-xs font-black uppercase border-2 border-indigo-100"
@@ -502,14 +505,62 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                 )}
             </div>
 
-            <div className="flex items-center gap-4">
+            {/* MOBILE MENU (LEFT) */}
+            <div className="md:hidden relative">
+                <button 
+                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                    className="p-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all border border-slate-200"
+                >
+                    <Menu size={20} />
+                </button>
+                
+                {showMobileMenu && (
+                    <>
+                        <div className="fixed inset-0 z-30" onClick={() => setShowMobileMenu(false)}></div>
+                        <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-slate-200 rounded-xl shadow-2xl z-40 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                            <button 
+                                onClick={() => { onOpenChat(order.id, 'OPERATOR'); setShowMobileMenu(false); }}
+                                className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3 border-b border-slate-50"
+                            >
+                                <MessageCircle size={16} className="text-indigo-500"/> Чат с оператором
+                            </button>
+                            {!order.isProcessed && !isEditing && (
+                                <button 
+                                    onClick={() => { setShowRefuseModal(true); setShowMobileMenu(false); }}
+                                    className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-3 border-b border-slate-50"
+                                >
+                                    <XCircle size={16}/> Отказаться от заказа
+                                </button>
+                            )}
+                            {isEditing && (
+                                <button 
+                                    onClick={() => { handleCancelEdit(); setShowMobileMenu(false); }}
+                                    className="w-full text-left px-4 py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center gap-3 border-b border-slate-50"
+                                >
+                                    <X size={16}/> Отменить редактирование
+                                </button>
+                            )}
+                            {!order.isProcessed && !isEditing && (
+                                <button 
+                                    onClick={() => { handleCopyAll(); setShowMobileMenu(false); }}
+                                    className="w-full text-left px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-3"
+                                >
+                                    <Copy size={16}/> Копировать все позиции
+                                </button>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+
+            <div className="flex items-center gap-4 flex-1 justify-end md:flex-none">
                 {/* Кнопка ИЗМЕНИТЬ / ДОПОЛНИТЬ */}
                 {!!myOffer && !order.isProcessed && !isEditing && (
                     <button 
                         onClick={handleStartEdit}
-                        className="px-8 py-4 rounded-xl bg-white border-2 border-indigo-600 text-indigo-600 font-black text-xs uppercase shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2"
+                        className="w-full md:w-auto px-6 py-4 rounded-xl bg-white border-2 border-indigo-600 text-indigo-600 font-black text-xs uppercase shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center justify-center gap-2"
                     >
-                        <Edit2 size={18} /> Изменить / Дополнить
+                        <Edit2 size={18} /> <span className="hidden sm:inline">Изменить / Дополнить</span><span className="sm:hidden">Изменить</span>
                     </button>
                 )}
 
@@ -518,10 +569,12 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     <button 
                         disabled={!isValid || isSubmitting} 
                         onClick={isEditing ? handleSaveEdit : handlePreSubmit} 
-                        className={`px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center gap-3 active:scale-95 ${isValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
+                        className={`w-full md:w-auto px-6 md:px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center justify-center gap-3 active:scale-95 ${isValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
                     >
-                        {isEditing ? 'Сохранить изменения' : (isValid ? 'Отправить предложение' : 'Заполните поля')} 
-                        <CheckCircle size={18}/>
+                        <span className="truncate">
+                            {isEditing ? 'Сохранить' : (isValid ? 'Отправить КП' : 'Заполните поля')}
+                        </span> 
+                        <CheckCircle size={18} className="shrink-0"/>
                     </button>
                 )}
             </div>
