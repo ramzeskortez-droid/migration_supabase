@@ -166,7 +166,7 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-4">
-            {/* Header */}
+            {/* Header (Desktop Only) */}
             <div className="bg-gray-100 border-b border-gray-300 hidden md:block rounded-t-xl">
                 <div className={`grid ${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                     <div className="text-[9px] font-black uppercase text-gray-500 tracking-wider">№</div>
@@ -194,7 +194,45 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                 onClick={() => (winners.length > 0 || isProcessed) && toggleItem(item.id)}
                                 className={`bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 transition-colors group/row ${(winners.length > 0 || isProcessed) ? 'cursor-pointer' : ''} ${isLast && !isItemExpanded ? 'rounded-b-xl' : ''}`}
                             >
-                                <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
+                                {/* MOBILE VIEW */}
+                                <div className="md:hidden p-4 grid grid-cols-[30px_1fr] gap-3">
+                                    <div className="text-gray-400 font-mono font-bold text-xs pt-1">{idx + 1}</div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="flex flex-col">
+                                                {renderBrand(item.brand, "text-indigo-600 text-xs mb-0.5")}
+                                                <div className="font-black text-gray-900 uppercase text-sm leading-tight break-words">
+                                                    {item.AdminName || item.name}
+                                                </div>
+                                            </div>
+                                            {(winners.length > 0 || isProcessed) && (
+                                                <div className="text-gray-400">
+                                                    {isItemExpanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="flex items-center justify-between text-xs text-gray-500">
+                                            <div className="font-mono bg-white px-1.5 py-0.5 rounded border border-gray-200">{item.article || '-'}</div>
+                                            <div className="font-bold flex items-center gap-1">
+                                                {item.quantity} {item.uom || 'шт'}
+                                                <div className="ml-2">{renderFilesCell(item.itemFiles, item.opPhotoUrl)}</div>
+                                            </div>
+                                        </div>
+
+                                        {['КП готово', 'КП отправлено', 'Ручная обработка', 'Архив', 'Выполнен'].includes(order.statusManager || '') && (
+                                            <button 
+                                                onClick={(e) => onCopyItem(e, item, idx)}
+                                                className="w-full mt-2 py-2 bg-white border border-indigo-100 text-indigo-600 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2 active:bg-indigo-50"
+                                            >
+                                                <Copy size={12} /> Скопировать
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* DESKTOP VIEW */}
+                                <div className={`hidden md:grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
                                     <div className="flex items-center gap-2">
                                         {(winners.length > 0 || isProcessed) && (
                                             <div className="hover:bg-gray-200 rounded-lg p-1 transition-colors">

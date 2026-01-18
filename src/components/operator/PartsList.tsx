@@ -93,7 +93,7 @@ const PartRow: React.FC<{
     return (
         <div 
             {...getRootProps()}
-            className={`group relative grid grid-cols-[30px_2fr_4fr_3fr_1fr_1fr_1fr] gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 transition-all ${isDragActive ? 'ring-4 ring-indigo-500 bg-indigo-50/50 z-10' : 'hover:border-indigo-300'}`}
+            className={`group relative flex flex-col md:grid md:grid-cols-[30px_2fr_4fr_3fr_1fr_1fr_1fr] gap-3 md:gap-2 items-start md:items-center bg-slate-50 border border-slate-200 rounded-lg p-3 md:p-2 transition-all ${isDragActive ? 'ring-4 ring-indigo-500 bg-indigo-50/50 z-10' : 'hover:border-indigo-300'}`}
         >
             <input {...getInputProps()} />
             
@@ -104,9 +104,21 @@ const PartRow: React.FC<{
                 </div>
             )}
 
-            <div className="text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
+            {/* Mobile Header: Index + Delete */}
+            <div className="flex md:hidden w-full justify-between items-center border-b border-slate-200 pb-2 mb-1">
+                <span className="text-slate-400 font-black text-xs">Позиция #{idx + 1}</span>
+                <button 
+                    onClick={() => removePart(part.id)}
+                    className="text-slate-400 hover:text-red-500 transition-colors"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+
+            {/* Desktop Index */}
+            <div className="hidden md:block text-center text-slate-400 text-xs font-medium">{idx + 1}</div>
             
-            <div className="relative">
+            <div className="relative w-full">
                 <input 
                 key={`brand_${part.id}_${blinkTrigger}`}
                 value={part.brand}
@@ -175,7 +187,7 @@ const PartRow: React.FC<{
                 )}
             </div>
 
-            <div>
+            <div className="w-full">
                 <input 
                 key={`name_${part.id}_${blinkTrigger}`}
                 value={part.name}
@@ -185,7 +197,7 @@ const PartRow: React.FC<{
                 />
             </div>
 
-            <div>
+            <div className="w-full">
                 <input 
                 value={part.article}
                 onChange={(e) => updatePart(part.id, 'article', e.target.value)}
@@ -194,32 +206,35 @@ const PartRow: React.FC<{
                 />
             </div>
 
-            <div>
-                <input 
-                value={part.uom}
-                onChange={(e) => updatePart(part.id, 'uom', e.target.value)}
-                className={`${inputClass} text-center`}
-                />
-            </div>
+            {/* Mobile: Grid for small inputs */}
+            <div className="grid grid-cols-3 gap-2 w-full md:contents">
+                <div>
+                    <input 
+                    value={part.uom}
+                    onChange={(e) => updatePart(part.id, 'uom', e.target.value)}
+                    className={`${inputClass} text-center`}
+                    placeholder="Ед."
+                    />
+                </div>
 
-            <div className="flex justify-center">
-                <input 
-                type="number"
-                min="1"
-                step="1"
-                value={part.quantity}
-                onKeyDown={(e) => {
-                    if (e.key === '.' || e.key === ',') e.preventDefault();
-                }}
-                onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    updatePart(part.id, 'quantity', isNaN(val) ? 1 : val);
-                }}
-                className={`${inputClass} text-center font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getHighlightClass(part.id, 'quantity')}`}
-                />
-            </div>
+                <div>
+                    <input 
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={part.quantity}
+                    onKeyDown={(e) => {
+                        if (e.key === '.' || e.key === ',') e.preventDefault();
+                    }}
+                    onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        updatePart(part.id, 'quantity', isNaN(val) ? 1 : val);
+                    }}
+                    className={`${inputClass} text-center font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getHighlightClass(part.id, 'quantity')}`}
+                    placeholder="Кол-во"
+                    />
+                </div>
 
-            <div className="flex justify-center px-2">
                 <div className="h-[34px] w-full flex items-center justify-center bg-white rounded border border-gray-300 overflow-hidden">
                     <FileDropzone 
                         files={part.itemFiles || (part.photoUrl ? [{name: 'Фото', url: part.photoUrl, type: 'image/jpeg'}] : [])} 
@@ -234,9 +249,10 @@ const PartRow: React.FC<{
                 </div>
             </div>
             
+            {/* Desktop Trash Button */}
             <button 
                 onClick={() => removePart(part.id)}
-                className="absolute -right-12 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-all"
+                className="hidden md:block absolute -right-12 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-all"
             >
                 <Trash2 size={16} />
             </button>
@@ -335,7 +351,8 @@ export const PartsList: React.FC<PartsListProps> = ({ parts, setParts, onAddBran
       </div>
       
       <div className="space-y-3">
-        <div className="grid grid-cols-[30px_2fr_4fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
+        {/* Header (Desktop Only) */}
+        <div className="hidden md:grid grid-cols-[30px_2fr_4fr_3fr_1fr_1fr_1fr] gap-2 px-2 items-center">
           <div className={`${headerClass} text-center`}>#</div>
           <div className={`${headerClass} text-indigo-600 font-black`}>Бренд {req.brand && <span className="text-red-500">*</span>}</div>
           <div className={headerClass}>Наименование {req.name && <span className="text-red-500">*</span>}</div>

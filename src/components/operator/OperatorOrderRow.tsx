@@ -123,43 +123,81 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
 
       <div 
         onClick={onToggle}
-        className={`p-3 grid grid-cols-[70px_1fr_1fr_1fr_90px_100px_140px_20px] gap-4 items-center cursor-pointer border-l-4 ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
+        className={`p-3 cursor-pointer border-l-4 transition-all ${isExpanded ? 'border-indigo-500 bg-white shadow-sm' : 'border-transparent'}`}
       >
-        <div className="text-[11px] font-black font-mono text-indigo-600">#{order.id}</div>
-        
-        <div className="flex min-w-0 flex-col">
-            <div className="text-[11px] font-bold text-slate-700 truncate">{order.clientName || 'Не указано'}</div>
-            <div className="text-[9px] text-slate-400 font-medium">{order.clientPhone}</div>
+        {/* MOBILE VIEW */}
+        <div className="md:hidden flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+                <div className="text-xs font-black font-mono text-indigo-600">#{order.id}</div>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter
+                    ${order.statusManager === 'Выполнен' || order.statusManager === 'КП отправлено' ? 'bg-emerald-100 text-emerald-700' : 
+                      order.statusManager === 'Аннулирован' || order.statusManager === 'Отказ' ? 'bg-red-100 text-red-700' :
+                      order.statusManager === 'КП готово' ? 'bg-amber-100 text-amber-700' :
+                      order.statusManager === 'Идут торги' ? 'bg-blue-100 text-blue-700' :
+                      order.statusManager === 'Обработано вручную' ? 'bg-purple-100 text-purple-700' :
+                      'bg-slate-100 text-slate-500'
+                    }
+                `}>
+                    {order.statusManager}
+                </span>
+            </div>
+            
+            <div className="flex justify-between items-start gap-4">
+                <div className="flex flex-col min-w-0">
+                    <div className="text-sm font-bold text-slate-800 truncate">{order.clientName || 'Не указано'}</div>
+                    <div className="text-[10px] text-slate-500 truncate" title={subject}>{subject}</div>
+                </div>
+                <div className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded text-center shrink-0">
+                    {order.deadline || '-'}
+                </div>
+            </div>
+
+            <div className="flex justify-between items-center mt-1">
+                <div className="text-[10px] text-slate-400 font-medium">{datePart}</div>
+                <div className="text-slate-300">
+                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+            </div>
         </div>
 
-        <div className="text-[10px] font-medium text-slate-500 truncate lowercase">{order.clientEmail || '-'}</div>
+        {/* DESKTOP VIEW */}
+        <div className="hidden md:grid grid-cols-[70px_1fr_1fr_1fr_90px_100px_140px_20px] gap-4 items-center">
+            <div className="text-[11px] font-black font-mono text-indigo-600">#{order.id}</div>
+            
+            <div className="flex min-w-0 flex-col">
+                <div className="text-[11px] font-bold text-slate-700 truncate">{order.clientName || 'Не указано'}</div>
+                <div className="text-[9px] text-slate-400 font-medium">{order.clientPhone}</div>
+            </div>
 
-        <div className="text-[10px] font-medium text-slate-600 truncate" title={subject}>{subject}</div>
+            <div className="text-[10px] font-medium text-slate-500 truncate lowercase">{order.clientEmail || '-'}</div>
 
-        <div className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded text-center truncate">
-            {order.deadline || '-'}
-        </div>
+            <div className="text-[10px] font-medium text-slate-600 truncate" title={subject}>{subject}</div>
 
-        <div className="flex flex-col items-start">
-            <span className="text-[10px] font-bold text-slate-500">{datePart}</span>
-        </div>
+            <div className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded text-center truncate">
+                {order.deadline || '-'}
+            </div>
 
-        <div>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter
-                ${order.statusManager === 'Выполнен' || order.statusManager === 'КП отправлено' ? 'bg-emerald-100 text-emerald-700' : 
-                  order.statusManager === 'Аннулирован' || order.statusManager === 'Отказ' ? 'bg-red-100 text-red-700' :
-                  order.statusManager === 'КП готово' ? 'bg-amber-100 text-amber-700' :
-                  order.statusManager === 'Идут торги' ? 'bg-blue-100 text-blue-700' :
-                  order.statusManager === 'Обработано вручную' ? 'bg-purple-100 text-purple-700' :
-                  'bg-slate-100 text-slate-500'
-                }
-            `}>
-                {order.statusManager}
-            </span>
-        </div>
+            <div className="flex flex-col items-start">
+                <span className="text-[10px] font-bold text-slate-500">{datePart}</span>
+            </div>
 
-        <div className="text-slate-300">
-            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <div>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter
+                    ${order.statusManager === 'Выполнен' || order.statusManager === 'КП отправлено' ? 'bg-emerald-100 text-emerald-700' : 
+                      order.statusManager === 'Аннулирован' || order.statusManager === 'Отказ' ? 'bg-red-100 text-red-700' :
+                      order.statusManager === 'КП готово' ? 'bg-amber-100 text-amber-700' :
+                      order.statusManager === 'Идут торги' ? 'bg-blue-100 text-blue-700' :
+                      order.statusManager === 'Обработано вручную' ? 'bg-purple-100 text-purple-700' :
+                      'bg-slate-100 text-slate-500'
+                    }
+                `}>
+                    {order.statusManager}
+                </span>
+            </div>
+
+            <div className="text-slate-300">
+                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
         </div>
       </div>
 
