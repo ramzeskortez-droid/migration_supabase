@@ -58,7 +58,7 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
       return diffMin < offerEditTimeout;
   };
 
-  const calculatePrice = (sellerPrice: number, sellerCurrency: Currency, weight: number) => {
+  const calculatePrice = (sellerPrice: number, sellerCurrency: Currency, weight: number, quantity: number) => {
     if (!exchangeRates) return 0;
     
     // 1. Конвертация цены товара в рубли
@@ -67,13 +67,14 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
     else if (sellerCurrency === 'USD') itemCostRub = sellerPrice * (exchangeRates.cny_usd || 0) * exchangeRates.cny_rub; 
     else itemCostRub = sellerPrice;
 
-    // 2. Расчет доставки
+    // 2. Расчет доставки (за единицу)
     const deliveryCostRub = (weight || 0) * (exchangeRates.delivery_kg_usd || 0) * (exchangeRates.cny_usd || 0) * exchangeRates.cny_rub;
     
-    const totalCost = itemCostRub + deliveryCostRub;
-    const finalPrice = totalCost * (1 + (exchangeRates.markup_percent || 0) / 100);
+    // 3. Цена за единицу с наценкой
+    const unitPrice = (itemCostRub + deliveryCostRub) * (1 + (exchangeRates.markup_percent || 0) / 100);
     
-    return Math.round(finalPrice);
+    // 4. Итоговая цена (за все количество)
+    return Math.round(unitPrice * (quantity || 1));
   };
 
   const formatPrice = (val?: number) => {
@@ -191,11 +192,20 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                         className={`bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 transition-colors cursor-pointer ${isLast && !isExpanded ? 'rounded-b-xl' : ''}`}
                     >
                         <div className={`grid grid-cols-1 md:${PRODUCT_GRID} gap-4 items-center px-6 py-3`}>
-                            <div className="flex items-center gap-2">
-                                <div className="hover:bg-gray-200 rounded-lg p-1 transition-colors">
-                                    {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-600" /> : <ChevronRight className="w-4 h-4 text-gray-600" />}
+                            <div className="flex items-center justify-between md:justify-start gap-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={`p-1.5 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'}`}>
+                                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                    </div>
+                                    <span className="text-gray-600 font-mono font-black text-xs">{idx + 1}</span>
                                 </div>
-                                <span className="text-gray-600 font-mono font-bold text-xs">{idx + 1}</span>
+                                
+                                {/* Mobile hint */}
+                                {itemOffers.length > 0 && !isExpanded && (
+                                    <div className="md:hidden text-[8px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-1 rounded animate-pulse">
+                                        {itemOffers.length} {itemOffers.length === 1 ? 'оффер' : 'оффера'}
+                                    </div>
+                                )}
                             </div>
                             
                             {/* BRAND */}
@@ -257,14 +267,14 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <div className="text-center">Срок поставки</div>
                                     <div className="text-center">Файлы</div>
                                     <div className="flex items-center gap-1 group relative cursor-help">
-                                        <span>Цена для клиента</span>
+                                        <span>Цена для клиента (Total)</span>
                                         <HelpCircle size={10} className="text-gray-400" />
-                                        <div className="absolute top-full right-0 mt-2 w-56 bg-slate-800 text-white p-3 rounded-lg text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border border-slate-600">
-                                            <div className="mb-2 font-bold text-indigo-300 border-b border-slate-600 pb-1 uppercase tracking-wider">Формула расчета</div>
+                                        <div className="absolute top-full right-0 mt-2 w-64 bg-slate-800 text-white p-3 rounded-lg text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border border-slate-600">
+                                            <div className="mb-2 font-bold text-indigo-300 border-b border-slate-600 pb-1 uppercase tracking-wider">Формула расчета (За партию)</div>
                                             <div className="space-y-1 font-mono text-[8px] text-slate-300">
-                                                <div>(ЦенаПост * КурсВалюты)</div>
-                                                <div>+ (Вес * ТарифДост * КурсUSD)</div>
-                                                <div>+ Наценка%</div>
+                                                <div>1. Unit = (ЦенаПост * Курс) + (ВесЕд * Тариф * КурсUSD)</div>
+                                                <div>2. UnitWithMarkup = Unit * (1 + Наценка%)</div>
+                                                <div className="text-emerald-400">3. Total = UnitWithMarkup * Кол-во</div>
                                             </div>
                                         </div>
                                     </div>
@@ -316,7 +326,10 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
 
                                         const isLeader = off.item.is_winner || off.item.rank === 'ЛИДЕР' || off.item.rank === 'LEADER';
                                         
-                                        const autoPrice = calculatePrice(off.item.sellerPrice, off.item.sellerCurrency, off.item.weight);
+                                        // Pass quantity to calculation
+                                        const qty = off.item.offeredQuantity || off.item.quantity || 1;
+                                        const autoPrice = calculatePrice(off.item.sellerPrice, off.item.sellerCurrency, off.item.weight, qty);
+                                        
                                         const editedPrice = offerEdits?.[off.item.id]?.adminPrice;
                                         const currentPriceRub = editedPrice !== undefined ? editedPrice : (off.item.adminPrice ?? autoPrice);
 

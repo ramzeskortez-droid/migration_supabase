@@ -85,7 +85,10 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
 
   return (
     <div className={`transition-all duration-500 border-l-4 ${containerStyle}`}>
-      <div className={`p-3 select-none grid ${gridCols || 'grid-cols-1'} gap-2 md:gap-4 items-center text-[10px] text-left relative`}>
+      <div 
+        onClick={onToggle}
+        className={`p-3 select-none grid ${gridCols || 'grid-cols-1'} gap-2 md:gap-4 items-center text-[10px] text-left relative cursor-pointer group`}
+      >
           
           {/* 1. ID + Sticker */}
           <div className="flex items-center gap-2">
@@ -116,9 +119,9 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
                         )}
                     </div>
                 )}
-                {showStickerPicker && <div className="fixed inset-0 z-40" onClick={() => setShowStickerPicker(false)}></div>}
+                {showStickerPicker && <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowStickerPicker(false); }}></div>}
              </div>
-             <div onClick={onToggle} className="text-[11px] font-black text-indigo-600 truncate cursor-pointer">#{order.id}</div>
+             <div className="text-[11px] font-black text-indigo-600 truncate group-hover:text-indigo-700">#{order.id}</div>
           </div>
           
           {/* 2. Deadline */}
@@ -128,13 +131,13 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
           </div>
 
           {/* 3. Subject */}
-          <div onClick={onToggle} className="font-bold text-slate-600 truncate cursor-pointer" title={subject}>{subject}</div>
+          <div className="font-bold text-slate-600 truncate" title={subject}>{subject}</div>
 
           {/* 4. First Item */}
-          <div onClick={onToggle} className="font-bold text-slate-800 truncate cursor-pointer" title={firstItemName}>{firstItemName}</div>
+          <div className="font-bold text-slate-800 truncate" title={firstItemName}>{firstItemName}</div>
 
           {/* 5. Status */}
-          <div onClick={onToggle} className="hidden md:flex justify-start cursor-pointer">
+          <div className="hidden md:flex justify-start">
             <div className={`px-2 py-1 rounded-md font-black text-[8px] uppercase border flex items-center gap-1.5 shadow-sm ${statusInfo.color}`}>
                 {statusInfo.icon}
                 {statusInfo.label}
@@ -142,11 +145,11 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
           </div>
 
           {/* 6. Date */}
-          <div onClick={onToggle} className="font-bold text-slate-400 flex items-center gap-1 cursor-pointer">{datePart}</div>
+          <div className="font-bold text-slate-400 flex items-center gap-1">{datePart}</div>
 
           {/* 7. Arrow */}
-          <div onClick={onToggle} className="hidden md:flex justify-end items-center cursor-pointer">
-            <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : ''}`}/>
+          <div className="hidden md:flex justify-end items-center">
+            <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : 'group-hover:translate-x-0.5'}`}/>
           </div>
       </div>
 

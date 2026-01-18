@@ -16,12 +16,15 @@ export const createOffer = async (orderId: string, sellerName: string, items: an
     if (offerError) throw offerError;
 
     const offerItemsToInsert = items.map(item => ({
-      offer_id: offerData.id, name: item.name, quantity: item.offeredQuantity || item.quantity || 1,
-      price: item.sellerPrice || item.BuyerPrice || 0, currency: item.sellerCurrency || item.BuyerCurrency || 'CNY',
-      delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.deliveryDays || 0),
-      weight: item.weight || 0, photo_url: item.photoUrl || '', 
+      offer_id: offerData.id, name: item.name, quantity: item.offeredQuantity !== undefined ? item.offeredQuantity : (item.quantity || 1),
+      price: item.sellerPrice !== undefined ? item.sellerPrice : (item.BuyerPrice || 0), 
+      currency: item.sellerCurrency || item.BuyerCurrency || 'CNY',
+      delivery_days: item.deliveryWeeks ? item.deliveryWeeks * 7 : (item.delivery_days || 0),
+      weight: item.weight !== undefined ? item.weight : 0, 
+      photo_url: item.photoUrl || '', 
       item_files: item.itemFiles || [],
-      comment: item.comment || '', order_item_id: item.id,
+      comment: item.comment || '', 
+      order_item_id: item.id,
       supplier_sku: item.supplierSku || ''
     }));
 

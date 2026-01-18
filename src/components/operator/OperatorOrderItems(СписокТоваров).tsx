@@ -69,7 +69,12 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
 
                 if (matching) {
                     if (order.statusManager === 'Ручная обработка' || matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER') {
-                        winners.push({ ...matching, supplierName: off.clientName }); // Добавляем имя поставщика для контекста
+                        // Наследуем бренд от родительской позиции заказа, так как в offer_items бренда нет
+                        winners.push({ 
+                            ...matching, 
+                            brand: item.brand, 
+                            supplierName: off.clientName 
+                        }); 
                     }
                 }
             });
