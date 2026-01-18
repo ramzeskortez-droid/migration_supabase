@@ -1,9 +1,9 @@
 import { supabase } from '../../../lib/supabaseClient';
 
-export const editOffer = async (offerId: string, items: any[], supplierFiles?: any[]): Promise<void> => {
+export const editOffer = async (offerId: string, items: any[], supplierFiles?: any[], status: string = 'Активно'): Promise<void> => {
     // 1. Обновляем статус и файлы, снимаем лок
     const { error: offerError } = await supabase.from('offers').update({ 
-        status: 'Активно', 
+        status: status, 
         supplier_files: supplierFiles || [],
         locked_at: null 
     }).eq('id', offerId);

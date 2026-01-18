@@ -43,7 +43,7 @@ export const BuyerInterface: React.FC = () => {
       localStorage.setItem('buyer_active_brands', JSON.stringify(activeBrands));
   }, [activeBrands]);
 
-  const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
+  const [uiToast, setUiToast] = useState<{message: string, type: 'success' | 'error', id: string} | null>(null);
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
@@ -139,8 +139,9 @@ export const BuyerInterface: React.FC = () => {
 
   // ВОССТАНОВЛЕННАЯ ФУНКЦИЯ
   const getMyOffer = useCallback((order: Order) => {
-      if (!buyerAuth?.name) return null;
+      if (!buyerAuth) return null;
       return order.offers?.find(off => 
+        off.ownerId === buyerAuth.id ||
         String(off.clientName || '').trim().toUpperCase() === buyerAuth.name.trim().toUpperCase()
       ) || null;
   }, [buyerAuth]);
@@ -223,15 +224,23 @@ export const BuyerInterface: React.FC = () => {
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
-          await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id, supplierFiles, status);
+          const order = orders.find(o => o.id === orderId);
+          const existingOffer = order ? getMyOffer(order) : null;
+
+          if (existingOffer) {
+              await SupabaseService.editOffer(existingOffer.id, items, supplierFiles, status);
+          } else {
+              await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id, supplierFiles, status);
+          }
+
           setExpandedId(null);
-          setSuccessToast({ message: status === 'Отказ' ? 'Вы отказались от заказа' : `Предложение к заказу № ${orderId} отправлено!`, id: Date.now().toString() });
+          setUiToast({ message: status === 'Отказ' ? 'Вы отказались от заказа' : `Предложение к заказу № ${orderId} отправлено!`, type: 'success', id: Date.now().toString() });
           refetch();
           fetchCounts();
           SupabaseService.getSupplierUsedBrands(buyerAuth.name).then(setHistoryBrands);
           SupabaseService.getBuyerQuickBrands(buyerAuth.name).then(setQuickBrands);
       } catch (e: any) {
-          alert('Ошибка при отправке: ' + (e.message || JSON.stringify(e)));
+          setUiToast({ message: 'Ошибка при отправке: ' + (e.message || JSON.stringify(e)), type: 'error', id: Date.now().toString() });
       } finally {
           setIsSubmitting(false);
       }
@@ -305,7 +314,7 @@ export const BuyerInterface: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6 relative">
-        {successToast && <Toast message={successToast.message} onClose={() => setSuccessToast(null)} />}
+        {uiToast && <Toast message={uiToast.message} type={uiToast.type} onClose={() => setUiToast(null)} />}
         {chatNotifications.map((msg, idx) => (
             <ChatNotification 
                 key={msg.id}
