@@ -76,7 +76,8 @@ export const EmailWidget: React.FC<EmailWidgetProps> = ({ onImportToAI, onLinkTo
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'incoming_emails' },
-                () => {
+                (payload) => {
+                    console.log('📧 Realtime Email Update:', payload);
                     fetchEmails(); // Перезагружаем при любом изменении (вставка/апдейт статуса/блокировки)
                 }
             )
