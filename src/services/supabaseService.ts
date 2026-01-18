@@ -27,8 +27,15 @@ import * as ordersDebugApi from './api/orders/debug';
 import * as ordersStatsApi from './api/orders/stats';
 import * as emailArchiveApi from './api/email/archive';
 import * as emailLockingApi from './api/email/locking';
+import * as adminChecklistApi from './api/admin/checklist';
 
 export class SupabaseService {
+  // --- CHECKLIST ---
+  static getChecklist = adminChecklistApi.getChecklist;
+  static upsertChecklistItem = adminChecklistApi.upsertChecklistItem;
+  static deleteChecklistItem = adminChecklistApi.deleteChecklistItem;
+  static resetChecklist = adminChecklistApi.resetChecklist;
+
   // --- AUTH ---
   static loginWithToken = loginApi.loginWithToken;
   static generateInviteCode = registrationApi.generateInviteCode;
