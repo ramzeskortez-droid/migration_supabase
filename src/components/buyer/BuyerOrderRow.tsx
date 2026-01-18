@@ -73,6 +73,12 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
 
   const displayItems = (editingItems && editingItems.length > 0) ? editingItems : (details?.items || []);
 
+  // Ensure we use the FULL offer details (with comments) from the loaded details, not the potentially incomplete prop
+  const detailedMyOffer = React.useMemo(() => {
+      if (!myOffer || !fullOrder.offers) return myOffer;
+      return fullOrder.offers.find(o => String(o.id) === String(myOffer.id)) || myOffer;
+  }, [fullOrder, myOffer]);
+
   const activeLabel = order.buyerLabels?.[0];
   const activeColorClass = activeLabel ? (COLOR_MAP[activeLabel.color] || 'bg-slate-500') : '';
 
@@ -227,7 +233,7 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
                     setEditingItems={setEditingItems}
                     onSubmit={onSubmit}
                     isSubmitting={isSubmitting}
-                    myOffer={myOffer}
+                    myOffer={detailedMyOffer}
                     statusInfo={statusInfo}
                     onOpenChat={onOpenChat}
                 />

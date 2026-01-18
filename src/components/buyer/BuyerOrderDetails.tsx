@@ -78,6 +78,33 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       SupabaseService.getSystemSettings('offer_edit_timeout').then(res => {
           if (res) setEditTimeout(Number(res));
       });
+
+      // Sync editingItems with existing offer data when not in active edit mode
+      if (myOffer && !isEditing) {
+          const mappedItems = order.items.map(oi => {
+              const match = myOffer.items?.find((mi: any) => 
+                  (mi.order_item_id && String(mi.order_item_id) === String(oi.id)) || 
+                  (!mi.order_item_id && mi.name === oi.name)
+              );
+              
+              if (match) {
+                  return {
+                      ...oi,
+                      BuyerPrice: match.sellerPrice,
+                      weight: match.weight,
+                      deliveryWeeks: match.deliveryWeeks || (match.delivery_days ? match.delivery_days / 7 : 0),
+                      offeredQuantity: match.offeredQuantity || match.quantity,
+                      supplierSku: match.supplierSku,
+                      comment: match.comment || '',
+                      itemFiles: match.itemFiles || [],
+                      offerItemId: match.id 
+                  };
+              }
+              return { ...oi, offeredQuantity: 0 };
+          });
+          setEditingItems(mappedItems);
+      }
+
       if (myOffer?.supplier_files) {
           setSupplierFiles(myOffer.supplier_files);
       }
@@ -87,8 +114,6 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   const handleStartEdit = async () => {
       if (!myOffer) return;
       
-      console.log('START EDIT DEBUG:', { orderItems: order.items, myOfferItems: myOffer.items });
-
       // 1. Проверка дедлайна (3 дня - таймаут - 2 мин)
       const createdAt = new Date(order.createdAt);
       const autoCloseDate = new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -122,7 +147,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                   deliveryWeeks: match.deliveryWeeks || (match.delivery_days ? match.delivery_days / 7 : 0),
                   offeredQuantity: match.offeredQuantity || match.quantity,
                   supplierSku: match.supplierSku,
-                  comment: match.adminComment || match.comment, // Try adminComment first? No, supplier edit their own comment
+                  comment: match.comment || '', // Fix: Use supplier comment only
                   itemFiles: match.itemFiles || [],
                   offerItemId: match.id 
               };
@@ -153,7 +178,6 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
           return;
       }
       try {
-          console.log('Saving Offer Items:', editingItems);
           await SupabaseService.editOffer(myOffer.id, editingItems, supplierFiles);
           setIsEditing(false);
           setToast({ message: 'Изменения сохранены!', type: 'success' });
