@@ -87,69 +87,130 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
     <div className={`transition-all duration-500 border-l-4 ${containerStyle}`}>
       <div 
         onClick={onToggle}
-        className={`p-3 select-none grid ${gridCols || 'grid-cols-1'} gap-2 md:gap-4 items-center text-[10px] text-left relative cursor-pointer group`}
+        className="p-3 select-none cursor-pointer group"
       >
-          
-          {/* 1. ID + Sticker */}
-          <div className="flex items-center gap-2">
-             <div className="relative group/sticker flex items-center">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); setShowStickerPicker(!showStickerPicker); }}
-                    className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm transition-all flex items-center justify-center ${activeLabel ? activeColorClass : 'bg-slate-200 hover:bg-slate-300'}`}
-                >
-                    {!activeLabel && <Tag size={7} className="text-white opacity-50" />}
-                </button>
-
-                {showStickerPicker && (
-                    <div className="absolute top-full left-0 mt-2 p-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex gap-1 animate-in fade-in slide-in-from-top-1">
-                        {STICKER_COLORS.map(c => (
+          {/* MOBILE VIEW */}
+          <div className="md:hidden flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                        {/* Sticker Picker Mobile */}
+                        <div className="relative group/sticker flex items-center">
                             <button 
-                                key={c.name}
-                                onClick={(e) => { e.stopPropagation(); labelMutation.mutate(c.name); setShowStickerPicker(false); }}
-                                className={`w-5 h-5 rounded-lg ${c.class} hover:scale-110 transition-transform ${activeLabel?.color === c.name ? 'ring-2 ring-offset-1 ring-indigo-500' : ''}`}
-                            />
-                        ))}
-                        {activeLabel && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); labelMutation.mutate(activeLabel.color); setShowStickerPicker(false); }}
-                                className="w-5 h-5 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center hover:bg-slate-200"
+                                onClick={(e) => { e.stopPropagation(); setShowStickerPicker(!showStickerPicker); }}
+                                className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm transition-all flex items-center justify-center ${activeLabel ? activeColorClass : 'bg-slate-200 hover:bg-slate-300'}`}
                             >
-                                <X size={10} />
+                                {!activeLabel && <Tag size={7} className="text-white opacity-50" />}
                             </button>
-                        )}
-                    </div>
-                )}
-                {showStickerPicker && <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowStickerPicker(false); }}></div>}
-             </div>
-             <div className="text-[11px] font-black text-indigo-600 truncate group-hover:text-indigo-700">#{order.id}</div>
+                            {showStickerPicker && (
+                                <div className="absolute top-full left-0 mt-2 p-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex gap-1 animate-in fade-in slide-in-from-top-1">
+                                    {STICKER_COLORS.map(c => (
+                                        <button 
+                                            key={c.name}
+                                            onClick={(e) => { e.stopPropagation(); labelMutation.mutate(c.name); setShowStickerPicker(false); }}
+                                            className={`w-5 h-5 rounded-lg ${c.class} hover:scale-110 transition-transform ${activeLabel?.color === c.name ? 'ring-2 ring-offset-1 ring-indigo-500' : ''}`}
+                                        />
+                                    ))}
+                                    {activeLabel && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); labelMutation.mutate(activeLabel.color); setShowStickerPicker(false); }}
+                                            className="w-5 h-5 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center hover:bg-slate-200"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                            {showStickerPicker && <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowStickerPicker(false); }}></div>}
+                        </div>
+                        <div className="text-xs font-black font-mono text-indigo-600">#{order.id}</div>
+                  </div>
+                  
+                  <div className={`px-2 py-0.5 rounded-md font-black text-[8px] uppercase border flex items-center gap-1.5 shadow-sm ${statusInfo.color}`}>
+                        {statusInfo.icon}
+                        {statusInfo.label}
+                  </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                  <div className="font-bold text-slate-800 text-sm truncate">{subject}</div>
+                  <div className="font-medium text-slate-500 text-xs truncate">{firstItemName}</div>
+              </div>
+
+              <div className="flex justify-between items-center mt-1 border-t border-slate-100 pt-2">
+                  <div className="flex items-center gap-3">
+                      <div className="font-bold text-slate-400 text-[10px]">{datePart}</div>
+                      <div className="flex items-center gap-1 text-slate-500 font-bold text-[10px]">
+                        <Clock size={10} className="text-amber-500"/>
+                        <span>{order.deadline || '24ч'}</span>
+                      </div>
+                  </div>
+                  <ChevronRight size={16} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : ''}`}/>
+              </div>
           </div>
-          
-          {/* 2. Deadline */}
-          <div className="flex items-center gap-1 text-slate-500 font-bold">
-              <Clock size={10} className="text-amber-500"/>
-              <span>{order.deadline || '24ч'}</span>
-          </div>
 
-          {/* 3. Subject */}
-          <div className="font-bold text-slate-600 truncate" title={subject}>{subject}</div>
+          {/* DESKTOP VIEW */}
+          <div className={`hidden md:grid ${gridCols || 'grid-cols-1'} gap-4 items-center text-[10px] text-left`}>
+            {/* 1. ID + Sticker */}
+            <div className="flex items-center gap-2">
+                <div className="relative group/sticker flex items-center">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setShowStickerPicker(!showStickerPicker); }}
+                        className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm transition-all flex items-center justify-center ${activeLabel ? activeColorClass : 'bg-slate-200 hover:bg-slate-300'}`}
+                    >
+                        {!activeLabel && <Tag size={7} className="text-white opacity-50" />}
+                    </button>
 
-          {/* 4. First Item */}
-          <div className="font-bold text-slate-800 truncate" title={firstItemName}>{firstItemName}</div>
-
-          {/* 5. Status */}
-          <div className="hidden md:flex justify-start">
-            <div className={`px-2 py-1 rounded-md font-black text-[8px] uppercase border flex items-center gap-1.5 shadow-sm ${statusInfo.color}`}>
-                {statusInfo.icon}
-                {statusInfo.label}
+                    {showStickerPicker && (
+                        <div className="absolute top-full left-0 mt-2 p-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex gap-1 animate-in fade-in slide-in-from-top-1">
+                            {STICKER_COLORS.map(c => (
+                                <button 
+                                    key={c.name}
+                                    onClick={(e) => { e.stopPropagation(); labelMutation.mutate(c.name); setShowStickerPicker(false); }}
+                                    className={`w-5 h-5 rounded-lg ${c.class} hover:scale-110 transition-transform ${activeLabel?.color === c.name ? 'ring-2 ring-offset-1 ring-indigo-500' : ''}`}
+                                />
+                            ))}
+                            {activeLabel && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); labelMutation.mutate(activeLabel.color); setShowStickerPicker(false); }}
+                                    className="w-5 h-5 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center hover:bg-slate-200"
+                                >
+                                    <X size={10} />
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    {showStickerPicker && <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowStickerPicker(false); }}></div>}
+                </div>
+                <div className="text-[11px] font-black text-indigo-600 truncate group-hover:text-indigo-700">#{order.id}</div>
             </div>
-          </div>
+            
+            {/* 2. Deadline */}
+            <div className="flex items-center gap-1 text-slate-500 font-bold">
+                <Clock size={10} className="text-amber-500"/>
+                <span>{order.deadline || '24ч'}</span>
+            </div>
 
-          {/* 6. Date */}
-          <div className="font-bold text-slate-400 flex items-center gap-1">{datePart}</div>
+            {/* 3. Subject */}
+            <div className="font-bold text-slate-600 truncate" title={subject}>{subject}</div>
 
-          {/* 7. Arrow */}
-          <div className="hidden md:flex justify-end items-center">
-            <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : 'group-hover:translate-x-0.5'}`}/>
+            {/* 4. First Item */}
+            <div className="font-bold text-slate-800 truncate" title={firstItemName}>{firstItemName}</div>
+
+            {/* 5. Status */}
+            <div className="flex justify-start">
+                <div className={`px-2 py-1 rounded-md font-black text-[8px] uppercase border flex items-center gap-1.5 shadow-sm ${statusInfo.color}`}>
+                    {statusInfo.icon}
+                    {statusInfo.label}
+                </div>
+            </div>
+
+            {/* 6. Date */}
+            <div className="font-bold text-slate-400 flex items-center gap-1">{datePart}</div>
+
+            {/* 7. Arrow */}
+            <div className="flex justify-end items-center">
+                <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-600' : 'group-hover:translate-x-0.5'}`}/>
+            </div>
           </div>
       </div>
 

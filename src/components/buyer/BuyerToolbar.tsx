@@ -169,9 +169,9 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
          </div>
       </div>
 
-      <div className="flex justify-between items-end border-b border-slate-200 mt-6 relative">
-         <div className="flex-grow overflow-x-auto no-scrollbar mr-4">
-            <div className="flex gap-6 min-w-max">
+      <div className="border-b border-slate-200 mt-6 relative">
+         <div className="overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex gap-4 md:gap-6 min-w-max pr-4 md:pr-0">
                 <button 
                     onClick={() => setActiveTab('new')} 
                     className={`pb-3 text-[11px] font-black uppercase transition-all relative ${activeTab === 'new' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}

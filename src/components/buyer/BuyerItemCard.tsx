@@ -207,8 +207,9 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
 
         <div className="relative">
             {/* 2. БЛОК ЗАКУПЩИКА */}
-            <div className={`mx-6 mt-4 mb-4 rounded-lg overflow-hidden border border-slate-200 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
-                <div className="bg-slate-900 px-4 py-1.5 grid grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-4 items-center">
+            <div className={`mx-4 md:mx-6 mt-4 mb-4 rounded-lg overflow-hidden border border-slate-200 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
+                {/* Desktop Header */}
+                <div className="hidden md:grid bg-slate-900 px-4 py-1.5 grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-4 items-center">
                     <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Действия</div>
                     <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">
                         Кол-во {isReqQty && <span className="text-red-500 ml-0.5">*</span>}
@@ -227,8 +228,34 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                     </div>
                 </div>
 
-                <div className="bg-slate-50 px-4 py-3 grid grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-4 items-center">
-                    <div className="flex items-center gap-1 justify-center">
+                <div className="bg-slate-50 px-4 py-3 grid grid-cols-1 md:grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-3 md:gap-4 items-center">
+                    
+                    {/* Mobile Actions Header */}
+                    <div className="md:hidden flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
+                        <div className="text-xs font-black text-slate-400 uppercase">Действия с позицией</div>
+                        <div className="flex items-center gap-2">
+                            {onCopy && !isDisabled && (
+                                <button 
+                                    onClick={() => onCopy(item, index)}
+                                    className="p-2 text-indigo-500 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                                    title="Копировать"
+                                >
+                                    <Copy size={16} />
+                                </button>
+                            )}
+                            <button 
+                                onClick={toggleUnavailable} 
+                                disabled={isDisabled} 
+                                className={`p-2 rounded-lg transition-colors border border-transparent ${isUnavailable ? 'bg-red-600 text-white' : 'text-red-500 bg-red-50 hover:bg-red-100'}`} 
+                                title={isUnavailable ? "Вернуть" : "Отказаться"}
+                            >
+                                <Ban size={16} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Desktop Actions */}
+                    <div className="hidden md:flex items-center gap-1 justify-center">
                         {onCopy && !isDisabled && (
                             <button 
                                 onClick={() => onCopy(item, index)}
@@ -248,19 +275,37 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                         </button>
                     </div>
 
-                    <input disabled={isDisabled || isUnavailable} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity', item.offeredQuantity ?? item.quantity)} />
-                    <input disabled={isDisabled || isUnavailable} value={item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice', item.BuyerPrice)} placeholder="0" />
-                    <input disabled={isDisabled || isUnavailable} value={item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight', item.weight)} placeholder="0.0" />
-                    <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks', item.deliveryWeeks)} placeholder="Min 4" />
+                    {/* Inputs Grid for Mobile */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:contents">
+                        <div className="space-y-1 md:space-y-0">
+                            <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Кол-во {isReqQty && <span className="text-red-500">*</span>}</label>
+                            <input disabled={isDisabled || isUnavailable} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity', item.offeredQuantity ?? item.quantity)} />
+                        </div>
+                        
+                        <div className="space-y-1 md:space-y-0">
+                            <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Цена (¥) {isReqPrice && <span className="text-red-500">*</span>}</label>
+                            <input disabled={isDisabled || isUnavailable} value={item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice', item.BuyerPrice)} placeholder="0" />
+                        </div>
 
-                    <div className={`h-[34px] flex items-center justify-center bg-white rounded border overflow-hidden ${isReqImages && (!item.itemFiles || item.itemFiles.length === 0) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}>
+                        <div className="space-y-1 md:space-y-0">
+                            <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Вес (кг) {isReqWeight && <span className="text-red-500">*</span>}</label>
+                            <input disabled={isDisabled || isUnavailable} value={item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight', item.weight)} placeholder="0.0" />
+                        </div>
+
+                        <div className="space-y-1 md:space-y-0">
+                            <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Срок (нед) {isReqWeeks && <span className="text-red-500">*</span>}</label>
+                            <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks', item.deliveryWeeks)} placeholder="Min 4" />
+                        </div>
+                    </div>
+
+                    <div className={`mt-2 md:mt-0 h-[40px] md:h-[34px] flex items-center justify-center bg-white rounded border overflow-hidden ${isReqImages && (!item.itemFiles || item.itemFiles.length === 0) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}>
                         <FileDropzone files={item.itemFiles || (item.photoUrl ? [{name: 'Фото', url: item.photoUrl, type: 'image/jpeg'}] : [])} onUpdate={(files) => onUpdate(index, 'itemFiles', files)} compact />
                     </div>
                 </div>
             </div>
 
         {/* 3. ДОП ИНФО (Комментарий и Поставщик) */}
-        <div className={`px-6 pb-4 bg-white grid grid-cols-2 gap-4 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
+        <div className={`px-4 md:px-6 pb-4 bg-white grid grid-cols-1 md:grid-cols-2 gap-4 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
             <div>
                 <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
                     Комментарий / Замена / Аналог
