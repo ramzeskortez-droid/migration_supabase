@@ -232,6 +232,24 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       setEditingItems(newItems);
   };
 
+  const handleToggleItemStatus = (index: number) => {
+      const item = editingItems[index];
+      const isCurrentlyUnavailable = item.offeredQuantity === 0;
+
+      if (isCurrentlyUnavailable) {
+          handleUpdateItem(index, 'offeredQuantity', item.quantity || 1);
+      } else {
+          const otherActiveItems = editingItems.filter((it, idx) => idx !== index && (it.offeredQuantity || 0) > 0);
+          console.log('TOGGLE STATUS DEBUG:', { index, otherActiveItemsCount: otherActiveItems.length, items: editingItems });
+          
+          if (otherActiveItems.length === 0) {
+              setShowRefuseModal(true);
+          } else {
+              handleUpdateItem(index, 'offeredQuantity', 0);
+          }
+      }
+  };
+
   const removeFileFromItem = (itemIdx: number, fileIdx: number) => {
       if (isDisabled) return;
       const newItems = [...editingItems];
@@ -392,6 +410,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                         bestStats={!myOffer ? getBestStats(item.name) : null} 
                         onCopy={handleCopyItem}
                         isRequired={requiredFields.supplier_sku}
+                        onToggleStatus={() => handleToggleItemStatus(idx)}
                     />
                 ))}
             </div>

@@ -15,9 +15,10 @@ interface BuyerItemCardProps {
   bestStats?: { bestPrice: number | null, bestWeeks: number | null } | null;
   onCopy?: (item: any, index: number) => void;
   requiredFields?: any;
+  onToggleStatus?: () => void;
 }
 
-export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, index, onUpdate, isDisabled, orderId, bestStats, onCopy, requiredFields = {} }) => {
+export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, index, onUpdate, isDisabled, orderId, bestStats, onCopy, requiredFields = {}, onToggleStatus }) => {
   const { data: officialBrands } = useOfficialBrands();
   const [showMenu, setShowMenu] = useState(false);
   
@@ -81,6 +82,12 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
 
   const toggleUnavailable = () => {
       if (isDisabled) return;
+      
+      if (onToggleStatus) {
+          onToggleStatus();
+          return;
+      }
+
       const newVal = item.offeredQuantity === 0 ? (item.quantity || 1) : 0;
       onUpdate(index, 'offeredQuantity', newVal);
   };
