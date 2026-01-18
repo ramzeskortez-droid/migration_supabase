@@ -70,7 +70,7 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
         </div>
 
         {/* Row 1: Client & Contact */}
-        <div className="md:col-span-4 grid grid-cols-2 gap-2">
+        <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
            <div>
                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                    Телефон {requiredFields.client_phone && <span className="text-red-500">*</span>}
@@ -97,7 +97,7 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
            </div>
         </div>
 
-        <div className="md:col-span-4 grid grid-cols-2 gap-2">
+        <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                     Почта клиента {requiredFields.client_email && <span className="text-red-500">*</span>}

@@ -190,7 +190,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
           />
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4">
             {debugMode && (
                 <button
                 onClick={handleEmulate}
@@ -198,7 +198,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ onImport, onUpdateOrde
                 title="Вставить тестовый текст заявки"
                 >
                 <FileText size={16} />
-                <span className="hidden sm:inline">Эмуляция</span>
+                <span className="inline md:hidden lg:inline">Эмуляция</span>
                 </button>
             )}
 

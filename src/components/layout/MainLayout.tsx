@@ -41,9 +41,9 @@ export const MainLayout: React.FC = () => {
           </div>
 
           {/* Right Side: Currency Rates & Custom Actions */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="flex items-center gap-2 md:gap-6">
             {rates && (
-              <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-3">
                 <div className="flex flex-col items-end leading-none mr-1">
                   <span className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Курс CHINA-NAI</span>
                   <span className="text-[9px] font-black text-slate-400">{new Date(rates.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</span>
