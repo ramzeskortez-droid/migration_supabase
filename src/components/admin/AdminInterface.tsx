@@ -10,6 +10,7 @@ import { AdminFinanceSettings } from './AdminFinanceSettings';
 import { AdminUsers } from './AdminUsers';
 import { AdminBrands } from './AdminBrands';
 import { AdminSettings } from './AdminSettings';
+import { AdminChecklist } from './AdminChecklist';
 import { useOrdersInfinite } from '../../hooks/useOrdersInfinite';
 import { useQueryClient } from '@tanstack/react-query';
 import { GlobalChatWindow } from '../shared/GlobalChatWindow';
@@ -31,7 +32,7 @@ export const AdminInterface: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const setHeader = useHeaderStore(s => s.setCustomRightContent);
-  const [currentView, setCurrentView] = useState<'listing' | 'finance' | 'brands' | 'users' | 'settings'>('listing');
+  const [currentView, setCurrentView] = useState<'listing' | 'finance' | 'brands' | 'users' | 'settings' | 'checklist'>('listing');
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('new');
@@ -455,10 +456,10 @@ export const AdminInterface: React.FC = () => {
 
   return (
       <div className="flex min-h-screen bg-slate-50">
-          <AdminSidebar currentView={currentView} setCurrentView={setCurrentView} />
+          <AdminSidebar currentView={currentView} setCurrentView={setCurrentView} debugMode={debugMode} />
 
           <main className="flex-grow p-4 overflow-y-auto">
-              {currentView === 'users' ? <AdminUsers /> : currentView === 'brands' ? <AdminBrands /> : currentView === 'settings' ? <AdminSettings /> : currentView === 'finance' ? <AdminFinanceSettings /> : (
+              {currentView === 'users' ? <AdminUsers /> : currentView === 'brands' ? <AdminBrands /> : currentView === 'settings' ? <AdminSettings /> : currentView === 'finance' ? <AdminFinanceSettings /> : currentView === 'checklist' ? <AdminChecklist /> : (
                   <div className="max-w-6xl mx-auto space-y-4">
                       {successToast && (
                          <div className="fixed top-6 right-6 z-[200] bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 border border-slate-700">

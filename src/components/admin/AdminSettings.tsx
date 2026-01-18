@@ -232,7 +232,7 @@ export const AdminSettings: React.FC = () => {
                         </div>
                         <div>
                             <div className="font-bold text-slate-700 group-hover:text-amber-700 transition-colors">Включить DEBUG режим</div>
-                            <div className="text-xs text-slate-400 font-medium">Отобразит кнопки очистки БД и эмуляции</div>
+                            <div className="text-xs text-slate-400 font-medium">Активирует раздел "Чек-лист проверки", кнопки очистки БД и инструменты эмуляции</div>
                         </div>
                     </label>
                 </div>
