@@ -33,7 +33,16 @@ export const BuyerInterface: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'new' | 'history' | 'hot' | 'won' | 'lost' | 'cancelled'>('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [activeBrands, setActiveBrands] = useState<string[]>([]);
+  
+  // Persist active brands filter
+  const [activeBrands, setActiveBrands] = useState<string[]>(() => {
+      try { return JSON.parse(localStorage.getItem('buyer_active_brands') || '[]'); } catch { return []; }
+  });
+
+  useEffect(() => {
+      localStorage.setItem('buyer_active_brands', JSON.stringify(activeBrands));
+  }, [activeBrands]);
+
   const [successToast, setSuccessToast] = useState<{message: string, id: string} | null>(null);
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
