@@ -25,7 +25,7 @@ const STATUS_STEPS = [
 ];
 
 const TAB_MAPPING: Record<string, AdminTab> = {
-    'В обработке': 'new', 'Ручная обработка': 'manual', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'Выполнен': 'completed', 'Аннулирован': 'archive', 'Отказ': 'archive', 'Обработано вручную': 'archive'
+    'В обработке': 'new', 'Ручная обработка': 'manual', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'КП отправлено': 'ready_to_buy', 'Выполнен': 'archive', 'Аннулирован': 'archive', 'Отказ': 'archive', 'Обработано вручную': 'archive'
 };
 
 export const AdminInterface: React.FC = () => {
@@ -196,9 +196,9 @@ export const AdminInterface: React.FC = () => {
           case 'new': return 'В обработке';
           case 'manual': return 'Ручная обработка';
           case 'kp_sent': return 'КП готово';
-          case 'ready_to_buy': return 'КП отправлено';
+          case 'ready_to_buy': return 'КП отправлено,Готов купить';
           case 'completed': return 'Выполнен';
-          case 'archive': return 'Аннулирован,Отказ,Архив,Обработано вручную';
+          case 'archive': return 'Аннулирован,Отказ,Архив,Обработано вручную,Выполнен';
           default: return undefined;
       }
   };
