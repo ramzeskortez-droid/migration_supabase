@@ -316,12 +316,10 @@ const AdminOrderRow = memo(({
                                                 <span className="text-[10px] font-black uppercase text-slate-500">Ручная обработка</span>
                                             </label>
                                             
-                                            {(isManual || (fullOrder.offers?.length > 0)) && (
-                                                <button onClick={() => { handleFormCP(order.id, isManual); }} className="px-8 py-3 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase shadow-xl hover:bg-slate-800 transition-all active:scale-95 w-full md:w-auto flex items-center justify-center gap-2">
-                                                    {isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle2 size={14}/>} 
-                                                    {isManual ? 'Передать оператору' : 'Утвердить КП и Отправить'}
-                                                </button>
-                                            )}
+                                            <button onClick={() => { handleFormCP(order.id, isManual); }} className="px-8 py-3 rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase shadow-xl hover:bg-slate-800 transition-all active:scale-95 w-full md:w-auto flex items-center justify-center gap-2">
+                                                {isSubmitting === order.id ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle2 size={14}/>} 
+                                                {isManual ? 'Передать оператору' : 'Утвердить КП и Отправить'}
+                                            </button>
                                         </div>
                                     )}</>
                                 )}

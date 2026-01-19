@@ -22,6 +22,8 @@ export const refuseOrder = async (orderId: string, reason: string, userRole: 'AD
 };
 
 export const manualApproveOrder = async (orderId: string): Promise<void> => {
-    const { error } = await supabase.rpc('set_manual_mode', { p_order_id: Number(orderId) });
+    const { error } = await supabase.from('orders')
+        .update({ is_manual_processing: true })
+        .eq('id', orderId);
     if (error) throw error;
 };
