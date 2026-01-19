@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud, ShieldCheck, MoreVertical } from 'lucide-react';
+import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud, ShieldCheck, MoreVertical, Trophy } from 'lucide-react';
 import { FileDropzone } from '../shared/FileDropzone';
 import { useDropzone } from 'react-dropzone';
 import { SupabaseService } from '../../services/supabaseService';
@@ -83,6 +83,8 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
   const toggleUnavailable = () => {
       if (isDisabled) return;
       
+      console.log('BuyerItemCard toggleUnavailable. Has onToggleStatus?', !!onToggleStatus);
+
       if (onToggleStatus) {
           onToggleStatus();
           return;
@@ -186,7 +188,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
         {/* MOBILE VIEW */}
         <div className="md:hidden p-4 bg-white border-b border-gray-100 rounded-t-xl space-y-3">
             <div className="flex justify-between items-start">
-                <div className="text-sm font-mono font-bold text-gray-400">#{index + 1}</div>
+                <div className="text-sm font-mono font-bold text-gray-400 flex items-center gap-2">
+                    #{index + 1}
+                    {isWinner && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black uppercase flex items-center gap-1"><Trophy size={10}/> Лидер</span>}
+                </div>
                 <div className={`text-xs font-black uppercase truncate flex items-center gap-1 ${isUnavailable ? 'text-red-400 line-through' : (isOpBrandOfficial ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2' : 'text-indigo-600')}`}>
                     {opBrand}
                     {isOpBrandOfficial && !isUnavailable && <ShieldCheck size={12} className="text-amber-600" />}
@@ -215,7 +220,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
 
         {/* DESKTOP VIEW */}
         <div className="hidden md:grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100 rounded-t-xl">
-            <div className={`text-sm font-mono font-bold text-center ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>#{index + 1}</div>
+            <div className={`text-sm font-mono font-bold text-center flex flex-col items-center justify-center ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>
+                #{index + 1}
+                {isWinner && <Trophy size={12} className="text-emerald-500 mt-1"/>}
+            </div>
             
             <div className={`text-xs font-black uppercase truncate flex items-center gap-1 ${isUnavailable ? 'text-red-400 line-through' : (isOpBrandOfficial ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2 cursor-help' : 'text-indigo-600')}`} title={isOpBrandOfficial ? "Официальный представитель" : opBrand}>
                 {opBrand}

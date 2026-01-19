@@ -97,7 +97,9 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                       supplierSku: match.supplierSku,
                       comment: match.comment || '',
                       itemFiles: match.itemFiles || [],
-                      offerItemId: match.id 
+                      offerItemId: match.id,
+                      rank: match.rank,
+                      isWinner: match.is_winner || match.rank === 'ЛИДЕР' || match.rank === 'LEADER'
                   };
               }
               return { ...oi, offeredQuantity: 0 };
