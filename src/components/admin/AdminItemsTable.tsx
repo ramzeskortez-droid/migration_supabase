@@ -74,8 +74,8 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
     // 3. Цена за единицу с наценкой
     const unitPrice = (itemCostRub + deliveryCostRub) * (1 + (exchangeRates.markup_percent || 0) / 100);
     
-    // 4. Итоговая цена (за все количество)
-    return Math.round(unitPrice * (quantity || 1));
+    // 4. Итоговая цена (за единицу)
+    return Math.round(unitPrice);
   };
 
   const formatPrice = (val?: number) => {

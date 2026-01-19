@@ -223,13 +223,13 @@ export const AdminFinanceSettings: React.FC = () => {
 
         const unitPrice = unitCost * (1 + rates.markup_percent/100);
 
-        // 3. Total Price
+                // 3. Final Unit Price
 
-        const totalPrice = Math.round(unitPrice * qty);
+                const totalPrice = Math.round(unitPrice);
 
-    
+            
 
-        return (
+                return (
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 animate-in fade-in slide-in-from-left-4 duration-500 max-w-4xl mx-auto">
 
@@ -475,119 +475,311 @@ export const AdminFinanceSettings: React.FC = () => {
 
     
 
-                                    <div className="grid grid-cols-3 gap-4 mb-6">
+                                                                        <div className="grid grid-cols-2 gap-4 mb-6">
 
     
 
-                                        <div>
+                                    
 
     
 
-                                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Цена (¥/шт)</label>
+                                        
 
     
 
-                                            <input 
+                                    
 
     
 
-                                                type="number" 
+                                                                            <div>
 
     
 
-                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
+                                    
 
     
 
-                                                value={calcPrice}
+                                        
 
     
 
-                                                onChange={(e) => setCalcPrice(e.target.value)}
+                                    
 
     
 
-                                            />
+                                                                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Цена (¥/шт)</label>
 
     
 
-                                        </div>
+                                    
 
     
 
-                                        <div>
+                                        
 
     
 
-                                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Вес (кг/шт)</label>
+                                    
 
     
 
-                                            <input 
+                                                                                <input 
 
     
 
-                                                type="number" 
+                                    
 
     
 
-                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
+                                        
 
     
 
-                                                value={calcWeight}
+                                    
 
     
 
-                                                onChange={(e) => setCalcWeight(e.target.value)}
+                                                                                    type="number" 
 
     
 
-                                            />
+                                    
 
     
 
-                                        </div>
+                                        
 
     
 
-                                        <div>
+                                    
 
     
 
-                                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Кол-во</label>
+                                                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
 
     
 
-                                            <input 
+                                    
 
     
 
-                                                type="number" 
+                                        
 
     
 
-                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
+                                    
 
     
 
-                                                value={calcQty}
+                                                                                    value={calcPrice}
 
     
 
-                                                onChange={(e) => setCalcQty(e.target.value)}
+                                    
 
     
 
-                                            />
+                                        
 
     
 
-                                        </div>
+                                    
 
     
 
-                                    </div>
+                                                                                    onChange={(e) => setCalcPrice(e.target.value)}
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                />
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                            </div>
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                            <div>
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Вес (кг/шт)</label>
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                <input 
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                    type="number" 
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                    value={calcWeight}
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                    onChange={(e) => setCalcWeight(e.target.value)}
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                                />
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                            </div>
+
+    
+
+                                    
+
+    
+
+                                        
+
+    
+
+                                    
+
+    
+
+                                                                        </div>
 
     
 
@@ -767,31 +959,7 @@ export const AdminFinanceSettings: React.FC = () => {
 
     
 
-                                        {/* ИТОГО ЗА ЕДИНИЦУ */}
-
-    
-
-                                        <div className="flex justify-between items-center py-2">
-
-    
-
-                                            <span className="text-indigo-900 font-black text-xs uppercase">Цена за шт.</span>
-
-    
-
-                                            <span className="font-black text-indigo-600 text-lg">
-
-    
-
-                                                {Math.round(unitPrice).toLocaleString()} ₽
-
-    
-
-                                            </span>
-
-    
-
-                                        </div>
+                                                                                {/* ИТОГО ЗА ЕДИНИЦУ */}
 
     
 
@@ -799,35 +967,111 @@ export const AdminFinanceSettings: React.FC = () => {
 
     
 
-                                        {/* ИТОГО ЗА ПАРТИЮ */}
+                                            
 
     
 
-                                        <div className="mt-4 pt-4 border-t-2 border-indigo-100 bg-indigo-50/50 -mx-6 -mb-6 px-6 py-4 flex justify-between items-center">
+                
 
     
 
-                                            <span className="text-indigo-900 font-black text-sm uppercase tracking-wide">ИТОГО КЛИЕНТУ ({qty} шт)</span>
+                                                                                <div className="mt-4 pt-4 border-t-2 border-indigo-100 bg-indigo-50/50 -mx-6 -mb-6 px-6 py-4 flex justify-between items-center">
 
     
 
-                                            <span className="font-black text-2xl text-indigo-600">
+                
 
     
 
-                                                {totalPrice.toLocaleString()} ₽
+                                            
 
     
 
-                                            </span>
+                
 
     
 
-                                        </div>
+                                                                                    <span className="text-indigo-900 font-black text-sm uppercase tracking-wide">ИТОГО КЛИЕНТУ (за шт)</span>
 
     
 
-                                    </div>
+                
+
+    
+
+                                            
+
+    
+
+                
+
+    
+
+                                                                                    <span className="font-black text-2xl text-indigo-600">
+
+    
+
+                
+
+    
+
+                                            
+
+    
+
+                
+
+    
+
+                                                                                        {totalPrice.toLocaleString()} ₽
+
+    
+
+                
+
+    
+
+                                            
+
+    
+
+                
+
+    
+
+                                                                                    </span>
+
+    
+
+                
+
+    
+
+                                            
+
+    
+
+                
+
+    
+
+                                                                                </div>
+
+    
+
+                
+
+    
+
+                                            
+
+    
+
+                
+
+    
+
+                                                                            </div>
 
     
 
