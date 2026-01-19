@@ -298,7 +298,6 @@ export const AdminInterface: React.FC = () => {
   };
 
   const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {
-      console.error('HANDLE ITEM CHANGE (ERROR LEVEL):', { orderId, offerItemId: offerId, field, value });
       if (field === 'adminComment' || field === 'adminPrice' || field === 'clientDeliveryWeeks') {
          // offerId here acts as offer_item_id
          setOfferEdits(prev => ({
@@ -440,7 +439,6 @@ export const AdminInterface: React.FC = () => {
 
           // 2. Сохранение изменений в Offers (OfferItems)
           const editKeys = Object.keys(offerEdits);
-          console.error('SAVE EDITING OFFER KEYS:', editKeys, offerEdits);
           if (editKeys.length > 0) {
               await Promise.all(editKeys.map(offerItemId => {
                   const edits = offerEdits[offerItemId];
@@ -451,7 +449,6 @@ export const AdminInterface: React.FC = () => {
                               if (edits.clientDeliveryWeeks !== undefined) {
                                   updates.client_delivery_weeks = edits.clientDeliveryWeeks;
                               }
-                              console.log('UPDATING OFFER ITEM:', offerItemId, updates);
                               return SupabaseService.updateOfferItem(offerItemId, updates);              }));
           }
 

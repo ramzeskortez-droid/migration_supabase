@@ -340,114 +340,100 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         const editedWeeks = offerEdits?.[off.item.id]?.clientDeliveryWeeks;
                                         // Базовый срок = Срок поставщика + Настройка (из курсов)
                                         const baseWeeks = (off.item.deliveryWeeks || 0) + (exchangeRates?.delivery_weeks_add || 0);
-                                        // Если уже зафиксировано в БД, берем оттуда, иначе считаем динамически
-                                        const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.clientDeliveryWeeks || baseWeeks);
+                                                                                // Если уже зафиксировано в БД, берем оттуда, иначе считаем динамически
+                                                                                const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.clientDeliveryWeeks || baseWeeks);
                                         
-                                        if (isEditing) {
-                                            console.log('WEEKS DEBUG:', { 
-                                                itemId: off.item.id,
-                                                editedWeeks,
-                                                dbClientWeeks: off.item.clientDeliveryWeeks,
-                                                supplierWeeks: off.item.deliveryWeeks,
-                                                configAdd: exchangeRates?.delivery_weeks_add,
-                                                baseWeeks,
-                                                FINAL: currentWeeks
-                                            });
-                                        }
-
-                                        return (
-                                            <div key={oIdx} className={`relative transition-all duration-300 ${isLeader ? "bg-emerald-50 shadow-inner" : "hover:bg-gray-50"}`}>
-                                                
-                                                {/* LOCK OVERLAY */}
-                                                {off.isLocked && (
-                                                    <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[1px] flex items-center justify-center group/lock cursor-help">
-                                                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-lg border border-indigo-100">
-                                                            <RefreshCw size={14} className="text-indigo-500 animate-spin" />
-                                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">Закупщик вносит изменения...</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <div className="flex flex-col min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-black text-gray-900 uppercase text-[10px] truncate" title={off.clientName}>{off.clientName}</span>
-                                                                <button 
-                                                                    onClick={() => onOpenChat(order.id, off.clientName, off.ownerId)}
-                                                                    className="text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                                    title="Чат с поставщиком"
-                                                                >
-                                                                    <MessageCircle size={12}/>
-                                                                </button>
-                                                            </div>
-                                                            {/* Отображение общих файлов поставщика */}
-                                                            {off.supplierFiles && off.supplierFiles.length > 0 && (
-                                                                <div className="flex items-center gap-1 text-[8px] text-indigo-500 mt-0.5 group/files cursor-help relative">
-                                                                    <Folder size={10} />
-                                                                    <span className="font-bold underline decoration-dotted">{off.supplierFiles.length} общ. файл(а)</span>
-                                                                    <div className="absolute left-0 top-full mt-1 bg-white border border-slate-200 shadow-xl rounded-lg p-2 z-50 w-40 opacity-0 group-hover/files:opacity-100 pointer-events-none group-hover/files:pointer-events-auto transition-opacity">
-                                                                        {off.supplierFiles.map((sf: any, si: number) => (
-                                                                            <a key={si} href={sf.url} target="_blank" rel="noreferrer" className="block text-[9px] text-indigo-600 hover:underline truncate mb-1 last:mb-0">{sf.name}</a>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        {isLeader && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>}
-                                                    </div>
-                                                    <div className="text-gray-700 font-bold">
-                                                        <span className="text-xs">{off.item.sellerPrice}</span>
-                                                        <span className="text-[9px] ml-1 opacity-50">{off.item.sellerCurrency}</span>
-                                                    </div>
-                                                    <div className="text-gray-700 text-center font-bold text-xs">{off.item.offeredQuantity || off.item.quantity}</div>
-                                                    <div className="text-center">
-                                                        <span className="text-purple-600 font-black text-[10px] bg-purple-50 px-2 py-0.5 rounded-md">{off.item.weight ? `${off.item.weight} кг` : '-'}</span>
-                                                    </div>
-                                                    <div className="text-orange-500 text-center font-bold text-[10px]">{off.item.deliveryWeeks ? `${off.item.deliveryWeeks} нед.` : '-'}</div>
-                                                    
-                                                    {/* ФАЙЛЫ / ФОТО ПОЗИЦИИ */}
-                                                    <div className="flex items-center justify-center">
-                                                        {renderFilesIcon(off.item.itemFiles, off.item.photoUrl)}
-                                                    </div>
-
-                                                    <div className="relative group/price">
-                                                        {isEditing ? (
-                                                            <input 
-                                                                type="text" 
-                                                                className="w-full px-2 py-1 border border-indigo-300 rounded-lg font-black text-xs outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
-                                                                value={currentPriceRub}
-                                                                onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminPrice', Number(e.target.value.replace(/\D/g, '')))}
-                                                            />
-                                                        ) : (
-                                                            <div className="text-base font-black text-gray-900 leading-none">
-                                                                {formatPrice(currentPriceRub)} ₽
-                                                            </div>
-                                                        )}
-                                                        <div className="flex items-center justify-between mt-1">
-                                                            <div className="text-[9px] font-black text-gray-400 uppercase">≈ {convertToYuan(currentPriceRub)} ¥</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="text-orange-600 text-center font-black text-[11px] flex justify-center">
-                                                        {isEditing ? (
-                                                            <div className="relative w-16">
-                                                                <input 
-                                                                    type="number" 
-                                                                    className="w-full px-1 py-1 border-2 border-red-500 rounded-lg font-black text-xs text-center outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
-                                                                    value={currentWeeks}
-                                                                    onChange={(e) => {
-                                                                        console.error('DIRECT ONCHANGE:', e.target.value);
-                                                                        handleItemChange(order.id, off.item.id, item.name, 'clientDeliveryWeeks', e.target.value === '' ? undefined : Number(e.target.value));
-                                                                    }}
-                                                                />
-                                                                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold pointer-events-none">нед</span>
-                                                            </div>
-                                                        ) : (
-                                                            <span>{currentWeeks ? `${currentWeeks} нед.` : '-'}</span>
-                                                        )}
-                                                    </div>
-                                                    
+                                                                                return (
+                                                                                    <div key={oIdx} className={`relative transition-all duration-300 ${isLeader ? "bg-emerald-50 shadow-inner" : "hover:bg-gray-50"}`}>
+                                                                                        
+                                                                                        {/* LOCK OVERLAY */}
+                                                                                        {off.isLocked && (
+                                                                                            <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[1px] flex items-center justify-center group/lock cursor-help">
+                                                                                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-lg border border-indigo-100">
+                                                                                                    <RefreshCw size={14} className="text-indigo-500 animate-spin" />
+                                                                                                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">Закупщик вносит изменения...</span>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        )}
+                                        
+                                                                                        <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
+                                                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                                                <div className="flex flex-col min-w-0">
+                                                                                                    <div className="flex items-center gap-2">
+                                                                                                        <span className="font-black text-gray-900 uppercase text-[10px] truncate" title={off.clientName}>{off.clientName}</span>
+                                                                                                        <button 
+                                                                                                            onClick={() => onOpenChat(order.id, off.clientName, off.ownerId)}
+                                                                                                            className="text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                                                                            title="Чат с поставщиком"
+                                                                                                        >
+                                                                                                            <MessageCircle size={12}/>
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                    {/* Отображение общих файлов поставщика */}
+                                                                                                    {off.supplierFiles && off.supplierFiles.length > 0 && (
+                                                                                                        <div className="flex items-center gap-1 text-[8px] text-indigo-500 mt-0.5 group/files cursor-help relative">
+                                                                                                            <Folder size={10} />
+                                                                                                            <span className="font-bold underline decoration-dotted">{off.supplierFiles.length} общ. файл(а)</span>
+                                                                                                            <div className="absolute left-0 top-full mt-1 bg-white border border-slate-200 shadow-xl rounded-lg p-2 z-50 w-40 opacity-0 group-hover/files:opacity-100 pointer-events-none group-hover/files:pointer-events-auto transition-opacity">
+                                                                                                                {off.supplierFiles.map((sf: any, si: number) => (
+                                                                                                                    <a key={si} href={sf.url} target="_blank" rel="noreferrer" className="block text-[9px] text-indigo-600 hover:underline truncate mb-1 last:mb-0">{sf.name}</a>
+                                                                                                                ))}
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                                {isLeader && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>}
+                                                                                            </div>
+                                                                                            <div className="text-gray-700 font-bold">
+                                                                                                <span className="text-xs">{off.item.sellerPrice}</span>
+                                                                                                <span className="text-[9px] ml-1 opacity-50">{off.item.sellerCurrency}</span>
+                                                                                            </div>
+                                                                                            <div className="text-gray-700 text-center font-bold text-xs">{off.item.offeredQuantity || off.item.quantity}</div>
+                                                                                            <div className="text-center">
+                                                                                                <span className="text-purple-600 font-black text-[10px] bg-purple-50 px-2 py-0.5 rounded-md">{off.item.weight ? `${off.item.weight} кг` : '-'}</span>
+                                                                                            </div>
+                                                                                            <div className="text-orange-500 text-center font-bold text-[10px]">{off.item.deliveryWeeks ? `${off.item.deliveryWeeks} нед.` : '-'}</div>
+                                                                                            
+                                                                                            {/* ФАЙЛЫ / ФОТО ПОЗИЦИИ */}
+                                                                                            <div className="flex items-center justify-center">
+                                                                                                {renderFilesIcon(off.item.itemFiles, off.item.photoUrl)}
+                                                                                            </div>
+                                        
+                                                                                            <div className="relative group/price">
+                                                                                                {isEditing ? (
+                                                                                                    <input 
+                                                                                                        type="text" 
+                                                                                                        className="w-full px-2 py-1 border border-indigo-300 rounded-lg font-black text-xs outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                                                                                        value={currentPriceRub}
+                                                                                                        onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'adminPrice', Number(e.target.value.replace(/\D/g, '')))}
+                                                                                                    />
+                                                                                                ) : (
+                                                                                                    <div className="text-base font-black text-gray-900 leading-none">
+                                                                                                        {formatPrice(currentPriceRub)} ₽
+                                                                                                    </div>
+                                                                                                )}
+                                                                                                <div className="flex items-center justify-between mt-1">
+                                                                                                    <div className="text-[9px] font-black text-gray-400 uppercase">≈ {convertToYuan(currentPriceRub)} ¥</div>
+                                                                                                </div>
+                                                                                            </div>
+                                        
+                                                                                            <div className="text-orange-600 text-center font-black text-[11px] flex justify-center">
+                                                                                                {isEditing ? (
+                                                                                                    <div className="relative w-16">
+                                                                                                        <input 
+                                                                                                            type="number" 
+                                                                                                            className="w-full px-1 py-1 border border-indigo-300 rounded-lg font-black text-xs text-center outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                                                                                            value={currentWeeks}
+                                                                                                            onChange={(e) => {
+                                                                                                                handleItemChange(order.id, off.item.id, item.name, 'clientDeliveryWeeks', e.target.value === '' ? undefined : Number(e.target.value));
+                                                                                                            }}
+                                                                                                        />
+                                                                                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold pointer-events-none">нед</span>
+                                                                                                    </div>
+                                                                                                ) : (
+                                                                                                    <span>{currentWeeks ? `${currentWeeks} нед.` : '-'}</span>
+                                                                                                )}
+                                                                                            </div>                                                    
                                                     <div className="flex justify-end pr-2">
                                                         {(currentStatus === 'В обработке' || currentStatus === 'Ручная обработка') ? (
                                                             <button

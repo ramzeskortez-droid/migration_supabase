@@ -60,7 +60,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
           let result = `Order #${order.id}\n`;
           if (winners.length > 0) {
               winners.forEach((w, wIdx) => {
-                  result += `Вариант ${wIdx + 1}: ${base} - ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
+                  result += `Вариант ${wIdx + 1}: ${base} - ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.clientDeliveryWeeks || w.deliveryWeeks || '-'} нед.\n`;
               });
           } else {
               result += `${base} - -\n`;
@@ -69,7 +69,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
       } else {
           let text = `${idx + 1}. ${base}\n`;
           winners.forEach((w, wIdx) => {
-              text += `Вариант №${wIdx + 1}: ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.deliveryWeeks || '-'} нед.\n`;
+              text += `Вариант №${wIdx + 1}: ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.clientDeliveryWeeks || w.deliveryWeeks || '-'} нед.\n`;
           });
           return text;
       }
