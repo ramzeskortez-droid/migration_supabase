@@ -1,17 +1,35 @@
 import { supabase } from '../../../lib/supabaseClient';
 import { OrderItem, Order, RowType, Currency } from '../../../types';
 
-export const getOrderDetails = async (orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[], refusalReason?: string }> => {
+export const getOrderDetails = async (orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[], refusalReason?: string, linkedOrders?: {id: string, createdAt: string}[] }> => {
     const { data, error } = await supabase
         .from('orders')
         .select(`
-          id, order_files, is_manual_processing, refusal_reason, order_items (*),
+          id, order_files, is_manual_processing, refusal_reason, email_message_id, created_at,
+          order_items (*),
           offers (id, status, created_at, supplier_name, supplier_phone, supplier_files, created_by, locked_at, offer_items (*))
         `)
         .eq('id', orderId)
         .single();
 
     if (error) throw error;
+
+    // Ищем связанные заказы (если есть email_message_id)
+    let linkedOrders: {id: string, createdAt: string}[] = [];
+    if (data.email_message_id) {
+         const { data: linkedData } = await supabase
+            .from('orders')
+            .select('id, created_at')
+            .eq('email_message_id', data.email_message_id)
+            .neq('id', orderId); // Исключаем текущий
+         
+         if (linkedData) {
+             linkedOrders = linkedData.map((o: any) => ({
+                 id: String(o.id),
+                 createdAt: new Date(o.created_at).toLocaleString('ru-RU')
+             }));
+         }
+    }
 
     const sortedOrderItems = data.order_items.sort((a: any, b: any) => a.id - b.id);
 
@@ -41,7 +59,7 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
       }))
     } as any));
 
-    return { items, offers, orderFiles: data.order_files, refusalReason: data.refusal_reason };
+    return { items, offers, orderFiles: data.order_files, refusalReason: data.refusal_reason, linkedOrders };
 };
 
 export const getOrderStatus = async (orderId: string): Promise<{ status_admin: string, supplier_names: string[] }> => {
@@ -90,7 +108,7 @@ export const getOperatorStatusCounts = async (ownerId: string): Promise<Record<s
         } else if (o.status_manager === 'Выполнен') {
             counts.completed++;
             counts.archive++;
-        } else if (['Аннулирован', 'Отказ'].includes(o.status_manager)) {
+        } else if (['Аннулирован', 'Отказ', 'Архив'].includes(o.status_manager)) {
             counts.rejected++;
             counts.archive++;
         }

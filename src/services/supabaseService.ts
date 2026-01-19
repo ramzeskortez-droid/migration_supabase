@@ -108,6 +108,7 @@ export class SupabaseService {
   static getStatusCounts = ordersDetailsApi.getStatusCounts;
   static getOperatorStatusCounts = ordersStatsApi.getOperatorStatusCounts; 
   static createOrder = ordersCreationApi.createOrder;
+  static repeatOrder = ordersCreationApi.repeatOrder;
   static updateOrderMetadata = ordersUpdateApi.updateOrderMetadata;
   static updateOrderJson = ordersUpdateApi.updateOrderJson;
   static updateOrderItemPrice = ordersUpdateApi.updateOrderItemPrice;

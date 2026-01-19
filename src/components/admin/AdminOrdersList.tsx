@@ -2,7 +2,7 @@ import React, { memo, useState } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronRight, TrendingUp, 
   FileText, Send, ShoppingCart, CheckCircle2, CreditCard, Truck, PackageCheck, Ban, 
-  Edit2, Loader2, Check, Tag, MessageCircle
+  Edit2, Loader2, Check, Tag, MessageCircle, Repeat
 } from 'lucide-react';
 import { Order, OrderStatus, RankType, Currency } from '../../types';
 import { AdminItemsTable } from './AdminItemsTable';
@@ -33,7 +33,8 @@ const AdminOrderRow = memo(({
     handleStatusChange, handleNextStep, setAdminModal,
     startEditing, saveEditing, handleFormCP, isSubmitting,
     editForm, setEditForm, handleItemChange, handleLocalUpdateRank,
-    openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat, debugMode
+    openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat, debugMode,
+    handleRepeatOrder
 }: any) => {
     const isEditing = editingOrderId === order.id;
     const [isManual, setIsManual] = useState(false); // Локальный флаг ручной обработки
@@ -157,6 +158,20 @@ const AdminOrderRow = memo(({
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
                                     
+                                    {/* Linked Orders */}
+                                    {details?.linkedOrders && details.linkedOrders.length > 0 && (
+                                        <div className="col-span-2 md:col-span-4 mt-1">
+                                            <span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Связанные заказы (из письма)</span>
+                                            <div className="flex flex-wrap gap-1 text-[10px]">
+                                                {details.linkedOrders.map((lo: any) => (
+                                                    <span key={lo.id} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 font-mono">
+                                                        #{lo.id}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* БЛОК ФАЙЛОВ */}
                                     <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 mt-1">
                                         {/* Файлы от Оператора (Агрегация: Общие + Позиционные + Live Edit) */}
@@ -329,6 +344,13 @@ const AdminOrderRow = memo(({
                                 >
                                     <MessageCircle size={14}/> Чат с оператором
                                 </button>
+                                <button 
+                                    onClick={() => handleRepeatOrder(order.id)}
+                                    className="px-4 py-3 rounded-xl border border-indigo-100 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase flex items-center gap-2 hover:bg-indigo-100 transition-colors"
+                                    title="Создать копию заказа с теми же позициями"
+                                >
+                                    <Repeat size={14}/> Повторить
+                                </button>
                             </div>
                         </>
                     )}
@@ -371,6 +393,7 @@ interface AdminOrdersListProps {
   onOpenChat: (orderId: string, supplierName?: string, supplierId?: string) => void;
   debugMode?: boolean;
   offerEditTimeout?: number;
+  handleRepeatOrder?: (orderId: string) => void;
 }
 
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
