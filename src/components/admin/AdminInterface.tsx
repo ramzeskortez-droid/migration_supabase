@@ -52,6 +52,7 @@ export const AdminInterface: React.FC = () => {
   const [debugMode, setDebugMode] = useState(false);
   const [offerEditTimeout, setOfferEditTimeout] = useState(5);
   const [adminUser, setAdminUser] = useState<AppUser | null>(null);
+  const [subStatusFilter, setSubStatusFilter] = useState<string | undefined>(undefined);
   
   // Чат
   const [chatTarget, setChatTarget] = useState<{ isOpen: boolean, orderId: string, supplierName?: string, supplierId?: string } | null>(null);
@@ -225,10 +226,15 @@ export const AdminInterface: React.FC = () => {
       refetch
   } = useOrdersInfinite({
       searchQuery,
-      statusFilter: getStatusFilter(activeTab),
+      statusFilter: subStatusFilter || getStatusFilter(activeTab),
       sortDirection: sortConfig?.direction || 'desc',
       limit: 50
   });
+
+  // Сброс фильтра при смене таба
+  useEffect(() => {
+      setSubStatusFilter(undefined);
+  }, [activeTab]);
 
   const orders = useMemo(() => data?.pages.flatMap(page => page.data) || [], [data]);
 
@@ -519,6 +525,9 @@ export const AdminInterface: React.FC = () => {
                         debugMode={debugMode}
                         offerEditTimeout={offerEditTimeout}
                         handleRepeatOrder={handleRepeatOrder}
+                        activeTab={activeTab}
+                        subStatusFilter={subStatusFilter}
+                        setSubStatusFilter={setSubStatusFilter}
                       />
                   </div>
               )}

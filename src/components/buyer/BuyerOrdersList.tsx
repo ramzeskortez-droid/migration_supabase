@@ -1,8 +1,8 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Order } from '../../types';
 import { BuyerOrderRow } from './BuyerOrderRow';
 import { Virtuoso } from 'react-virtuoso';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ListFilter, Check, Loader2 } from 'lucide-react';
 
 interface BuyerOrdersListProps {
   orders: Order[];
@@ -26,6 +26,10 @@ interface BuyerOrdersListProps {
   onLoadMore: () => void;
   hasMore: boolean;
   isLoading: boolean;
+  // Filter
+  activeTab?: string;
+  subStatusFilter?: string;
+  setSubStatusFilter?: (status: string | undefined) => void;
 }
 
 // Columns: ID+Sticker (80), Deadline (90), Subject (1.5fr), Item (1fr), Status (110), Date (80), Arrow (30)
@@ -106,15 +110,17 @@ const MemoizedBuyerOrderRow = memo(({
     );
 });
 
-import { Loader2 } from 'lucide-react';
+
 
 export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 
   editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
   sortConfig, onSort, getOfferStatus, getMyOffer, buyerToken, onOpenChat,
-  scrollToId, onLoadMore, hasMore, isLoading
+  scrollToId, onLoadMore, hasMore, isLoading,
+  activeTab, subStatusFilter, setSubStatusFilter
 }) => {
   const virtuosoRef = React.useRef<any>(null);
+  const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
 
   // Эффект скролла
   React.useEffect(() => {
@@ -138,6 +144,26 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
       return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-indigo-600 ml-1" /> : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
   };
 
+  const getFilterOptions = () => {
+      if (!activeTab) return [];
+      switch(activeTab) {
+          case 'won': return ['ВЫИГРАЛ', 'ЧАСТИЧНО'];
+          case 'cancelled': return ['ОТКАЗ', 'АННУЛИРОВАН'];
+          default: return [];
+      }
+  };
+
+  const filterOptions = getFilterOptions();
+
+  // Клиентская фильтрация по суб-статусу
+  const filteredOrders = React.useMemo(() => {
+      if (!subStatusFilter) return orders;
+      return orders.filter(order => {
+          const status = getOfferStatus(order).label;
+          return status === subStatusFilter;
+      });
+  }, [orders, subStatusFilter, getOfferStatus]);
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[75vh]">
         {/* HEADER ROW (Фиксированный) */}
@@ -147,7 +173,46 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('deadline')}>Срок до <SortIcon column="deadline"/></div>
                <div>Тема письма</div>
                <div>Первая позиция</div>
-               <div className="cursor-pointer flex items-center group" onClick={() => onSort('status')}>Статус <SortIcon column="status"/></div>
+               <div className="flex items-center gap-2 relative">
+                   <span className="cursor-pointer group flex items-center gap-1" onClick={() => onSort('status')}>
+                        Статус <SortIcon column="status"/>
+                   </span>
+                   {setSubStatusFilter && filterOptions.length > 1 && (
+                       <>
+                        <button 
+                            onClick={() => setIsStatusPopoverOpen(!isStatusPopoverOpen)}
+                            className={`p-1 rounded hover:bg-white hover:text-indigo-600 transition-colors ${subStatusFilter ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                        >
+                            <ListFilter size={12} />
+                        </button>
+                        {isStatusPopoverOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsStatusPopoverOpen(false)}></div>
+                                <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 p-1 z-50 animate-in fade-in zoom-in-95 origin-top-left">
+                                    <button 
+                                        onClick={() => { setSubStatusFilter(undefined); setIsStatusPopoverOpen(false); }}
+                                        className={`w-full text-left px-3 py-2 text-[10px] font-bold rounded-lg flex items-center justify-between ${!subStatusFilter ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                    >
+                                        <span>Все</span>
+                                        {!subStatusFilter && <Check size={12}/>}
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1"></div>
+                                    {filterOptions.map(status => (
+                                        <button 
+                                            key={status}
+                                            onClick={() => { setSubStatusFilter(status); setIsStatusPopoverOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 text-[10px] font-bold rounded-lg flex items-center justify-between ${subStatusFilter === status ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <span>{status}</span>
+                                            {subStatusFilter === status && <Check size={12}/>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                       </>
+                   )}
+               </div>
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('date')}>Дата <SortIcon column="date"/></div>
                <div></div>
             </div>
@@ -158,7 +223,7 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
             <Virtuoso
                 ref={virtuosoRef}
                 style={{ height: '100%' }}
-                data={orders}
+                data={filteredOrders}
                 endReached={() => {
                     if (hasMore && !isLoading) onLoadMore();
                 }}
@@ -194,3 +259,4 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
     </div>
   );
 };
+

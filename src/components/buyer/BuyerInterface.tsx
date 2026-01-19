@@ -49,6 +49,7 @@ export const BuyerInterface: React.FC = () => {
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [scrollToId, setScrollToId] = useState<string | null>(null);
+  const [subStatusFilter, setSubStatusFilter] = useState<string | undefined>(undefined);
   
   const [availableBrands, setAvailableBrands] = useState<string[]>([]); 
   const [historyBrands, setHistoryBrands] = useState<string[]>([]); 
@@ -67,6 +68,7 @@ export const BuyerInterface: React.FC = () => {
       setBuyerAuth(null);
       setExpandedId(null);
       setEditingItemsMap({});
+      setSubStatusFilter(undefined);
       localStorage.removeItem('buyer_auth_token');
       queryClient.removeQueries();
       navigate('/');
@@ -173,6 +175,7 @@ export const BuyerInterface: React.FC = () => {
 
   // Принудительное обновление при смене таба или сортировки
   useEffect(() => {
+      setSubStatusFilter(undefined);
       refetch();
   }, [activeTab, sortConfig, refetch]);
 
@@ -292,25 +295,38 @@ export const BuyerInterface: React.FC = () => {
     const myOffer = getMyOffer(order);
     if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
     
-    // Проверка статуса оффера
+    // 1. Приоритет: Отказ закупщика или Аннулирование менеджером
     if (myOffer.status === 'Отказ') return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
+    if (order.statusManager === 'Аннулирован' || order.statusManager === 'Отказ') return { label: 'АННУЛИРОВАН', color: 'bg-red-50 text-red-600 border-red-100', icon: null };
 
-    // Проверка статуса заказа на Аннулирование
-    if (order.statusManager === 'Аннулирован') return { label: 'АННУЛИРОВАН', color: 'bg-red-50 text-red-600 border-red-100', icon: null };
-
-    const isRefusal = myOffer.items.every((item: any) => (item.offeredQuantity || 0) === 0);
+    // Проверка на "скрытый" отказ (все позиции в 0)
+    const isRefusal = myOffer.items?.every((item: any) => (item.offeredQuantity || 0) === 0);
     if (isRefusal) return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
     
-    // Статус ГОРИТ вычисляется на сервере и приходит в statusManager
-    if (order.statusManager === 'ГОРИТ') return { label: 'ГОРИТ', color: 'bg-orange-600 text-white border-orange-700 animate-pulse', icon: null };
+    // 2. Статус в процессе торгов
+    if (order.statusManager === 'В обработке' && !order.isProcessed) {
+        return { label: 'НОВЫЙ', color: 'bg-blue-100 text-blue-700', icon: null };
+    }
 
     const isBiddingActive = order.statusManager === 'В обработке' || order.statusManager === 'ОТКРЫТ';
     if (isBiddingActive && !order.isProcessed) return { label: 'Идут торги', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: null };
     
-    const winningItems = myOffer.items.filter((i: any) => i.is_winner || i.rank === 'ЛИДЕР' || i.rank === 'LEADER');
-    if (winningItems.length === myOffer.items.length) return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: null };
-    else if (winningItems.length === 0) return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: null };
-    else return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
+    // 3. Статусы по результатам обработки
+    const winningItems = myOffer.items?.filter((i: any) => i.is_winner || i.rank === 'ЛИДЕР' || i.rank === 'LEADER') || [];
+    const totalItems = myOffer.items?.length || 0;
+
+    if (winningItems.length > 0) {
+        if (winningItems.length === totalItems) {
+            return { label: 'ВЫИГРАЛ', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: null };
+        }
+        return { label: 'ЧАСТИЧНО', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
+    }
+
+    if (order.isProcessed) {
+        return { label: 'ПРОИГРАЛ', color: 'bg-red-50 text-red-600 border-red-100', icon: null };
+    }
+
+    return { label: 'Обработка', color: 'bg-slate-100 text-slate-500', icon: null };
   }, [getMyOffer]);
 
   return (
@@ -354,6 +370,9 @@ export const BuyerInterface: React.FC = () => {
                         buyerToken={buyerAuth?.token}
                         onOpenChat={handleOpenChat}
                         scrollToId={scrollToId}
+                        activeTab={activeTab}
+                        subStatusFilter={subStatusFilter}
+                        setSubStatusFilter={setSubStatusFilter}
                     />
                 </div>
                 <BuyerGlobalChat 

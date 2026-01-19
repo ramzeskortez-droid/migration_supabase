@@ -2,7 +2,7 @@ import React, { memo, useState } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronRight, TrendingUp, 
   FileText, Send, ShoppingCart, CheckCircle2, CreditCard, Truck, PackageCheck, Ban, 
-  Edit2, Loader2, Check, Tag, MessageCircle, Repeat
+  Edit2, Loader2, Check, Tag, MessageCircle, Repeat, ListFilter
 } from 'lucide-react';
 import { Order, OrderStatus, RankType, Currency } from '../../types';
 import { AdminItemsTable } from './AdminItemsTable';
@@ -394,14 +394,18 @@ interface AdminOrdersListProps {
   debugMode?: boolean;
   offerEditTimeout?: number;
   handleRepeatOrder?: (orderId: string) => void;
+  activeTab?: AdminTab;
+  subStatusFilter?: string;
+  setSubStatusFilter?: (status: string | undefined) => void;
 }
 
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   orders, sortConfig, handleSort, expandedId, setExpandedId,
   onLoadMore, hasMore, isLoading, exchangeRates, offerEdits, onOpenChat, debugMode,
-  offerEditTimeout,
+  offerEditTimeout, activeTab, subStatusFilter, setSubStatusFilter,
   ...rowProps
 }) => {
+  const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
 
   const SortIcon = ({ column }: { column: string }) => {
       if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 transition-opacity" />;
@@ -423,6 +427,20 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
       return orders;
   }, [orders, sortConfig]);
 
+  // Опции для фильтра
+  const getFilterOptions = () => {
+      if (!activeTab) return [];
+      switch(activeTab) {
+          case 'archive': return ['Выполнен', 'Аннулирован', 'Отказ', 'Обработано вручную'];
+          case 'ready_to_buy': return ['КП отправлено', 'Готов купить'];
+          case 'new': return ['В обработке'];
+          case 'manual': return ['Ручная обработка'];
+          default: return [];
+      }
+  };
+
+  const filterOptions = getFilterOptions();
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[70vh]">
         {/* Header (Sticky) */}
@@ -434,7 +452,46 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
              <div className="text-left">ПОЗИЦИЙ</div>
-             <div className="text-left">СТАТУС</div>
+             <div className="text-left flex items-center gap-2 relative">
+                 <span className="cursor-pointer group flex items-center gap-1" onClick={() => handleSort('status')}>
+                    СТАТУС <SortIcon column="status"/>
+                 </span>
+                 {setSubStatusFilter && filterOptions.length > 1 && (
+                     <>
+                        <button 
+                            onClick={() => setIsStatusPopoverOpen(!isStatusPopoverOpen)}
+                            className={`p-1 rounded hover:bg-white hover:text-indigo-600 transition-colors ${subStatusFilter ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                        >
+                            <ListFilter size={12} />
+                        </button>
+                        {isStatusPopoverOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsStatusPopoverOpen(false)}></div>
+                                <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 p-1 z-50 animate-in fade-in zoom-in-95 origin-top-left">
+                                    <button 
+                                        onClick={() => { setSubStatusFilter(undefined); setIsStatusPopoverOpen(false); }}
+                                        className={`w-full text-left px-3 py-2 text-[10px] font-bold rounded-lg flex items-center justify-between ${!subStatusFilter ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                    >
+                                        <span>Все</span>
+                                        {!subStatusFilter && <Check size={12}/>}
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1"></div>
+                                    {filterOptions.map(status => (
+                                        <button 
+                                            key={status}
+                                            onClick={() => { setSubStatusFilter(status); setIsStatusPopoverOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 text-[10px] font-bold rounded-lg flex items-center justify-between ${subStatusFilter === status ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <span>{status}</span>
+                                            {subStatusFilter === status && <Check size={12}/>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                     </>
+                 )}
+             </div>
              <div></div>
          </div>
 

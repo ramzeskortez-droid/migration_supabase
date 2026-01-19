@@ -53,16 +53,15 @@ export const getOrders = async (
         offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, locked_at, created_by, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks, weight))
     `);
 
-    if (buyerTab === 'new' || buyerTab === 'hot') {
+    if (buyerTab === 'new') {
         query = query.eq('status_manager', 'В обработке');
         if (excludedIds.length > 0) query = query.not('id', 'in', `(${excludedIds.join(',')})`);
         
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-        const isoDate = threeDaysAgo.toISOString();
-
-        if (buyerTab === 'new') query = query.gte('created_at', isoDate);
-        else query = query.lt('created_at', isoDate);
+        // No date filter for 'new' anymore or keep it? The logic was mixed.
+        // Original logic: new (>= 3 days ago), hot (< 3 days ago).
+        // Since we remove hot, 'new' should probably show ALL processing orders or just recent?
+        // User asked to remove "Hot". So "New" becomes just "Processing".
+        // Let's remove the date filter to show all processing orders in "New" tab.
     } else if (onlyWithMyOffersName) {
         if (buyerTab === 'history') {
             const { data: myOff } = await supabase.from('offers')
@@ -193,6 +192,12 @@ export const getOrders = async (
     const sortColumn = columnMap[sortBy] || 'id';
 
     query = query.order(sortColumn, { ascending: sortDirection === 'asc', nullsFirst: false });
+    
+    // Secondary sort by date for better UX within groups (e.g. status)
+    if (sortColumn !== 'created_at') {
+        query = query.order('created_at', { ascending: sortDirection === 'asc' }); 
+    }
+
     if (sortColumn !== 'id') {
         query = query.order('id', { ascending: sortDirection === 'asc' });
     }
@@ -215,14 +220,10 @@ export const getOrders = async (
         
         const hasOffers = order.offers && order.offers.length > 0;
         const isTrading = hasOffers && order.status_manager === 'В обработке';
-        const isHot = !ownerToken && order.status_manager === 'В обработке' && (!order.offers || order.offers.length === 0) && orderDate < threeDaysAgo;
         
         let displayStatus = order.status_manager;
         if (ownerToken) {
              if (isTrading) displayStatus = 'Идут торги';
-             else if (isHot) displayStatus = 'ГОРИТ'; 
-        } else {
-             if (isHot) displayStatus = 'ГОРИТ';
         }
 
         return {
