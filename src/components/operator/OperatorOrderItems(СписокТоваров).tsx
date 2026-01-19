@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Copy, Camera, FileText, Paperclip, ShieldCheck } from 'lucide-react';
+import { CopyButton } from '../shared/CopyButton';
 import { Order } from '../../types';
 import { useOfficialBrands } from '../../hooks/useOfficialBrands';
 
@@ -199,10 +200,13 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                     <div className="text-gray-400 font-mono font-bold text-xs pt-1">{idx + 1}</div>
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-start gap-2">
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col min-w-0">
                                                 {renderBrand(item.brand, "text-indigo-600 text-xs mb-0.5")}
-                                                <div className="font-black text-gray-900 uppercase text-sm leading-tight break-words">
-                                                    {item.AdminName || item.name}
+                                                <div className="flex items-center gap-1">
+                                                    <div className="font-black text-gray-900 uppercase text-sm leading-tight break-words truncate" title={item.AdminName || item.name}>
+                                                        {(item.AdminName || item.name).length > 40 ? (item.AdminName || item.name).slice(0, 40) + '...' : (item.AdminName || item.name)}
+                                                    </div>
+                                                    <CopyButton text={item.AdminName || item.name} />
                                                 </div>
                                             </div>
                                             {(winners.length > 0 || isProcessed) && (
@@ -213,7 +217,10 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                         </div>
                                         
                                         <div className="flex items-center justify-between text-xs text-gray-500">
-                                            <div className="font-mono bg-white px-1.5 py-0.5 rounded border border-gray-200">{item.article || '-'}</div>
+                                            <div className="flex items-center gap-1 font-mono bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                                <span className="truncate max-w-[100px]">{item.article || '-'}</span>
+                                                <CopyButton text={item.article || ''} />
+                                            </div>
                                             <div className="font-bold flex items-center gap-1">
                                                 {item.quantity} {item.uom || 'шт'}
                                                 <div className="ml-2">{renderFilesCell(item.itemFiles, item.opPhotoUrl)}</div>
@@ -254,10 +261,18 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                     {/* BRAND */}
                                     {renderBrand(item.brand, "text-indigo-600 text-[11px]")}
                                     
-                                    <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">
-                                        {item.AdminName || item.name}
+                                    <div className="flex items-center gap-1 min-w-0">
+                                        <CopyButton text={item.AdminName || item.name} />
+                                        <div className="font-black text-gray-900 uppercase text-[10px] tracking-tight truncate" title={item.AdminName || item.name}>
+                                            {(item.AdminName || item.name).length > 40 ? (item.AdminName || item.name).slice(0, 40) + '...' : (item.AdminName || item.name)}
+                                        </div>
                                     </div>
-                                    <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
+                                    
+                                    <div className="text-gray-600 font-mono text-[10px] truncate flex items-center gap-1 min-w-0">
+                                        <CopyButton text={item.article || ''} />
+                                        <span className="truncate" title={item.article}>{item.article || '-'}</span>
+                                    </div>
+                                    
                                     <div className="text-gray-700 text-center font-black text-xs">{item.quantity}</div>
                                     <div className="text-gray-600 text-center text-[10px] font-bold uppercase">{item.uom || 'шт'}</div>
                                     

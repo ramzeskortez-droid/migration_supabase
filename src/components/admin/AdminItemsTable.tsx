@@ -3,6 +3,7 @@ import {
   ChevronRight, ChevronDown, FileImage, Camera, Check, Edit2, 
   ExternalLink, Loader2, Pencil, HelpCircle, MessageCircle, FileText, Paperclip, Folder, RefreshCw, ShieldCheck
 } from 'lucide-react';
+import { CopyButton } from '../shared/CopyButton';
 import { Order, RankType, Currency, ExchangeRates } from '../../types';
 import { FileDropzone } from '../shared/FileDropzone';
 import { useQueryClient } from '@tanstack/react-query';
@@ -222,13 +223,21 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                     <input 
                                         value={editForm[`${item.id}_name`] || ''} 
                                         onChange={e => setEditForm({...editForm, [`${item.id}_name`]: e.target.value})} 
-                                        className="w-full px-2 py-1 bg-white border border-indigo-300 rounded text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                                        className="w-full px-2 py-1 bg-white border border-indigo-300 rounded text-[10px] font-bold uppercase outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                     />
                                 ) : (
-                                    <div className="font-black text-gray-900 uppercase text-[12px] tracking-tight truncate">{item.AdminName || item.name}</div>
+                                    <div className="flex items-center gap-1 min-w-0">
+                                        <CopyButton text={item.AdminName || item.name} />
+                                        <div className="font-black text-gray-900 uppercase text-[10px] tracking-tight truncate" title={item.AdminName || item.name}>
+                                            {(item.AdminName || item.name).length > 40 ? (item.AdminName || item.name).slice(0, 40) + '...' : (item.AdminName || item.name)}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
-                            <div className="text-gray-600 font-mono text-[10px] truncate">{item.article || '-'}</div>
+                            <div className="text-gray-600 font-mono text-[10px] truncate flex items-center gap-1 min-w-0">
+                                <CopyButton text={item.article || ''} />
+                                <span className="truncate" title={item.article}>{item.article || '-'}</span>
+                            </div>
                             <div className="text-gray-700 text-center font-black text-xs">
                                 {isEditing ? (
                                     <input 

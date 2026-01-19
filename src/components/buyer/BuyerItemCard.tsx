@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Ban, AlertCircle, Copy, XCircle, FileText, FileImage, UploadCloud, ShieldCheck, MoreVertical, Trophy } from 'lucide-react';
 import { FileDropzone } from '../shared/FileDropzone';
+import { CopyButton } from '../shared/CopyButton';
 import { useDropzone } from 'react-dropzone';
 import { SupabaseService } from '../../services/supabaseService';
 import { useOfficialBrands } from '../../hooks/useOfficialBrands';
@@ -199,9 +200,12 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
             </div>
 
             <div className="flex flex-col gap-1">
-                <span className={`font-black text-sm uppercase break-words leading-tight ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`}>
-                    {item.AdminName || item.name}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className={`font-black text-sm uppercase break-words leading-tight truncate ${(item.AdminName || item.name).length > 40 ? 'truncate' : ''} ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`} title={item.AdminName || item.name}>
+                        {(item.AdminName || item.name).length > 40 ? (item.AdminName || item.name).slice(0, 40) + '...' : (item.AdminName || item.name)}
+                    </span>
+                    <CopyButton text={item.AdminName || item.name} />
+                </div>
                 {item.adminComment && (
                     <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded w-fit">
                         Менеджер: {item.adminComment}
@@ -210,8 +214,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                <div className="flex gap-3 text-xs text-gray-500">
-                    <span className="font-mono bg-slate-50 px-1.5 rounded">{opArticle}</span>
+                <div className="flex gap-3 text-xs text-gray-500 items-center">
+                    <span className="font-mono bg-slate-50 px-1.5 rounded flex items-center gap-1">
+                        {opArticle} <CopyButton text={opArticle} iconSize={10} />
+                    </span>
                     <span className="font-bold">{item.quantity} {opUom}</span>
                 </div>
                 {renderFilesIcon(displayItem.itemFiles, opPhoto)}
@@ -230,10 +236,13 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                 {isOpBrandOfficial && !isUnavailable && <ShieldCheck size={12} className="text-amber-600 shrink-0" />}
             </div>
 
-            <div className="flex flex-col">
-                <span className={`font-black text-sm uppercase ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`}>
-                    {item.AdminName || item.name}
-                </span>
+            <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1">
+                    <CopyButton text={item.AdminName || item.name} />
+                    <span className={`font-black text-[10px] uppercase truncate ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`} title={item.AdminName || item.name}>
+                        {(item.AdminName || item.name).length > 40 ? (item.AdminName || item.name).slice(0, 40) + '...' : (item.AdminName || item.name)}
+                    </span>
+                </div>
                 {item.adminComment && (
                     <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded mt-1 w-fit">
                         Менеджер: {item.adminComment}
@@ -241,7 +250,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                 )}
             </div>
 
-            <div className={`text-xs font-mono truncate ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-500'}`} title={opArticle}>{opArticle}</div>
+            <div className={`text-xs font-mono truncate flex items-center gap-1 min-w-0 ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-500'}`} title={opArticle}>
+                <CopyButton text={opArticle} />
+                <span className="truncate">{opArticle}</span>
+            </div>
             <div className={`text-xs font-black text-center ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`}>{item.quantity}</div>
             <div className={`text-[10px] font-bold text-center uppercase ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>{opUom}</div>
             
