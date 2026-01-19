@@ -249,7 +249,6 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           // Fix for messages without ID: Search by MY name if Supplier, else by Interlocutor name
           const nameToSearch = currentUserRole === 'SUPPLIER' ? currentUserName : supplierName;
           
-          console.log('Fetching messages:', { orderId, nameToSearch, targetId, threadRole, currentUserRole });
           const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, nameToSearch, targetId, threadRole, currentUserRole);
           setMessages(data);
       } catch (e) {
@@ -288,7 +287,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               if (onRead) onRead(orderId, supplierName);
               // Pass role to service
               const myRoleGroup = (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? 'ADMIN' : 'SUPPLIER';
-              await SupabaseService.markChatAsRead(orderId, supplierName, myRoleGroup, supplierId);
+              await SupabaseService.markChatAsRead(orderId, supplierName, myRoleGroup, supplierId, currentUserId);
               
               setMessages(prev => prev.map(m => (!m.is_read) ? { ...m, is_read: true } : m));
           };
@@ -299,15 +298,49 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   useEffect(() => {
       fetchMessages();
       const channel = SupabaseService.subscribeToChatMessages(orderId, (newMsg) => {
-          // Check if relevant
-          const isRelevant = newMsg.sender_name === supplierName || newMsg.recipient_name === supplierName;
-          
-          // Special case for Operator/Manager chatting with each other? No, chat is always with Supplier.
-          // So Operator/Manager messages have recipient=SupplierName.
+          let isRelevant = false;
+
+          // 1. Check by UUID (Most reliable)
+          if (supplierId) {
+              isRelevant = newMsg.sender_id === supplierId || newMsg.recipient_id === supplierId;
+          }
+
+          // 2. Check by Role (For system chats: Operator <-> Manager)
+          if (!isRelevant) {
+              const isMsgFromManager = ['ADMIN', 'MANAGER'].includes(newMsg.sender_role);
+              const isMsgToManager = ['ADMIN', 'MANAGER', 'Менеджер', 'Manager'].includes(newMsg.recipient_name);
+              const isMsgFromOperator = newMsg.sender_role === 'OPERATOR';
+              const isMsgToOperator = ['OPERATOR', 'Оператор'].includes(newMsg.recipient_name);
+
+              console.log('RT DEBUG:', { threadRole, currentUserRole, isMsgFromManager, isMsgToManager, isMsgFromOperator, isMsgToOperator, msg: newMsg.message });
+
+              if (threadRole === 'OPERATOR') {
+                  // Admin/Supplier <-> Operator
+                  // If I am Admin, I want to see (Admin -> Operator) or (Operator -> Admin)
+                  if (currentUserRole === 'ADMIN') {
+                      isRelevant = (isMsgFromManager && isMsgToOperator) || (isMsgFromOperator && isMsgToManager);
+                  } else {
+                      // Supplier <-> Operator
+                      isRelevant = newMsg.sender_role === 'OPERATOR' || isMsgToOperator;
+                  }
+              } else if (threadRole === 'MANAGER') {
+                  // Operator/Supplier <-> Manager
+                  if (currentUserRole === 'OPERATOR') {
+                      isRelevant = (isMsgFromOperator && isMsgToManager) || (isMsgFromManager && isMsgToOperator);
+                  } else {
+                      // Supplier <-> Manager
+                      isRelevant = isMsgFromManager || isMsgToManager;
+                  }
+              } else {
+                  // Fallback to Name (Legacy/Simple)
+                  isRelevant = newMsg.sender_name === supplierName || newMsg.recipient_name === supplierName;
+              }
+          }
           
           if (isRelevant) {
               setMessages(prev => {
                   if (prev.find(m => m.id === newMsg.id)) return prev;
+                  // Remove optimistic message if real one arrived
                   const optimisticMatch = prev.find(m => m.message === newMsg.message && m.sender_name === newMsg.sender_name && typeof m.id === 'number' && m.id > 1000000000000);
                   if (optimisticMatch) return prev.map(m => m.id === optimisticMatch.id ? newMsg : m);
                   return [...prev, newMsg];
@@ -315,7 +348,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           }
       });
       return () => { SupabaseService.unsubscribeFromChat(channel); };
-  }, [orderId, supplierName]);
+  }, [orderId, supplierName, supplierId, threadRole]);
 
   useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

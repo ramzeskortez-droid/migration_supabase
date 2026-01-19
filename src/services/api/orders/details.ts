@@ -35,6 +35,7 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
         offeredQuantity: oi.quantity, sellerPrice: oi.price, sellerCurrency: oi.currency as Currency,
         adminPrice: oi.admin_price, rank: oi.is_winner ? 'ЛИДЕР' : 'РЕЗЕРВ',
         deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
+        clientDeliveryWeeks: oi.client_delivery_weeks,
         weight: oi.weight, photoUrl: oi.photo_url, itemFiles: oi.item_files, adminComment: oi.admin_comment, supplierSku: oi.supplier_sku,
         comment: oi.comment, totalCost: oi.total_cost, goodsCost: oi.goods_cost
       }))

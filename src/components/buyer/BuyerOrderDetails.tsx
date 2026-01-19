@@ -209,7 +209,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
           const reqImages = requiredFields.images === true;
 
           if (reqWeight && (!item.weight || item.weight <= 0)) return false;
-          if (reqWeeks && (!item.deliveryWeeks || item.deliveryWeeks < 4)) return false;
+          if (reqWeeks && (!item.deliveryWeeks || item.deliveryWeeks < 1)) return false;
           if (reqQty && (!item.offeredQuantity || item.offeredQuantity <= 0)) return false;
           
           if (reqSku && (!item.supplierSku || item.supplierSku.trim().length === 0)) return false;

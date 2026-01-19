@@ -160,7 +160,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
       let isInvalid = false;
       if (field === 'BuyerPrice' && isReqPrice && (!value || value <= 0)) isInvalid = true;
       if (field === 'weight' && isReqWeight && (!value || value <= 0)) isInvalid = true;
-      if (field === 'deliveryWeeks' && isReqWeeks && (!value || value < 4)) isInvalid = true;
+      if (field === 'deliveryWeeks' && isReqWeeks && (!value || value < 1)) isInvalid = true;
       if (field === 'offeredQuantity' && isReqQty && (!value || value <= 0)) isInvalid = true;
 
       if (isInvalid) {
@@ -352,7 +352,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
 
                         <div className="space-y-1 md:space-y-0">
                             <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Срок (нед) {isReqWeeks && <span className="text-red-500">*</span>}</label>
-                            <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks', item.deliveryWeeks)} placeholder="Min 4" />
+                            <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks', item.deliveryWeeks)} placeholder="Min 1" />
                         </div>
                     </div>
 

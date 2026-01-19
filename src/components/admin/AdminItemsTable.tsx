@@ -20,7 +20,7 @@ interface AdminItemsTableProps {
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
   exchangeRates: ExchangeRates | null;
-  offerEdits: Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>;
+  offerEdits: Record<string, { adminComment?: string, adminPrice?: number, clientDeliveryWeeks?: number }>;
   onOpenChat: (orderId: string, supplierName?: string, supplierId?: string) => void;
   debugMode?: boolean;
   offerEditTimeout?: number;
@@ -337,11 +337,23 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         // const currentComment = editedComment !== undefined ? editedComment : (off.item.adminComment || "");
 
                                         // Срок
-                                        const editedWeeks = offerEdits?.[off.item.id]?.deliveryWeeks;
+                                        const editedWeeks = offerEdits?.[off.item.id]?.clientDeliveryWeeks;
                                         // Базовый срок = Срок поставщика + Настройка (из курсов)
                                         const baseWeeks = (off.item.deliveryWeeks || 0) + (exchangeRates?.delivery_weeks_add || 0);
                                         // Если уже зафиксировано в БД, берем оттуда, иначе считаем динамически
                                         const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.clientDeliveryWeeks || baseWeeks);
+                                        
+                                        if (isEditing) {
+                                            console.log('WEEKS DEBUG:', { 
+                                                itemId: off.item.id,
+                                                editedWeeks,
+                                                dbClientWeeks: off.item.clientDeliveryWeeks,
+                                                supplierWeeks: off.item.deliveryWeeks,
+                                                configAdd: exchangeRates?.delivery_weeks_add,
+                                                baseWeeks,
+                                                FINAL: currentWeeks
+                                            });
+                                        }
 
                                         return (
                                             <div key={oIdx} className={`relative transition-all duration-300 ${isLeader ? "bg-emerald-50 shadow-inner" : "hover:bg-gray-50"}`}>
@@ -422,9 +434,12 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                             <div className="relative w-16">
                                                                 <input 
                                                                     type="number" 
-                                                                    className="w-full px-1 py-1 border border-indigo-300 rounded-lg font-black text-xs text-center outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                                                    className="w-full px-1 py-1 border-2 border-red-500 rounded-lg font-black text-xs text-center outline-none bg-white text-indigo-700 focus:ring-1 focus:ring-indigo-500 transition-all"
                                                                     value={currentWeeks}
-                                                                    onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'deliveryWeeks', Number(e.target.value))}
+                                                                    onChange={(e) => {
+                                                                        console.error('DIRECT ONCHANGE:', e.target.value);
+                                                                        handleItemChange(order.id, off.item.id, item.name, 'clientDeliveryWeeks', e.target.value === '' ? undefined : Number(e.target.value));
+                                                                    }}
                                                                 />
                                                                 <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold pointer-events-none">нед</span>
                                                             </div>

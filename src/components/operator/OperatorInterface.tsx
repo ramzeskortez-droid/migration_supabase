@@ -106,39 +106,24 @@ export const OperatorInterface: React.FC = () => {
       const interval = setInterval(fetchUnread, 30000);
 
             const channel = SupabaseService.subscribeToUserChats((payload) => {
-
                 const msg = payload.new;
-
                 
+                // Проверяем, адресовано ли сообщение Оператору
+                const isToOperator = ['OPERATOR', 'Оператор'].includes(msg.recipient_name);
 
-                // 1. Сообщение от Поставщика (для общего чата)
-
-                if (msg.recipient_name === 'ADMIN' && msg.sender_role === 'SUPPLIER') {
-
+                // 1. Сообщение от Поставщика
+                if (msg.sender_role === 'SUPPLIER' && isToOperator) {
                     setUnreadChatCount(prev => prev + 1);
-
-                    if (!isGlobalChatOpen) {
-
-                        setChatNotifications(prev => [...prev, msg].slice(-3));
-
-                    }
-
+                    if (!isGlobalChatOpen) setChatNotifications(prev => [...prev, msg].slice(-3));
                 }
 
-                // 2. Сообщение от Менеджера (например, о ручной обработке)
-
-                if (msg.recipient_name === 'OPERATOR' && msg.sender_role === 'ADMIN') {
-
+                // 2. Сообщение от Менеджера
+                const isFromManager = ['ADMIN', 'MANAGER', 'Manager', 'Менеджер'].includes(msg.sender_role);
+                
+                if (isFromManager && isToOperator) {
                     setUnreadChatCount(prev => prev + 1);
-
-                    if (!isGlobalChatOpen) {
-
-                        setChatNotifications(prev => [...prev, msg].slice(-3));
-
-                    }
-
+                    if (!isGlobalChatOpen) setChatNotifications(prev => [...prev, msg].slice(-3));
                 }
-
             }, `operator-notifications-${currentUser.id}`);
 
       return () => { 

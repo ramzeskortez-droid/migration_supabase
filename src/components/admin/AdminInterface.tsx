@@ -48,7 +48,7 @@ export const AdminInterface: React.FC = () => {
   const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
-  const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, deliveryWeeks?: number }>>({});
+  const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, clientDeliveryWeeks?: number }>>({});
   const [debugMode, setDebugMode] = useState(false);
   const [offerEditTimeout, setOfferEditTimeout] = useState(5);
   const [adminUser, setAdminUser] = useState<AppUser | null>(null);
@@ -167,7 +167,7 @@ export const AdminInterface: React.FC = () => {
       // Подписка на новые сообщения (глобально)
       const channel = SupabaseService.subscribeToUserChats((payload) => {
           const msg = payload.new;
-          if (msg.sender_role === 'SUPPLIER') {
+          if (msg.sender_role === 'SUPPLIER' || (msg.sender_role === 'OPERATOR' && ['ADMIN', 'MANAGER', 'Менеджер', 'Manager'].includes(msg.recipient_name))) {
               setUnreadChatCount(prev => prev + 1);
           }
       }, 'admin-global-notifications');
@@ -286,7 +286,8 @@ export const AdminInterface: React.FC = () => {
   };
 
   const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {
-      if (field === 'adminComment' || field === 'adminPrice' || field === 'deliveryWeeks') {
+      console.error('HANDLE ITEM CHANGE (ERROR LEVEL):', { orderId, offerItemId: offerId, field, value });
+      if (field === 'adminComment' || field === 'adminPrice' || field === 'clientDeliveryWeeks') {
          // offerId here acts as offer_item_id
          setOfferEdits(prev => ({
              ...prev,
@@ -427,6 +428,7 @@ export const AdminInterface: React.FC = () => {
 
           // 2. Сохранение изменений в Offers (OfferItems)
           const editKeys = Object.keys(offerEdits);
+          console.error('SAVE EDITING OFFER KEYS:', editKeys, offerEdits);
           if (editKeys.length > 0) {
               await Promise.all(editKeys.map(offerItemId => {
                   const edits = offerEdits[offerItemId];
@@ -434,11 +436,11 @@ export const AdminInterface: React.FC = () => {
                       admin_comment: edits.adminComment,
                       admin_price: edits.adminPrice
                   };
-                  if (edits.deliveryWeeks !== undefined) {
-                      updates.delivery_days = edits.deliveryWeeks * 7;
-                  }
-                  return SupabaseService.updateOfferItem(offerItemId, updates);
-              }));
+                              if (edits.clientDeliveryWeeks !== undefined) {
+                                  updates.client_delivery_weeks = edits.clientDeliveryWeeks;
+                              }
+                              console.log('UPDATING OFFER ITEM:', offerItemId, updates);
+                              return SupabaseService.updateOfferItem(offerItemId, updates);              }));
           }
 
           setEditingOrderId(null); 

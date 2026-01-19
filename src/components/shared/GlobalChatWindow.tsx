@@ -52,19 +52,30 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
               archive: countUnread(archiveData)
           });
           
+          // Handle Initial Selection (Link from Order)
           if (initialOrderId) {
-              setSelectedOrder(initialOrderId);
-              // Если передан ID, ищем имя поставщика по этому ID в загруженных тредах
-              if (initialSupplierId) {
-                  // Поиск в загруженных тредах имени поставщика по ID
-                  const orderThreads = activeTab === 'active' ? activeData[initialOrderId] : archiveData[initialOrderId];
-                  if (orderThreads) {
-                      const foundName = Object.keys(orderThreads).find(name => orderThreads[name].supplierId === initialSupplierId);
-                      if (foundName) setSelectedSupplier(foundName);
-                      else if (initialSupplierFilter) setSelectedSupplier(initialSupplierFilter); // Fallback
+              // 1. Create Virtual Thread if not exists (to allow starting new chat)
+              if (initialSupplierId || initialSupplierFilter) {
+                  // Use ID as key if available, else Name
+                  const threadKey = initialSupplierId || initialSupplierFilter!; 
+                  
+                  const existsActive = activeData[initialOrderId]?.[threadKey];
+                  const existsArchive = archiveData[initialOrderId]?.[threadKey];
+                  
+                  if (!existsActive && !existsArchive) {
+                      if (!activeData[initialOrderId]) activeData[initialOrderId] = {};
+                      activeData[initialOrderId][threadKey] = {
+                          unread: 0,
+                          lastMessage: 'Начать диалог',
+                          supplierId: initialSupplierId,
+                          displayName: initialSupplierFilter, // Display Name
+                          virtual: true
+                      };
                   }
-              } else if (initialSupplierFilter) {
-                  setSelectedSupplier(initialSupplierFilter);
+                  
+                  // 2. Select Order & Thread
+                  setSelectedOrder(initialOrderId);
+                  setSelectedSupplier(threadKey);
               }
           }
       } catch (e) {
@@ -76,7 +87,6 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
 
   useEffect(() => {
       if (isOpen) {
-          if (initialOrderId) setSearchQuery(initialOrderId);
           fetchThreads();
           
           const channel = SupabaseService.subscribeToUserChats((payload) => {
@@ -216,33 +226,35 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
 
                                 {isExpanded && (
                                     <div className="border-t border-slate-100 bg-slate-50 p-1 space-y-1">
-                                        {Object.entries(suppliers).map(([supplier, info]: [string, any]) => (
+                                        {Object.entries(suppliers).map(([supplierKey, info]: [string, any]) => {
+                                            const displayName = info.displayName || supplierKey;
+                                            return (
                                             <div 
-                                                key={supplier}
+                                                key={supplierKey}
                                                 onClick={() => {
-                                                    setSelectedSupplier(supplier);
-                                                    handleRead(orderId, supplier);
+                                                    setSelectedSupplier(supplierKey);
+                                                    handleRead(orderId, supplierKey);
                                                 }}
-                                                className={`p-2 rounded-lg cursor-pointer flex justify-between items-center group/supplier ${selectedSupplier === supplier ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
+                                                className={`p-2 rounded-lg cursor-pointer flex justify-between items-center group/supplier ${selectedSupplier === supplierKey ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
                                             >
                                                 <div className="flex flex-col overflow-hidden">
                                                     <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1">
                                                         <User size={10}/> 
-                                                        {currentUserRole === 'OPERATOR' ? `Чат с закупщиком - ${supplier}` : supplier}
+                                                        {currentUserRole === 'OPERATOR' && !['Менеджер', 'MANAGER', 'ADMIN'].includes(displayName) ? `Чат с закупщиком - ${displayName}` : displayName}
                                                     </span>
-                                                    <span className={`text-[9px] truncate ${selectedSupplier === supplier ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                                    <span className={`text-[9px] truncate ${selectedSupplier === supplierKey ? 'text-indigo-200' : 'text-slate-400'}`}>
                                                         {info.lastMessage}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-1">
                                                     {info.unread > 0 && (
-                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplier ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
+                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplierKey ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
                                                             +{info.unread}
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
-                                        ))}
+                                        );})}
                                     </div>
                                 )}
                             </div>
@@ -267,20 +279,29 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                             {(() => {
                                 // Determine thread role for filtering
                                 let threadRole: 'OPERATOR' | 'MANAGER' | 'ADMIN' | undefined = undefined;
-                                if (currentUserRole === 'OPERATOR') {
-                                    if (selectedSupplier === 'Менеджер') threadRole = 'MANAGER';
-                                } else if (currentUserRole === 'ADMIN') {
-                                    if (selectedSupplier === 'OPERATOR' || selectedSupplier === 'Оператор') threadRole = 'OPERATOR';
+                                const threadInfo = threads[selectedOrder]?.[selectedSupplier];
+                                
+                                if (threadInfo?.role === 'OPERATOR') threadRole = 'OPERATOR';
+                                else if (threadInfo?.role === 'MANAGER') threadRole = 'MANAGER';
+                                
+                                // Fallback logic (old) - using displayName
+                                if (!threadRole) {
+                                    const name = threadInfo?.displayName || selectedSupplier;
+                                    if (currentUserRole === 'OPERATOR') {
+                                        if (name === 'Менеджер') threadRole = 'MANAGER';
+                                    } else if (currentUserRole === 'ADMIN') {
+                                        if (name === 'OPERATOR' || name === 'Operator' || name === 'Оператор') threadRole = 'OPERATOR';
+                                    }
                                 }
                                 
                                 return (
                                     <ChatWindow 
                                         orderId={selectedOrder}
-                                        supplierName={selectedSupplier}
-                                        supplierId={threads[selectedOrder]?.[selectedSupplier]?.supplierId} // Pass UUID
+                                        supplierName={threadInfo?.displayName || selectedSupplier} 
+                                        supplierId={threadInfo?.supplierId || (selectedSupplier.length > 20 ? selectedSupplier : undefined)} 
                                         currentUserRole={currentUserRole}
                                         currentUserName={currentUserName}
-                                        threadRole={threadRole} // Pass calculated role
+                                        threadRole={threadRole} 
                                         onNavigateToOrder={handleNavigate}
                                         onRead={handleRead}
                                         isArchived={activeTab === 'archive'}
