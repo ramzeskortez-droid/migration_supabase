@@ -119,7 +119,8 @@ export const BuyerInterface: React.FC = () => {
       if (!buyerAuth) return;
       const channel = SupabaseService.subscribeToUserChats((payload) => {
           const msg = payload.new;
-          if (msg.recipient_name === buyerAuth.name) {
+          // Check by ID first (reliable), then fallback to Name
+          if (msg.recipient_id === buyerAuth.id || msg.recipient_name === buyerAuth.name) {
               setUnreadChatCount(prev => prev + 1);
               if (!isGlobalChatOpen) {
                   setChatNotifications(prev => [...prev, msg].slice(-3));
@@ -234,7 +235,7 @@ export const BuyerInterface: React.FC = () => {
           }
 
           setExpandedId(null);
-          setUiToast({ message: status === 'Отказ' ? 'Вы отказались от заказа' : `Предложение к заказу № ${orderId} отправлено!`, type: 'success', id: Date.now().toString() });
+          setUiToast({ message: status === 'Отказ' ? `Вы отказались от заказа № ${orderId}` : `Предложение к заказу № ${orderId} отправлено!`, type: 'success', id: Date.now().toString() });
           refetch();
           fetchCounts();
           SupabaseService.getSupplierUsedBrands(buyerAuth.name).then(setHistoryBrands);

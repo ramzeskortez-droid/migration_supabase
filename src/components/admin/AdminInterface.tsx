@@ -25,7 +25,7 @@ const STATUS_STEPS = [
 ];
 
 const TAB_MAPPING: Record<string, AdminTab> = {
-    'В обработке': 'new', 'Ручная обработка': 'manual', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'КП отправлено': 'ready_to_buy', 'Выполнен': 'archive', 'Аннулирован': 'archive', 'Отказ': 'archive', 'Обработано вручную': 'archive'
+    'В обработке': 'new', 'Ручная обработка': 'manual', 'КП готово': 'kp_sent', 'Готов купить': 'ready_to_buy', 'КП отправлено': 'ready_to_buy', 'Выполнен': 'archive', 'Аннулирован': 'archive', 'Отказ': 'archive', 'Обработано вручную': 'archive', 'Архив': 'archive'
 };
 
 export const AdminInterface: React.FC = () => {
@@ -94,6 +94,18 @@ export const AdminInterface: React.FC = () => {
   const handleSeed = async (count: number) => { 
       setIsDbLoading(true); 
       try { await SupabaseService.seedOrders(count, (c) => setSeedProgress(c), 'op1'); refetch(); } catch(e) {} finally { setIsDbLoading(false); setSeedProgress(null); } 
+  };
+
+  const handleRepeatOrder = async (orderId: string) => {
+      if (!confirm('Создать повторный заказ (копию)?')) return;
+      try {
+          const newId = await SupabaseService.repeatOrder(orderId);
+          setSuccessToast({ message: `Заказ скопирован: #${newId}`, id: Date.now().toString() });
+          setTimeout(() => setSuccessToast(null), 3000);
+          refetch(); // Обновляем список
+      } catch (e: any) {
+          alert('Ошибка: ' + (e.message || e));
+      }
   };
 
   useEffect(() => {
@@ -167,7 +179,7 @@ export const AdminInterface: React.FC = () => {
       // Подписка на новые сообщения (глобально)
       const channel = SupabaseService.subscribeToUserChats((payload) => {
           const msg = payload.new;
-          if (msg.sender_role === 'SUPPLIER') {
+          if (msg.sender_role === 'SUPPLIER' || (msg.sender_role === 'OPERATOR' && ['ADMIN', 'MANAGER', 'Менеджер', 'Manager'].includes(msg.recipient_name))) {
               setUnreadChatCount(prev => prev + 1);
           }
       }, 'admin-global-notifications');
@@ -507,6 +519,7 @@ export const AdminInterface: React.FC = () => {
                         onOpenChat={(orderId, supplierName, supplierId) => setChatTarget({ isOpen: true, orderId, supplierName, supplierId })}
                         debugMode={debugMode}
                         offerEditTimeout={offerEditTimeout}
+                        handleRepeatOrder={handleRepeatOrder}
                       />
                   </div>
               )}

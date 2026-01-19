@@ -6,39 +6,64 @@ export const getChatMessages = async (
     supplierName?: string, 
     supplierId?: string, 
     interlocutorRole?: 'OPERATOR' | 'MANAGER' | 'ADMIN',
-    currentUserRole?: 'ADMIN' | 'SUPPLIER' | 'OPERATOR' // NEW
+    currentUserRole?: 'ADMIN' | 'SUPPLIER' | 'OPERATOR'
 ): Promise<any[]> => {
     let query = supabase.from('chat_messages').select('*').eq('order_id', orderId).order('created_at', { ascending: true });
     
-    // Фильтрация по ветке (С кем общаемся?)
-    if (interlocutorRole) {
-        // Если мы общаемся с Оператором, нам нужны сообщения где sender=OP или recipient=OP
-        if (interlocutorRole === 'OPERATOR') {
-            // Исправленная логика: используем один OR для всех условий ролей
-            // Убрали recipient_role, так как колонки нет в БД
-            query = query.or('sender_role.eq.OPERATOR,recipient_name.eq.OPERATOR,recipient_name.eq.Оператор');
-            
-            // SECURITY FIX: Если Менеджер смотрит чат с Оператором, он не должен видеть сообщения от Закупщика
-            if (currentUserRole === 'ADMIN') {
-                query = query.neq('sender_role', 'SUPPLIER');
-            }
+    // --- 1. OPERATOR VIEW ---
+    if (currentUserRole === 'OPERATOR') {
+        if (interlocutorRole === 'MANAGER' || interlocutorRole === 'ADMIN') {
+            // Chat with Manager: Only messages between Operator and Manager/Admin
+            query = query.or('and(sender_role.eq.OPERATOR,recipient_name.in.(ADMIN,MANAGER,Менеджер,Manager)),and(sender_role.in.(ADMIN,MANAGER),recipient_name.in.(OPERATOR,Оператор,Operator))');
         } else {
-            // Manager/Admin
-            // sender is Admin/Manager OR recipient is Admin/Manager
-            query = query.or('sender_role.eq.ADMIN,sender_role.eq.MANAGER,recipient_name.eq.ADMIN,recipient_name.eq.Менеджер');
+            // Chat with Supplier (Default)
+            // Hide Manager-Supplier messages (Isolate threads)
+            query = query.not('recipient_name', 'in', '("ADMIN","Manager","Менеджер","Manager")')
+                         .not('sender_role', 'in', '("ADMIN","MANAGER")');
+            
+            // Filter by Supplier (strictly by ID if available)
+            if (supplierId) {
+                query = query.or(`sender_id.eq.${supplierId},recipient_id.eq.${supplierId}`);
+            }
+        }
+    } 
+    // --- 2. MANAGER/ADMIN VIEW ---
+    else if (currentUserRole === 'ADMIN') {
+        if (interlocutorRole === 'OPERATOR') {
+            // Chat with Operator: Show only messages between Admin/Manager and Operator
+            query = query.or('and(sender_role.in.(ADMIN,MANAGER),recipient_name.in.(OPERATOR,Оператор,Operator)),and(sender_role.eq.OPERATOR,recipient_name.in.(ADMIN,MANAGER,Менеджер,Manager))');
+            query = query.neq('sender_role', 'SUPPLIER');
+        } else {
+            // Chat with Supplier (Default)
+            // Hide Operator-related messages
+            query = query.not('recipient_name', 'in', '("OPERATOR","Operator","Оператор")')
+                         .neq('sender_role', 'OPERATOR');
+            
+            if (supplierId) {
+                query = query.or(`sender_id.eq.${supplierId},recipient_id.eq.${supplierId}`);
+            }
+        }
+    }
+    // --- 3. SUPPLIER VIEW ---
+    else {
+        // Supplier sees only their own messages
+        if (supplierId) { // supplierId here acts as currentUserId
+            query = query.or(`sender_id.eq.${supplierId},recipient_id.eq.${supplierId}`);
+        } else if (supplierName) {
+             // Fallback for name (if needed for old messages)
+             const escapedName = supplierName.split('"').join('"');
+             query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
+        }
+        
+        // Filter by thread role (Manager vs Operator)
+        if (interlocutorRole === 'OPERATOR') {
+             query = query.or('sender_role.eq.OPERATOR,recipient_name.eq.OPERATOR,recipient_name.eq.Оператор');
+        } else {
+             // Manager
+             query = query.or('sender_role.eq.ADMIN,sender_role.eq.MANAGER,recipient_name.eq.ADMIN,recipient_name.eq.Менеджер,recipient_name.eq.Manager');
         }
     }
 
-    if (supplierId) {
-        // Если есть ID, ищем по ID или по имени (для старых сообщений)
-        const escapedName = supplierName ? supplierName.split('"').join('"') : '';
-        query = query.or(`sender_id.eq.${supplierId},recipient_id.eq.${supplierId},sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
-    } else if (supplierName) {
-        // Fallback
-        const escapedName = supplierName.split('"').join('"');
-        query = query.or(`sender_name.eq."${escapedName}",recipient_name.eq."${escapedName}"`);
-    }
-    
     const { data, error } = await query;
     if (error) throw error;
     return data || [];
@@ -49,7 +74,6 @@ export const sendChatMessage = async (payload: any): Promise<any> => {
     if (error) throw error;
 
     // Unarchive thread
-    // Ищем по ID или имени
     let filter = '';
     const supplierId = payload.sender_role === 'SUPPLIER' ? payload.sender_id : payload.recipient_id;
     const supplierName = payload.sender_role === 'SUPPLIER' ? payload.sender_name : payload.recipient_name;
