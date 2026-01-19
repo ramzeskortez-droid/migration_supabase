@@ -412,6 +412,17 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
       setExpandedId(expandedId === id ? null : id);
   };
 
+  const sortedOrders = React.useMemo(() => {
+      if (sortConfig?.key === 'offers') {
+          return [...orders].sort((a, b) => {
+              const countA = a.offers?.length || 0;
+              const countB = b.offers?.length || 0;
+              return sortConfig.direction === 'asc' ? countA - countB : countB - countA;
+          });
+      }
+      return orders;
+  }, [orders, sortConfig]);
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[70vh]">
         {/* Header (Sticky) */}
@@ -421,7 +432,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('deadline')}>СРОК ДО <SortIcon column="deadline"/></div>
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('date')}>ДАТА СОЗДАНИЯ <SortIcon column="date"/></div>
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
-             <div className="text-left">ОФФЕРЫ</div>
+             <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('offers')}>ОФФЕРЫ <SortIcon column="offers"/></div>
              <div className="text-left">ПОЗИЦИЙ</div>
              <div className="text-left">СТАТУС</div>
              <div></div>
@@ -431,7 +442,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
          <div className="flex-grow">
             <Virtuoso
                 style={{ height: '100%' }}
-                data={orders}
+                data={sortedOrders}
                 endReached={() => {
                     if (hasMore && !isLoading) onLoadMore();
                 }}

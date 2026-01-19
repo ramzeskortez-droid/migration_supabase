@@ -45,6 +45,7 @@ export const getOrders = async (
         visible_to_client, location, status_updated_at,
         owner_id,
         deadline,
+        offers_count,
         is_manual_processing,
         refusal_reason,
         order_files,
@@ -186,7 +187,8 @@ export const getOrders = async (
         'deadline': 'deadline',
         'status': 'status_manager',
         'statusUpdatedAt': 'status_updated_at',
-        'client_name': 'client_name'
+        'client_name': 'client_name',
+        'offers': 'offers_count'
     };
     const sortColumn = columnMap[sortBy] || 'id';
 
