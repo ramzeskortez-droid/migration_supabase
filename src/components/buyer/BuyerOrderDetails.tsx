@@ -411,7 +411,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                         orderId={order.id}
                         bestStats={!myOffer ? getBestStats(item.name) : null} 
                         onCopy={handleCopyItem}
-                        isRequired={requiredFields.supplier_sku}
+                        requiredFields={requiredFields}
                         onToggleStatus={() => handleToggleItemStatus(idx)}
                     />
                 ))}

@@ -48,7 +48,7 @@ export const AdminInterface: React.FC = () => {
   const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
-  const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, clientDeliveryWeeks?: number }>>({});
+  const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, clientDeliveryWeeks?: number, comment?: string, supplierSku?: string }>>({});
   const [debugMode, setDebugMode] = useState(false);
   const [offerEditTimeout, setOfferEditTimeout] = useState(5);
   const [adminUser, setAdminUser] = useState<AppUser | null>(null);
@@ -304,7 +304,7 @@ export const AdminInterface: React.FC = () => {
   };
 
   const handleItemChange = (orderId: string, offerId: string, itemName: string, field: string, value: any) => {
-      if (field === 'adminComment' || field === 'adminPrice' || field === 'clientDeliveryWeeks') {
+      if (field === 'adminComment' || field === 'adminPrice' || field === 'clientDeliveryWeeks' || field === 'comment' || field === 'supplierSku') {
          // offerId here acts as offer_item_id
          setOfferEdits(prev => ({
              ...prev,
@@ -450,7 +450,9 @@ export const AdminInterface: React.FC = () => {
                   const edits = offerEdits[offerItemId];
                   const updates: any = {
                       admin_comment: edits.adminComment,
-                      admin_price: edits.adminPrice
+                      admin_price: edits.adminPrice,
+                      comment: edits.comment,
+                      supplier_sku: edits.supplierSku
                   };
                               if (edits.clientDeliveryWeeks !== undefined) {
                                   updates.client_delivery_weeks = edits.clientDeliveryWeeks;

@@ -110,8 +110,6 @@ const MemoizedBuyerOrderRow = memo(({
     );
 });
 
-
-
 export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 
   editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
@@ -259,4 +257,3 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
     </div>
   );
 };
-

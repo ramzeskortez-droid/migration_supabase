@@ -21,7 +21,7 @@ interface AdminItemsTableProps {
   openRegistry: Set<string>;
   toggleRegistry: (id: string) => void;
   exchangeRates: ExchangeRates | null;
-  offerEdits: Record<string, { adminComment?: string, adminPrice?: number, clientDeliveryWeeks?: number }>;
+  offerEdits: Record<string, { adminComment?: string, adminPrice?: number, clientDeliveryWeeks?: number, comment?: string, supplierSku?: string }>;
   onOpenChat: (orderId: string, supplierName?: string, supplierId?: string) => void;
   debugMode?: boolean;
   offerEditTimeout?: number;
@@ -349,11 +349,12 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                         const editedWeeks = offerEdits?.[off.item.id]?.clientDeliveryWeeks;
                                         // Базовый срок = Срок поставщика + Настройка (из курсов)
                                         const baseWeeks = (off.item.deliveryWeeks || 0) + (exchangeRates?.delivery_weeks_add || 0);
-                                                                                // Если уже зафиксировано в БД, берем оттуда, иначе считаем динамически
-                                                                                const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.clientDeliveryWeeks || baseWeeks);
-                                        
-                                                                                return (
-                                                                                    <div key={oIdx} className={`relative transition-all duration-300 ${isLeader ? "bg-emerald-50 shadow-inner" : "hover:bg-gray-50"}`}>
+                                                                                                                                                                                                        // Если уже зафиксировано в БД, берем оттуда, иначе считаем динамически
+                                                                                                                                                                                                        const currentWeeks = editedWeeks !== undefined ? editedWeeks : (off.item.clientDeliveryWeeks || baseWeeks);
+                                                                                                                                                                
+                                                                                                                                                                                                        const currentComment = offerEdits?.[off.item.id]?.comment !== undefined ? offerEdits[off.item.id].comment : (off.item.comment || '');                                                                                                                        const currentSku = offerEdits?.[off.item.id]?.supplierSku !== undefined ? offerEdits[off.item.id].supplierSku : (off.item.supplierSku || '');
+                                                                                
+                                                                                                                        return (                                                                                    <div key={oIdx} className={`relative transition-all duration-300 ${isLeader ? "bg-emerald-50 shadow-inner" : "hover:bg-gray-50"}`}>
                                                                                         
                                                                                         {/* LOCK OVERLAY */}
                                                                                         {off.isLocked && (
@@ -458,24 +459,37 @@ export const AdminItemsTable: React.FC<AdminItemsTableProps> = ({
                                                             </span>
                                                         )}
                                                     </div>
-                                                    
-                                                {/* Комментарий поставщика */}
-                                                {(off.comment || off.supplierSku) && (
-                                                    <div className="md:col-span-6 bg-yellow-50/50 border border-yellow-100 rounded-lg p-2 mt-2 text-[10px] text-yellow-700 flex flex-col gap-1">
-                                                        {off.comment && (
-                                                            <div className="flex gap-2">
-                                                                <span className="font-bold uppercase text-yellow-600/70 shrink-0">Коммент:</span>
-                                                                <span>{off.comment}</span>
-                                                            </div>
-                                                        )}
-                                                        {off.supplierSku && (
-                                                            <div className="flex gap-2 border-t border-yellow-200/50 pt-1 mt-1">
-                                                                <span className="font-bold uppercase text-yellow-600/70 shrink-0">WeChat ID / номер поставщика:</span>
-                                                                <span className="font-mono font-bold select-all">{off.supplierSku}</span>
-                                                            </div>
+                                                </div>
+
+                                                {/* Комментарий и SKU (Editable) */}
+                                                <div className="px-6 pb-3 flex flex-col md:flex-row gap-2 md:gap-4 text-[10px]">
+                                                    <div className="flex-grow bg-yellow-50/50 border border-yellow-100 rounded-lg p-2 flex items-center gap-2 min-h-[34px]">
+                                                        <span className="font-bold uppercase text-yellow-600/70 shrink-0">Комментарий:</span>
+                                                        {isEditing ? (
+                                                            <input 
+                                                                className="w-full bg-transparent border-b border-yellow-300 outline-none text-yellow-800 font-medium placeholder-yellow-800/30 text-[10px]"
+                                                                value={currentComment}
+                                                                onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'comment', e.target.value)}
+                                                                placeholder="Комментарий / Замена"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-yellow-700 font-medium break-words leading-tight">{currentComment || '-'}</span>
                                                         )}
                                                     </div>
-                                                )}
+                                                    
+                                                    <div className="md:w-[250px] bg-slate-50 border border-slate-100 rounded-lg p-2 flex items-center gap-2 min-h-[34px]">
+                                                        <span className="font-bold uppercase text-slate-400 shrink-0">WeChat ID:</span>
+                                                        {isEditing ? (
+                                                            <input 
+                                                                className="w-full bg-transparent border-b border-slate-300 outline-none text-slate-700 font-bold placeholder-slate-300 text-[10px]"
+                                                                value={currentSku}
+                                                                onChange={(e) => handleItemChange(order.id, off.item.id, item.name, 'supplierSku', e.target.value)}
+                                                                placeholder="ID поставщика"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-slate-600 font-bold break-all leading-tight">{currentSku || '-'}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );

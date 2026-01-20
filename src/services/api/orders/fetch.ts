@@ -50,7 +50,7 @@ export const getOrders = async (
         refusal_reason,
         order_files,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
-        offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, locked_at, created_by, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, client_delivery_weeks, weight))
+        offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, locked_at, created_by, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, comment, client_delivery_weeks, weight))
     `);
 
     if (buyerTab === 'new') {
@@ -259,7 +259,7 @@ export const getOrders = async (
                     weight: oi.weight,
                     deliveryWeeks: oi.delivery_days ? Math.ceil(oi.delivery_days / 7) : 0,
                     clientDeliveryWeeks: oi.client_delivery_weeks,
-                    photoUrl: oi.photo_url, itemFiles: oi.item_files, supplierSku: oi.supplier_sku, adminComment: oi.admin_comment
+                    photoUrl: oi.photo_url, itemFiles: oi.item_files, supplierSku: oi.supplier_sku, adminComment: oi.admin_comment, comment: oi.comment
                 })) || []
             })) || [],
             isProcessed: order.status_manager !== 'В обработке' && order.status_manager !== 'ОТКРЫТ'

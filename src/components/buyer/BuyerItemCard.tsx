@@ -143,31 +143,47 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
       );
   };
 
-  // Determine requirement status: fields become mandatory ONLY if price is entered
+  // Determine requirement status
   const hasPrice = item.BuyerPrice > 0;
   
-  const isReqPrice = false; // Price is the trigger, it shouldn't show as "error" if empty
-  const isReqWeight = hasPrice && (req.weight !== false);
-  const isReqWeeks = hasPrice && (req.delivery_weeks !== false);
-  const isReqQty = hasPrice && (req.quantity === true);
-  const isReqComment = hasPrice && (req.comment === true);
-  const isReqSku = hasPrice && (req.supplier_sku === true);
-  const isReqImages = hasPrice && (req.images === true);
+  // Configured requirements (from Manager)
+  const cfgWeight = req.weight !== false;
+  const cfgWeeks = req.delivery_weeks !== false;
+  const cfgQty = req.quantity === true;
+  const cfgComment = req.comment === true;
+  const cfgSku = req.supplier_sku === true;
+  const cfgImages = req.images === true;
+
+  // Validation logic (Triggered only if price is entered)
+  const isReqPrice = false; 
+  const isReqWeight = hasPrice && cfgWeight;
+  const isReqWeeks = hasPrice && cfgWeeks;
+  const isReqQty = hasPrice && cfgQty;
+  const isReqComment = hasPrice && cfgComment;
+  const isReqSku = hasPrice && cfgSku;
+  const isReqImages = hasPrice && cfgImages;
 
   const getInputClass = (field: string, value: any) => {
-      const base = "w-full text-center font-bold text-xs bg-white border border-gray-200 rounded md:rounded-lg py-1.5 md:py-2 px-1 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all";
+      const base = "w-full text-xs outline-none transition-all border rounded-lg px-3 py-2";
       if (isDisabled) return `${base} bg-gray-100 text-gray-500 border-gray-200`;
+      
+      const isCenter = field !== 'comment' && field !== 'supplierSku';
+      const centerClass = isCenter ? "text-center font-bold" : "text-left font-medium";
       
       let isInvalid = false;
       if (field === 'BuyerPrice' && isReqPrice && (!value || value <= 0)) isInvalid = true;
       if (field === 'weight' && isReqWeight && (!value || value <= 0)) isInvalid = true;
       if (field === 'deliveryWeeks' && isReqWeeks && (!value || value < 1)) isInvalid = true;
       if (field === 'offeredQuantity' && isReqQty && (!value || value <= 0)) isInvalid = true;
+      if (field === 'comment' && isReqComment && (!value || value.toString().trim().length === 0)) isInvalid = true;
+      if (field === 'supplierSku' && isReqSku && (!value || value.toString().trim().length === 0)) isInvalid = true;
 
       if (isInvalid) {
-          return `${base} border-red-300 bg-red-50 focus:border-red-500`;
+          return `${base} ${centerClass} border-red-300 bg-red-50 focus:border-red-500 ring-2 ring-red-50`;
       }
-      return base;
+      
+      const colorClass = isCenter ? "bg-white border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" : "bg-white text-gray-700 border-slate-200 focus:border-indigo-500";
+      return `${base} ${centerClass} ${colorClass}`;
   };
 
   return (
@@ -385,9 +401,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                     disabled={isDisabled || isUnavailable} 
                     value={item.comment || ''} 
                     onChange={e => onUpdate(index, 'comment', e.target.value)} 
-                    className={`w-full border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none transition-all
-                        ${(isDisabled || isUnavailable) ? 'bg-slate-100 text-gray-500' : 'bg-white text-gray-700 focus:border-indigo-500'} 
-                        ${isReqComment && !item.comment ? 'border-red-300 bg-red-50' : ''}`}
+                    className={getInputClass('comment', item.comment)}
                     placeholder="Ваш комментарий..." 
                 />
             </div>
@@ -402,9 +416,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                         disabled={isDisabled || isUnavailable} 
                         value={item.supplierSku || ''} 
                         onChange={e => onUpdate(index, 'supplierSku', e.target.value)} 
-                        className={`w-full border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none transition-all
-                            ${(isDisabled || isUnavailable) ? 'bg-slate-100 text-gray-500' : 'bg-white text-gray-700 focus:border-indigo-500'} 
-                            ${isReqSku && !item.supplierSku ? 'border-red-300 bg-red-50' : ''}`} 
+                        className={getInputClass('supplierSku', item.supplierSku)}
                         placeholder="18510860570 / +86-XX-XXXX-XXX" 
                     />
                 </div>

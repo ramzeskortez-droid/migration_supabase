@@ -61,6 +61,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
           if (winners.length > 0) {
               winners.forEach((w, wIdx) => {
                   result += `Вариант ${wIdx + 1}: ${base} - ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.clientDeliveryWeeks || w.deliveryWeeks || '-'} нед.\n`;
+                  if (w.comment || w.adminComment) result += `Комментарий: ${w.comment || w.adminComment}\n`;
               });
           } else {
               result += `${base} - -\n`;
@@ -70,6 +71,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
           let text = `${idx + 1}. ${base}\n`;
           winners.forEach((w, wIdx) => {
               text += `Вариант №${wIdx + 1}: ${formatPrice(w.adminPrice || w.sellerPrice)} ₽ с учётом доставки, ${w.clientDeliveryWeeks || w.deliveryWeeks || '-'} нед.\n`;
+              if (w.comment || w.adminComment) text += `Комментарий: ${w.comment || w.adminComment}\n`;
           });
           return text;
       }

@@ -300,28 +300,40 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                             </div>
 
                                             <div className="min-w-[1000px] divide-y divide-gray-100">
-                                                {winners.map((win, wIdx) => (
-                                                    <div key={wIdx} className="relative transition-all duration-300 bg-emerald-50/30">
-                                                        <div className={`grid grid-cols-1 md:${OFFER_GRID} gap-4 px-6 py-3 items-center`}>
-                                                            <div className="flex items-center gap-2 font-black text-emerald-700 uppercase text-[10px]">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                                Вариант {wIdx + 1}
-                                                            </div>
-                                                            {renderBrand(win.brand, "text-indigo-600 text-[10px]")}
-                                                            <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
-                                                            
-                                                            {/* Files Column for Offer Item */}
-                                                            <div>
-                                                                {renderFilesCell(win.itemFiles, win.photoUrl)}
-                                                            </div>
+                                                {winners.map((win, wIdx) => {
+                                                    return (
+                                                        <div key={wIdx} className="relative transition-all duration-300 bg-emerald-50/30">
+                                                            <div className={`grid ${OFFER_GRID} gap-4 px-6 pt-3 pb-1 items-center`}>
+                                                                <div className="flex items-center gap-2 font-black text-emerald-700 uppercase text-[10px]">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                                    Вариант {wIdx + 1}
+                                                                </div>
+                                                                {renderBrand(win.brand, "text-indigo-600 text-[10px]")}
+                                                                <div className="text-gray-700 text-center font-bold text-xs">{win.offeredQuantity || win.quantity}</div>
+                                                                
+                                                                {/* Files Column for Offer Item */}
+                                                                <div>
+                                                                    {renderFilesCell(win.itemFiles, win.photoUrl)}
+                                                                </div>
 
-                                                            <div className="text-base font-black text-gray-900 leading-none text-left">
-                                                                {formatPrice(win.adminPrice || win.sellerPrice)} ₽
+                                                                <div className="text-base font-black text-gray-900 leading-none text-left">
+                                                                    {formatPrice(win.adminPrice || win.sellerPrice)} ₽
+                                                                </div>
+                                                                <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.clientDeliveryWeeks || win.deliveryWeeks || '-'} нед.</div>
                                                             </div>
-                                                            <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.clientDeliveryWeeks || win.deliveryWeeks || '-'} нед.</div>
+                                                            {/* Комментарий (если есть) */}
+                                                            {(win.comment || win.adminComment) && (
+                                                                <div className="px-6 pb-3 flex items-start gap-2">
+                                                                    <div className="w-1.5 h-1.5 mt-1.5 opacity-0"></div> {/* Spacer to align with bullet if needed */}
+                                                                    <div className="text-[10px] text-slate-600 bg-white/40 px-2 py-1 rounded border border-emerald-100/50 w-full">
+                                                                        <span className="font-bold text-slate-400 uppercase mr-2 text-[9px]">Комментарий:</span>
+                                                                        {win.comment || win.adminComment}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </>
                                     ) : (

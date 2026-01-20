@@ -1,7 +1,7 @@
 import { supabase } from '../../../lib/supabaseClient';
 import { Currency } from '../../../types';
 
-export const updateOfferItem = async (itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number, supplier_sku?: string, client_delivery_weeks?: number }): Promise<void> => {
+export const updateOfferItem = async (itemId: string, updates: { admin_comment?: string, admin_price?: number, currency?: Currency, delivery_days?: number, supplier_sku?: string, client_delivery_weeks?: number, comment?: string }): Promise<void> => {
   const { error } = await supabase.from('offer_items').update(updates).eq('id', itemId);
   if (error) throw error;
 };
