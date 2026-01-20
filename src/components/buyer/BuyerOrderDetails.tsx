@@ -29,6 +29,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       isOpen: false, title: '', content: ''
   });
   const [showRefuseModal, setShowRefuseModal] = useState(false); 
+  const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   const [requiredFields, setRequiredFields] = useState<any>({}); 
@@ -93,7 +94,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                       BuyerPrice: match.sellerPrice,
                       weight: match.weight,
                       deliveryWeeks: match.deliveryWeeks || (match.delivery_days ? match.delivery_days / 7 : 0),
-                      offeredQuantity: match.offeredQuantity || match.quantity,
+                      offeredQuantity: match.offeredQuantity ?? (match.quantity ?? 0),
                       supplierSku: match.supplierSku,
                       comment: match.comment || '',
                       itemFiles: match.itemFiles || [],
@@ -147,7 +148,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                   BuyerPrice: match.sellerPrice, // Fixed: match.price was undefined
                   weight: match.weight,
                   deliveryWeeks: match.deliveryWeeks || (match.delivery_days ? match.delivery_days / 7 : 0),
-                  offeredQuantity: match.offeredQuantity || match.quantity,
+                  offeredQuantity: match.offeredQuantity ?? (match.quantity ?? 0),
                   supplierSku: match.supplierSku,
                   comment: match.comment || '', // Fix: Use supplier comment only
                   itemFiles: match.itemFiles || [],
@@ -221,11 +222,32 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   }, [editingItems, requiredFields]);
 
   const handlePreSubmit = async () => {
+      // 1. Проверка на незаполненные цены (но активные)
+      const emptyPriceItems = editingItems.filter(item => (item.offeredQuantity > 0) && (!item.BuyerPrice || item.BuyerPrice <= 0));
+      console.log('EMPTY PRICE ITEMS:', emptyPriceItems);
+      
+      if (emptyPriceItems.length > 0) {
+          setShowEmptyConfirm(true);
+          return;
+      }
+
       if (!isValid) {
-          setToast({ message: 'Заполните поля для выбранных позиций!', type: 'error' });
+          setToast({ message: 'Заполните обязательные поля для выбранных позиций!', type: 'error' });
           return;
       }
       await onSubmit(order.id, editingItems, supplierFiles);
+  };
+
+  const handleConfirmEmptySubmit = async () => {
+      // Превращаем пустые в отказ
+      const processedItems = editingItems.map(item => {
+          if ((item.offeredQuantity > 0) && (!item.BuyerPrice || item.BuyerPrice <= 0)) {
+              return { ...item, offeredQuantity: 0 };
+          }
+          return item;
+      });
+      setShowEmptyConfirm(false);
+      await onSubmit(order.id, processedItems, supplierFiles);
   };
 
   const handleUpdateItem = (idx: number, field: string, value: any) => {
@@ -356,6 +378,16 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             confirmText="Да, отказаться"
             cancelText="Отмена"
             isDangerous
+        />
+
+        <ConfirmationModal 
+            isOpen={showEmptyConfirm}
+            onClose={() => setShowEmptyConfirm(false)}
+            onConfirm={handleConfirmEmptySubmit}
+            title="Неполное заполнение"
+            message={`Вы не указали цену для ${editingItems.filter(item => (item.offeredQuantity > 0) && (!item.BuyerPrice || item.BuyerPrice <= 0)).length} позиций. Отметить их как 'Отказ' и отправить КП?`}
+            confirmText="Да, отправить с отказами"
+            cancelText="Вернуться"
         />
 
         {/* 1. Блок Информации */}

@@ -147,21 +147,17 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
   const hasPrice = item.BuyerPrice > 0;
   
   // Configured requirements (from Manager)
-  const cfgWeight = req.weight !== false;
-  const cfgWeeks = req.delivery_weeks !== false;
-  const cfgQty = req.quantity === true;
   const cfgComment = req.comment === true;
   const cfgSku = req.supplier_sku === true;
-  const cfgImages = req.images === true;
 
   // Validation logic (Triggered only if price is entered)
   const isReqPrice = false; 
-  const isReqWeight = hasPrice && cfgWeight;
-  const isReqWeeks = hasPrice && cfgWeeks;
-  const isReqQty = hasPrice && cfgQty;
+  const isReqWeight = hasPrice && (req.weight !== false);
+  const isReqWeeks = hasPrice && (req.delivery_weeks !== false);
+  const isReqQty = hasPrice && (req.quantity === true);
   const isReqComment = hasPrice && cfgComment;
   const isReqSku = hasPrice && cfgSku;
-  const isReqImages = hasPrice && cfgImages;
+  const isReqImages = hasPrice && (req.images === true);
 
   const getInputClass = (field: string, value: any) => {
       const base = "w-full text-xs outline-none transition-all border rounded-lg px-3 py-2";
@@ -189,7 +185,17 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
   return (
     <div 
         {...getRootProps()}
-        className={`mb-6 bg-white border border-gray-200 rounded-xl shadow-sm transition-all relative ${isWinner ? 'ring-2 ring-emerald-500 shadow-md' : ''} ${isUnavailable ? 'border-red-200' : ''} ${isDragActive ? 'ring-4 ring-indigo-500 bg-indigo-50/50' : ''}`}
+        onClick={(e) => {
+            if (isUnavailable) {
+                e.stopPropagation();
+                toggleUnavailable();
+            }
+        }}
+        className={`mb-6 border rounded-xl shadow-sm transition-all relative 
+            ${isWinner ? 'ring-2 ring-emerald-500 shadow-md border-gray-200' : ''} 
+            ${isDragActive ? 'ring-4 ring-indigo-500 bg-indigo-50/50' : ''}
+            ${isUnavailable ? 'bg-red-50 border-red-200 cursor-pointer hover:bg-red-100' : 'bg-white border-gray-200'}
+        `}
     >
         <input {...getInputProps()} />
 
@@ -203,10 +209,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
         
         {/* 1. ИНФО ОПЕРАТОРА */}
         {/* MOBILE VIEW */}
-        <div className="md:hidden p-4 bg-white border-b border-gray-100 rounded-t-xl space-y-3">
+        <div className="md:hidden p-4 border-b border-gray-100 rounded-t-xl space-y-3">
             <div className="flex justify-between items-start">
                 <div className="text-sm font-mono font-bold text-gray-400 flex items-center gap-2">
-                    #{index + 1}
+                    <span className={isUnavailable ? 'line-through text-red-400' : ''}>#{index + 1}</span>
                     {isWinner && <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black uppercase flex items-center gap-1"><Trophy size={10}/> Лидер</span>}
                 </div>
                 <div className={`text-xs font-black uppercase truncate flex items-center gap-1 ${isUnavailable ? 'text-red-400 line-through' : (isOpBrandOfficial ? 'text-amber-700 underline decoration-amber-400/50 decoration-2 underline-offset-2' : 'text-indigo-600')}`}>
@@ -220,7 +226,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                     <span className={`font-black text-sm uppercase break-words leading-tight truncate ${(item.AdminName || item.name).length > 40 ? 'truncate' : ''} ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`} title={item.AdminName || item.name}>
                         {(item.AdminName || item.name).length > 40 ? (item.AdminName || item.name).slice(0, 40) + '...' : (item.AdminName || item.name)}
                     </span>
-                    <CopyButton text={item.AdminName || item.name} />
+                    {!isUnavailable && <CopyButton text={item.AdminName || item.name} />}
                 </div>
                 {item.adminComment && (
                     <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded w-fit">
@@ -231,17 +237,17 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                 <div className="flex gap-3 text-xs text-gray-500 items-center">
-                    <span className="font-mono bg-slate-50 px-1.5 rounded flex items-center gap-1">
-                        {opArticle} <CopyButton text={opArticle} iconSize={10} />
+                    <span className={`font-mono bg-slate-50 px-1.5 rounded flex items-center gap-1 ${isUnavailable ? 'line-through text-red-400' : ''}`}>
+                        {opArticle} {!isUnavailable && <CopyButton text={opArticle} iconSize={10} />}
                     </span>
-                    <span className="font-bold">{item.quantity} {opUom}</span>
+                    <span className={`font-bold ${isUnavailable ? 'line-through text-red-400' : ''}`}>{item.quantity} {opUom}</span>
                 </div>
                 {renderFilesIcon(displayItem.itemFiles, opPhoto)}
             </div>
         </div>
 
         {/* DESKTOP VIEW */}
-        <div className="hidden md:grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-4 items-center bg-white border-b border-gray-100 rounded-t-xl">
+        <div className="hidden md:grid grid-cols-[40px_100px_1fr_100px_60px_60px_60px] gap-4 px-6 py-4 items-center border-b border-gray-100 rounded-t-xl">
             <div className={`text-sm font-mono font-bold text-center flex flex-col items-center justify-center ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-400'}`}>
                 #{index + 1}
                 {isWinner && <Trophy size={12} className="text-emerald-500 mt-1"/>}
@@ -254,7 +260,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
 
             <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1">
-                    <CopyButton text={item.AdminName || item.name} />
+                    {!isUnavailable && <CopyButton text={item.AdminName || item.name} />}
                     <span className={`font-black text-[10px] uppercase truncate ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`} title={item.AdminName || item.name}>
                         {(item.AdminName || item.name).length > 40 ? (item.AdminName || item.name).slice(0, 40) + '...' : (item.AdminName || item.name)}
                     </span>
@@ -267,7 +273,7 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
             </div>
 
             <div className={`text-xs font-mono truncate flex items-center gap-1 min-w-0 ${isUnavailable ? 'text-red-400 line-through' : 'text-gray-500'}`} title={opArticle}>
-                <CopyButton text={opArticle} />
+                {!isUnavailable && <CopyButton text={opArticle} />}
                 <span className="truncate">{opArticle}</span>
             </div>
             <div className={`text-xs font-black text-center ${isUnavailable ? 'text-red-500 line-through' : 'text-gray-800'}`}>{item.quantity}</div>
@@ -278,11 +284,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
             </div>
         </div>
 
-        {/* КОНТЕЙНЕР НИЖНЕЙ ЧАСТИ С ОВЕРЛЕЕМ ПРИ ОТКАЗЕ */}
-
+        {!isUnavailable && (
         <div className="relative">
             {/* 2. БЛОК ЗАКУПЩИКА */}
-            <div className={`mx-4 md:mx-6 mt-4 mb-4 rounded-lg overflow-hidden border border-slate-200 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
+            <div className="mx-4 md:mx-6 mt-4 mb-4 rounded-lg overflow-hidden border border-slate-200">
                 {/* Desktop Header */}
                 <div className="hidden md:grid bg-slate-900 px-4 py-1.5 grid-cols-[80px_80px_1fr_80px_80px_1fr] gap-4 items-center">
                     <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Действия</div>
@@ -330,9 +335,9 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                                         )}
                                         <button 
                                             onClick={() => { toggleUnavailable(); setShowMenu(false); }}
-                                            className={`w-full text-left px-4 py-3 text-xs font-bold flex items-center gap-2 ${isUnavailable ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-600 hover:bg-red-50'}`}
+                                            className="w-full text-left px-4 py-3 text-xs font-bold flex items-center gap-2 text-red-600 hover:bg-red-50"
                                         >
-                                            {isUnavailable ? <><FileText size={14}/> Вернуть в работу</> : <><Ban size={14}/> Отказаться от позиции</>}
+                                            <Ban size={14}/> Отказаться от позиции
                                         </button>
                                     </div>
                                 </>
@@ -352,10 +357,10 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                             </button>
                         )}
                         <button 
-                            onClick={toggleUnavailable} 
+                            onClick={(e) => { e.stopPropagation(); toggleUnavailable(); }} 
                             disabled={isDisabled} 
-                            className={`p-2 rounded-lg transition-colors border border-transparent ${isUnavailable ? 'bg-red-600 text-white shadow-lg shadow-red-900/50' : 'text-slate-400 hover:text-red-500 hover:bg-white hover:border-slate-200'}`} 
-                            title={isUnavailable ? "Вернуть" : "Отказаться"}
+                            className="p-2 rounded-lg transition-colors border border-transparent text-slate-400 hover:text-red-500 hover:bg-white hover:border-slate-200"
+                            title="Отказаться"
                         >
                             <Ban size={14} />
                         </button>
@@ -365,22 +370,22 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:contents">
                         <div className="space-y-1 md:space-y-0">
                             <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Кол-во {isReqQty && <span className="text-red-500">*</span>}</label>
-                            <input disabled={isDisabled || isUnavailable} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity', item.offeredQuantity ?? item.quantity)} />
+                            <input disabled={isDisabled} value={item.offeredQuantity ?? item.quantity} onChange={e => handleNumInput(e.target.value, 'offeredQuantity', item.quantity)} className={getInputClass('offeredQuantity', item.offeredQuantity ?? item.quantity)} />
                         </div>
                         
                         <div className="space-y-1 md:space-y-0">
                             <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Цена (¥) {isReqPrice && <span className="text-red-500">*</span>}</label>
-                            <input disabled={isDisabled || isUnavailable} value={item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice', item.BuyerPrice)} placeholder="0" />
+                            <input disabled={isDisabled} value={item.BuyerPrice || ''} onChange={e => handleNumInput(e.target.value, 'BuyerPrice')} className={getInputClass('BuyerPrice', item.BuyerPrice)} placeholder="0" />
                         </div>
 
                         <div className="space-y-1 md:space-y-0">
                             <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Вес (кг) {isReqWeight && <span className="text-red-500">*</span>}</label>
-                            <input disabled={isDisabled || isUnavailable} value={item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight', item.weight)} placeholder="0.0" />
+                            <input disabled={isDisabled} value={item.weight || ''} onChange={e => handleNumInput(e.target.value, 'weight')} className={getInputClass('weight', item.weight)} placeholder="0.0" />
                         </div>
 
                         <div className="space-y-1 md:space-y-0">
                             <label className="md:hidden text-[10px] font-bold text-slate-400 uppercase">Срок (нед) {isReqWeeks && <span className="text-red-500">*</span>}</label>
-                            <input disabled={isDisabled || isUnavailable} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks', item.deliveryWeeks)} placeholder="Min 1" />
+                            <input disabled={isDisabled} value={item.deliveryWeeks || ''} onChange={e => handleNumInput(e.target.value, 'deliveryWeeks')} className={getInputClass('deliveryWeeks', item.deliveryWeeks)} placeholder="Min 1" />
                         </div>
                     </div>
 
@@ -390,49 +395,40 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                 </div>
             </div>
 
-        {/* 3. ДОП ИНФО (Комментарий и Поставщик) */}
-        <div className={`px-4 md:px-6 pb-4 bg-white grid grid-cols-1 md:grid-cols-2 gap-4 ${isUnavailable ? 'opacity-30 grayscale blur-[1px]' : ''}`}>
-            <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
-                    Комментарий / Замена / Аналог
-                    {isReqComment && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <input 
-                    disabled={isDisabled || isUnavailable} 
-                    value={item.comment || ''} 
-                    onChange={e => onUpdate(index, 'comment', e.target.value)} 
-                    className={getInputClass('comment', item.comment)}
-                    placeholder="Ваш комментарий..." 
-                />
-            </div>
-            
-            <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
-                    WeChat ID / номер поставщика
-                    {isReqSku && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <div className="relative">
+            {/* 3. ДОП ИНФО (Комментарий и Поставщик) */}
+            <div className="px-4 md:px-6 pb-4 bg-white grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
+                        Комментарий / Замена / Аналог
+                        {isReqComment && <span className="text-red-500 ml-1">*</span>}
+                    </label>
                     <input 
-                        disabled={isDisabled || isUnavailable} 
-                        value={item.supplierSku || ''} 
-                        onChange={e => onUpdate(index, 'supplierSku', e.target.value)} 
-                        className={getInputClass('supplierSku', item.supplierSku)}
-                        placeholder="18510860570 / +86-XX-XXXX-XXX" 
+                        disabled={isDisabled} 
+                        value={item.comment || ''} 
+                        onChange={e => onUpdate(index, 'comment', e.target.value)} 
+                        className={getInputClass('comment', item.comment)}
+                        placeholder="Ваш комментарий..." 
                     />
                 </div>
-            </div>
-        </div>
-
-            {/* ОВЕРЛЕЙ ОТКАЗА */}
-            {isUnavailable && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-20 animate-in fade-in duration-300 cursor-pointer" onClick={toggleUnavailable}>
-                    <div className="bg-red-600 text-white px-8 py-4 rounded-2xl shadow-2xl shadow-red-200 flex flex-col items-center gap-2 transform -rotate-1 border-4 border-white">
-                        <XCircle size={32} />
-                        <span className="font-black uppercase tracking-tighter text-sm text-center">нажмите, чтобы вернуться в работу</span>
+                
+                <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">
+                        WeChat ID / номер поставщика
+                        {isReqSku && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    <div className="relative">
+                        <input 
+                            disabled={isDisabled} 
+                            value={item.supplierSku || ''} 
+                            onChange={e => onUpdate(index, 'supplierSku', e.target.value)} 
+                            className={getInputClass('supplierSku', item.supplierSku)}
+                            placeholder="18510860570 / +86-XX-XXXX-XXX" 
+                        />
                     </div>
                 </div>
-            )}
+            </div>
         </div>
+        )}
     </div>
   );
 };
