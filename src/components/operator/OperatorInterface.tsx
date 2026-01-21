@@ -9,11 +9,15 @@ import { OperatorOrderCreation } from './OperatorOrderCreation(Создание�
 import { OperatorOrdersView } from './OperatorOrdersView(ПросмотрЗаявок)';
 import { Toast } from '../shared/Toast';
 import { useHeaderStore } from '../../store/headerStore';
+import { playNotificationSound } from '../../utils/sound';
 
 export const OperatorInterface: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const [isEmailOpen, setIsEmailOpen] = useState(true);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+  const isChatOpenRef = React.useRef(isGlobalChatOpen);
+  useEffect(() => { isChatOpenRef.current = isGlobalChatOpen; }, [isGlobalChatOpen]);
+
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -114,7 +118,8 @@ export const OperatorInterface: React.FC = () => {
                 // 1. Сообщение от Поставщика
                 if (msg.sender_role === 'SUPPLIER' && isToOperator) {
                     setUnreadChatCount(prev => prev + 1);
-                    if (!isGlobalChatOpen) setChatNotifications(prev => [...prev, msg].slice(-3));
+                    setTimeout(() => playNotificationSound(0.75), 0);
+                    if (!isChatOpenRef.current) setChatNotifications(prev => [...prev, msg].slice(-3));
                 }
 
                 // 2. Сообщение от Менеджера
@@ -122,7 +127,8 @@ export const OperatorInterface: React.FC = () => {
                 
                 if (isFromManager && isToOperator) {
                     setUnreadChatCount(prev => prev + 1);
-                    if (!isGlobalChatOpen) setChatNotifications(prev => [...prev, msg].slice(-3));
+                    setTimeout(() => playNotificationSound(0.75), 0);
+                    if (!isChatOpenRef.current) setChatNotifications(prev => [...prev, msg].slice(-3));
                 }
             }, `operator-notifications-${currentUser.id}`);
 
@@ -130,7 +136,7 @@ export const OperatorInterface: React.FC = () => {
           SupabaseService.unsubscribeFromChat(channel); 
           clearInterval(interval);
       };
-  }, [currentUser, isGlobalChatOpen]);
+  }, [currentUser]);
 
   const handleImportEmail = (data: any) => {
       setToast({ message: 'Данные письма переданы в ассистент', type: 'info' });

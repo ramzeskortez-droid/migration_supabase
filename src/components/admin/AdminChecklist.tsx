@@ -62,7 +62,9 @@ const DEFAULT_CHECKLIST_SEED = [
           { id: 'op1', text: 'Создание вручную', checked: false },
           { id: 'op2', text: 'Создание через AI', checked: false },
           { id: 'op3', text: 'Загрузка файлов', checked: false },
-          { id: 'op4', text: 'Авто-привязка Email', checked: false }
+          { id: 'op4', text: 'Авто-привязка Email', checked: false },
+          { id: 'op5', text: 'Отображение комментария закупщика в списке', checked: false },
+          { id: 'op6', text: 'Копирование позиции (с комментарием)', checked: false }
       ]
   },
   // 5. ЗАКУПЩИК
@@ -72,7 +74,9 @@ const DEFAULT_CHECKLIST_SEED = [
           { id: 'buy1', text: 'Поиск по бренду', checked: false },
           { id: 'buy2', text: 'Подача оффера', checked: false },
           { id: 'buy3', text: 'Редактирование (Amend)', checked: false },
-          { id: 'buy4', text: 'Отказ от позиции', checked: false }
+          { id: 'buy4', text: 'Отказ от позиции (Свернутый UI)', checked: false },
+          { id: 'buy5', text: 'Авто-отказ при отправке (Модалка)', checked: false },
+          { id: 'buy6', text: 'Валидация WeChat/Комментария (при цене > 0)', checked: false }
       ]
   },
   // 6. МЕНЕДЖЕР
@@ -82,7 +86,8 @@ const DEFAULT_CHECKLIST_SEED = [
           { id: 'man1', text: 'Выбор Лидера', checked: false },
           { id: 'man2', text: 'Утверждение КП', checked: false },
           { id: 'man3', text: 'Перевод в Ручную обработку', checked: false },
-          { id: 'man4', text: 'Аннулирование заказа', checked: false }
+          { id: 'man4', text: 'Аннулирование заказа', checked: false },
+          { id: 'man5', text: 'Правка полей WeChat ID / Комментарий', checked: false }
       ]
   },
   // 7. СПРАВОЧНИКИ

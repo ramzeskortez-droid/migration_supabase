@@ -312,8 +312,6 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
               const isMsgFromOperator = newMsg.sender_role === 'OPERATOR';
               const isMsgToOperator = ['OPERATOR', 'Оператор'].includes(newMsg.recipient_name);
 
-              console.log('RT DEBUG:', { threadRole, currentUserRole, isMsgFromManager, isMsgToManager, isMsgFromOperator, isMsgToOperator, msg: newMsg.message });
-
               if (threadRole === 'OPERATOR') {
                   // Admin/Supplier <-> Operator
                   // If I am Admin, I want to see (Admin -> Operator) or (Operator -> Admin)

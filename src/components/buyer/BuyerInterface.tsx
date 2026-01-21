@@ -12,6 +12,7 @@ import { useOrdersInfinite } from '../../hooks/useOrdersInfinite';
 import { useNavigate } from 'react-router-dom';
 import { useHeaderStore } from '../../store/headerStore';
 import { MessageCircle, User, LogOut } from 'lucide-react';
+import { playNotificationSound } from '../../utils/sound';
 
 export const BuyerInterface: React.FC = () => {
   const queryClient = useQueryClient();
@@ -47,6 +48,9 @@ export const BuyerInterface: React.FC = () => {
   const [chatNotifications, setChatNotifications] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+  const isChatOpenRef = React.useRef(isGlobalChatOpen);
+  useEffect(() => { isChatOpenRef.current = isGlobalChatOpen; }, [isGlobalChatOpen]);
+
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [scrollToId, setScrollToId] = useState<string | null>(null);
   const [subStatusFilter, setSubStatusFilter] = useState<string | undefined>(undefined);
@@ -124,13 +128,16 @@ export const BuyerInterface: React.FC = () => {
           // Check by ID first (reliable), then fallback to Name
           if (msg.recipient_id === buyerAuth.id || msg.recipient_name === buyerAuth.name) {
               setUnreadChatCount(prev => prev + 1);
-              if (!isGlobalChatOpen) {
+              // Fire and forget sound (non-blocking)
+              setTimeout(() => playNotificationSound(0.75), 0);
+              
+              if (!isChatOpenRef.current) {
                   setChatNotifications(prev => [...prev, msg].slice(-3));
               }
           }
       }, `buyer-notifications-${buyerAuth.id}`);
       return () => { SupabaseService.unsubscribeFromChat(channel); };
-  }, [buyerAuth, isGlobalChatOpen]);
+  }, [buyerAuth]);
 
   // --- Handlers ---
   const handleSort = (key: string) => {

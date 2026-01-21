@@ -19,6 +19,7 @@ export interface OrderInfo {
   emailSubject: string; 
   clientName: string;
   clientPhone: string;
+  assignedBuyerIds?: string[] | null;
 }
 
 export interface LogHistory {

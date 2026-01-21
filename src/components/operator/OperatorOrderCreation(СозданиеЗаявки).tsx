@@ -11,6 +11,7 @@ import { AppUser } from '../../types';
 import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
 import { UploadCloud } from 'lucide-react';
+import { BuyerSelectionModal } from './BuyerSelectionModal';
 
 interface OperatorOrderCreationProps {
     currentUser: AppUser | null;
@@ -45,6 +46,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     const req = requiredFields as any;
     const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
     const [blinkTrigger, setBlinkTrigger] = useState(0);
+    const [isBuyerModalOpen, setIsBuyerModalOpen] = useState(false);
 
     // --- GLOBAL DROPZONE LOGIC ---
     const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -224,17 +226,27 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
         const { errors, highlighted } = validateForm();
         if (errors.length > 0) {
             setHighlightedFields(highlighted);
-            setBlinkTrigger(prev => prev + 1); // Trigger animation
+            setBlinkTrigger(prev => prev + 1);
             setToast({ message: `Заполните обязательные поля: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`, type: 'error' });
             
-            // Убираем подсветку через 1 секунду (после анимации)
             setTimeout(() => {
                 setHighlightedFields(new Set());
             }, 1000);
             return;
         }
         
-        setHighlightedFields(new Set()); // Clear on success or proceeding
+        // Открываем модалку. Режим "сохранения" включим внутри confirmCreateOrder, 
+        // когда пользователь нажмет "Отправить" в самой модалке.
+        setIsBuyerModalOpen(true);
+    };
+
+    const confirmCreateOrder = async (assignedBuyerIds: string[] | null) => {
+        if (!currentUser) return;
+
+        // Если модалка открыта, но мы еще не в режиме сохранения (isSaving === false),
+        // значит пользователь просто нажал "Отправить" в модалке.
+        // Запускаем процесс создания.
+        
         setIsSaving(true);
         try {
             const newBrands = parts.filter(p => p.isNewBrand && p.brand?.trim()).map(p => p.brand.trim());
@@ -250,7 +262,6 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                     comment = `[S: ${orderInfo.emailSubject}]`;
                 }
 
-                // FIX: Если itemFiles пуст, но есть photoUrl - создаем itemFiles явно
                 let finalItemFiles = p.itemFiles;
                 if ((!finalItemFiles || finalItemFiles.length === 0) && p.photoUrl) {
                      finalItemFiles = [{ name: 'Фото', url: p.photoUrl, type: 'image/jpeg' }];
@@ -282,10 +293,10 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 orderInfo.clientEmail,
                 orderInfo.city,
                 orderFiles,
-                linkedEmailId // Передаем ID письма
+                linkedEmailId,
+                assignedBuyerIds // Передаем список закупщиков
             );
 
-            // Если был привязан email, архивируем его
             if (linkedEmailId) {
                 try {
                     await SupabaseService.archiveEmail(linkedEmailId);
@@ -296,7 +307,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
             }
 
             setToast({ message: `Заказ №${orderId} создан успешно`, type: 'success' });
-            onLog(`Заказ №${orderId} создан.`);
+            onLog(`Заказ №${orderId} создан (назначено: ${assignedBuyerIds ? assignedBuyerIds.length : 'все'}).`);
             onOrderCreated();
             
             // Reset form
@@ -306,6 +317,7 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 deadline: '', region: '', city: '', email: '', clientEmail: '', emailSubject: '', clientName: '', clientPhone: ''
             });
             setLinkedEmailId(null);
+            setIsBuyerModalOpen(false);
 
         } catch (e: any) {
             console.error(e);
@@ -411,6 +423,13 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
             />
             
             <SystemStatusHorizontal displayStats={displayStats} />
+
+            <BuyerSelectionModal 
+                isOpen={isBuyerModalOpen}
+                onClose={() => setIsBuyerModalOpen(false)}
+                onConfirm={confirmCreateOrder}
+                isSaving={isSaving}
+            />
         </div>
     );
 };

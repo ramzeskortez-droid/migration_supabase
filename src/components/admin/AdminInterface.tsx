@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { GlobalChatWindow } from '../shared/GlobalChatWindow';
 import { useHeaderStore } from '../../store/headerStore';
 import { useNavigate } from 'react-router-dom';
+import { playNotificationSound } from '../../utils/sound';
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -182,6 +183,7 @@ export const AdminInterface: React.FC = () => {
           const msg = payload.new;
           if (msg.sender_role === 'SUPPLIER' || (msg.sender_role === 'OPERATOR' && ['ADMIN', 'MANAGER', 'Менеджер', 'Manager'].includes(msg.recipient_name))) {
               setUnreadChatCount(prev => prev + 1);
+              setTimeout(() => playNotificationSound(0.75), 0);
           }
       }, 'admin-global-notifications');
 

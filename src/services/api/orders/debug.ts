@@ -59,13 +59,5 @@ export const seedOrders = async (count: number, brands: string[], ownerId: strin
 
 export const deleteAllOrders = async (): Promise<void> => {
     const { error } = await supabase.rpc('reset_db');
-    if (error) {
-        await supabase.from('monthly_buyer_stats').delete().neq('kp_count', -1);
-        await supabase.from('chat_messages').delete().neq('id', 0);
-        await supabase.from('buyer_order_labels').delete().neq('id', 0);
-        await supabase.from('offer_items').delete().neq('id', 0);
-        await supabase.from('order_items').delete().neq('id', 0);
-        await supabase.from('offers').delete().neq('id', 0);
-        await supabase.from('orders').delete().neq('id', 0);
-    }
+    if (error) throw error;
 };

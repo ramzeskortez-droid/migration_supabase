@@ -137,9 +137,10 @@ export const OrderInfoForm: React.FC<OrderInfoFormProps> = ({ orderInfo, setOrde
             className={baseInputClass}
             value={orderInfo.deadline}
             onChange={(e) => handleChange('deadline', e.target.value)}
-          />
-        </div>
-      </div>
-    </section>
-  );
-};
+                    />
+                  </div>
+                </div>
+              </section>
+            );
+          };
+          
