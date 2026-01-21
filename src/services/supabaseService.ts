@@ -42,6 +42,7 @@ export class SupabaseService {
   static getActiveInvites = registrationApi.getActiveInvites;
   static registerUser = registrationApi.registerUser;
   static getAppUsers = usersApi.getAppUsers;
+  static getBuyersList = usersApi.getBuyersList;
   static updateUserStatus = usersApi.updateUserStatus;
 
   // --- FINANCE ---

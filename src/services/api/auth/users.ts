@@ -27,7 +27,28 @@ export const updateUserStatus = async (userId: string, status: 'approved' | 'rej
         if (count === 0) throw new Error('Пользователь не найден или нет прав на удаление');
     } else {
         const { data, error } = await supabase.from('app_users').update({ status }).eq('id', userId).select();
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error('Пользователь не найден или нет прав на обновление (RLS)');
-    }
-};
+            if (error) throw error;
+            if (!data || data.length === 0) throw new Error('Пользователь не найден или нет прав на обновление (RLS)');
+            }
+        };
+        
+        export const getBuyersList = async (): Promise<AppUser[]> => {
+            const { data, error } = await supabase
+                .from('app_users')
+                .select('*')
+                .eq('role', 'buyer')
+                .eq('status', 'approved')
+                .order('name', { ascending: true });
+            
+            if (error) throw error;
+            return data.map((u: any) => ({
+                id: u.id,
+                name: u.name,
+                token: u.token,
+                role: u.role,
+                phone: u.phone,
+                status: u.status,
+                createdAt: u.created_at
+            }));
+        };
+        

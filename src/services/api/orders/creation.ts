@@ -1,13 +1,14 @@
 import { supabase } from '../../../lib/supabaseClient';
 
-export const createOrder = async (items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string, clientEmail?: string, location?: string, orderFiles?: any[], emailMessageId?: string | null): Promise<string> => {
+export const createOrder = async (items: any[], clientName: string, clientPhone?: string, ownerId?: string, deadline?: string, clientEmail?: string, location?: string, orderFiles?: any[], emailMessageId?: string | null, assignedBuyerIds?: string[] | null): Promise<string> => {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         client_name: clientName, client_phone: clientPhone, client_email: clientEmail,
         location: location || 'РФ', owner_id: ownerId, deadline: deadline || null,
         order_files: orderFiles || [],
-        email_message_id: emailMessageId || null
+        email_message_id: emailMessageId || null,
+        assigned_buyer_ids: assignedBuyerIds || null
       })
       .select().single();
 

@@ -49,9 +49,19 @@ export const getOrders = async (
         is_manual_processing,
         refusal_reason,
         order_files,
+        assigned_buyer_ids,
         order_items (id, name, comment, quantity, brand, article, uom, photo_url, admin_price, item_files),
         offers${operatorTab === 'trading' ? '!inner' : ''} (id, status, supplier_name, supplier_files, locked_at, created_by, offer_items (is_winner, quantity, name, price, currency, admin_price, delivery_days, photo_url, item_files, order_item_id, supplier_sku, admin_comment, comment, client_delivery_weeks, weight))
     `);
+
+    // --- Buyer Visibility Filter ---
+    // Если запрос от закупщика, фильтруем по assigned_buyer_ids (или NULL, или содержит ID закупщика)
+    if (buyerToken) {
+        const { data: u } = await supabase.from('app_users').select('id').eq('token', buyerToken).maybeSingle();
+        if (u) {
+            query = query.or(`assigned_buyer_ids.is.null,assigned_buyer_ids.cs.{${u.id}}`);
+        }
+    }
 
     if (buyerTab === 'new') {
         query = query.eq('status_manager', 'В обработке');
