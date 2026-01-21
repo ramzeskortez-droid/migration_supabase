@@ -64,6 +64,7 @@ export class SupabaseService {
   static checkBrandExists = brandsReadApi.checkBrandExists;
   static getBrandsList = brandsReadApi.getBrandsList;
   static getBrandsFull = brandsReadApi.getBrandsFull;
+  static getBrandsForExport = brandsReadApi.getBrandsForExport;
   static getOfficialBrands = brandsReadApi.getOfficialBrands;
   static getSupplierUsedBrands = brandsReadApi.getSupplierUsedBrands;
   static addBrand = brandsWriteApi.addBrand;

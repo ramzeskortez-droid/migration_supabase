@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -12,8 +13,10 @@ interface ToastProps {
 
 export const Toast: React.FC<ToastProps> = ({ message, type = 'success', duration = 1000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(onClose, 300); // Wait for exit animation
@@ -31,8 +34,10 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'success', duratio
   const style = styles[type];
   const isDark = type === 'success';
 
-  return (
-    <div className={`fixed top-6 right-6 z-[250] ${style.bg} ${isDark ? 'text-white border-slate-700' : 'text-slate-800 border-slate-200'} border px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}>
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className={`fixed top-6 right-6 z-[9999] ${style.bg} ${isDark ? 'text-white border-slate-700' : 'text-slate-800 border-slate-200'} border px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}>
       {style.icon}
       <div>
         <p className={`text-[10px] font-black uppercase ${style.titleColor}`}>{style.title}</p>
@@ -41,6 +46,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'success', duratio
       <button onClick={() => setIsVisible(false)} className={`ml-4 p-1 rounded-full hover:bg-white/10 ${isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
         <X size={14}/>
       </button>
-    </div>
+    </div>,
+    document.body
   );
 };

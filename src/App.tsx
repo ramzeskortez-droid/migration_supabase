@@ -8,8 +8,23 @@ import { DebugInterface } from './components/debug/DebugInterface';
 import { StartPage } from './components/start_page/StartPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { MainLayout } from './components/layout/MainLayout';
+import { initAudioContext } from './utils/sound';
 
 const App: React.FC = () => {
+  React.useEffect(() => {
+      const unlockAudio = () => {
+          initAudioContext();
+          window.removeEventListener('click', unlockAudio);
+          window.removeEventListener('keydown', unlockAudio);
+      };
+      window.addEventListener('click', unlockAudio);
+      window.addEventListener('keydown', unlockAudio);
+      return () => {
+          window.removeEventListener('click', unlockAudio);
+          window.removeEventListener('keydown', unlockAudio);
+      };
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<StartPage />} />

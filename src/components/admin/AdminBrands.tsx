@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { SupabaseService } from '../../services/supabaseService';
 import { Brand } from '../../types';
-import { Trash2, Edit2, Plus, Check, X, Loader2, Search, User, Tag, AlertCircle, ArrowUp, ArrowDown, ShieldCheck } from 'lucide-react';
+import { Trash2, Edit2, Plus, Check, X, Loader2, Search, User, Tag, AlertCircle, ArrowUp, ArrowDown, ShieldCheck, Download } from 'lucide-react';
 import { Pagination } from '../Pagination';
 import { Toast } from '../shared/Toast';
+import { ExportBrandsModal } from './ExportBrandsModal';
 
 // Функция для поиска похожих строк
 function findSimilar(input: string, allBrands: Brand[]): string[] {
@@ -39,6 +40,7 @@ export const AdminBrands: React.FC = () => {
     const [editName, setEditName] = useState('');
     const [editOfficial, setEditOfficial] = useState(false); // New state for edit
     
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [toast, setToast] = useState<{message: string, type?: 'success' | 'error' | 'info'} | null>(null);
 
     const loadBrands = useCallback(async (isSearchAction = false) => {
@@ -190,6 +192,14 @@ export const AdminBrands: React.FC = () => {
 
                 <div className="flex w-full md:w-auto gap-2">
                     <button 
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="p-2 bg-white text-slate-500 rounded-xl border border-slate-200 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shadow-sm"
+                        title="Экспорт в Excel"
+                    >
+                        <Download size={18} />
+                    </button>
+
+                    <button 
                         onClick={() => setIsAddingMode(!isAddingMode)}
                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 transition-all ${isAddingMode ? 'bg-slate-200 text-slate-600' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'}`}
                     >
@@ -198,6 +208,8 @@ export const AdminBrands: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <ExportBrandsModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
 
             {/* Action Bar: Search or Add Form */}
             <div className={`p-3 border-b transition-colors shrink-0 ${isAddingMode ? 'bg-indigo-50/50 border-indigo-100' : 'bg-slate-50 border-slate-100'}`}>
