@@ -177,27 +177,75 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                         </button>
                     </div>
                     {/* ... Tabs ... */}
-                     <div className="flex bg-slate-100 p-1 rounded-lg">
-                        <button onClick={() => setActiveTab('active')} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Активные {unreadCounts.active > 0 && `(${unreadCounts.active})`}</button>
-                        <button onClick={() => setActiveTab('archive')} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Архив {unreadCounts.archive > 0 && `(${unreadCounts.archive})`}</button>
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button 
+                            onClick={() => setActiveTab('active')}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <span>Активные</span>
+                            {unreadCounts.active > 0 && (
+                                <span className="bg-indigo-600 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
+                                    {unreadCounts.active}
+                                </span>
+                            )}
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('archive')}
+                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <span>Архив</span>
+                            {unreadCounts.archive > 0 && (
+                                <span className="bg-red-500 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
+                                    {unreadCounts.archive}
+                                </span>
+                            )}
+                        </button>
                     </div>
                 </div>
                 
                 <div className="flex-grow overflow-y-auto p-2 space-y-2">
                     {Object.entries(threads).map(([orderId, interlocutors]) => {
+                        const totalUnread = Object.values(interlocutors).reduce((acc: number, val: any) => acc + (val.unread || 0), 0);
                         const isExpanded = selectedOrder === orderId;
+                        
                         return (
                             <div key={orderId} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm group/order">
-                                <div className={`p-3 flex justify-between items-center cursor-pointer ${isExpanded ? 'bg-slate-100' : 'hover:bg-slate-50'}`} onClick={() => setSelectedOrder(isExpanded ? null : orderId)}>
-                                    <div className="flex items-center gap-2"><Hash size={14} className="text-slate-400"/><span className="font-black text-xs text-slate-700">Заказ #{orderId}</span></div>
+                                <div 
+                                    className={`p-3 flex justify-between items-center cursor-pointer transition-colors ${isExpanded ? 'bg-slate-100' : 'hover:bg-slate-50'}`} 
+                                    onClick={() => setSelectedOrder(isExpanded ? null : orderId)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Hash size={14} className="text-slate-400"/>
+                                        <span className="font-black text-xs text-slate-700">Заказ #{orderId}</span>
+                                        {totalUnread > 0 && (
+                                            <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
+                                                +{totalUnread}
+                                            </span>
+                                        )}
+                                    </div>
                                     <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90' : ''}`}/>
                                 </div>
                                 {isExpanded && (
                                     <div className="border-t border-slate-100 bg-slate-50 p-1 space-y-1">
                                         {Object.entries(interlocutors).map(([iid, info]: [string, any]) => (
-                                            <div key={iid} onClick={() => { setSelectedInterlocutorId(iid); handleRead(orderId, iid); }} className={`p-2 rounded-lg cursor-pointer flex justify-between items-center ${selectedInterlocutorId === iid ? 'bg-indigo-600 text-white' : 'hover:bg-white text-slate-600'}`}>
-                                                <div className="flex flex-col"><span className="font-bold text-[10px] uppercase">{info.displayName}</span><span className={`text-[9px] truncate ${selectedInterlocutorId === iid ? 'text-indigo-200' : 'text-slate-400'}`}>{info.lastMessage}</span></div>
-                                                {info.unread > 0 && <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">+{info.unread}</span>}
+                                            <div 
+                                                key={iid} 
+                                                onClick={() => { setSelectedInterlocutorId(iid); handleRead(orderId, iid); }} 
+                                                className={`p-2 rounded-lg cursor-pointer flex justify-between items-center ${selectedInterlocutorId === iid ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
+                                            >
+                                                <div className="flex flex-col overflow-hidden">
+                                                    <span className="font-bold text-[10px] uppercase truncate">
+                                                        {info.displayName}
+                                                    </span>
+                                                    <span className={`text-[9px] truncate ${selectedInterlocutorId === iid ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                                        {info.lastMessage}
+                                                    </span>
+                                                </div>
+                                                {info.unread > 0 && (
+                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedInterlocutorId === iid ? 'bg-white text-indigo-600' : 'bg-red-500 text-white'}`}>
+                                                        +{info.unread}
+                                                    </span>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
