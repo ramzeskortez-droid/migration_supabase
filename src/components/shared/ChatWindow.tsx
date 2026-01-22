@@ -9,16 +9,15 @@ interface ChatWindowProps {
   orderId: string;
   offerId?: string | null;
   supplierName: string;
-  supplierId?: string; // UUID собеседника (Закупщика)
+  supplierId?: string; // Interlocutor ID
   currentUserRole: 'ADMIN' | 'SUPPLIER' | 'OPERATOR';
   currentUserName?: string;
-  currentUserId?: string; // UUID текущего пользователя
+  currentUserId?: string; // UUID текущего пользователя (Required now)
   itemName?: string;
   onNavigateToOrder?: (orderId: string) => void;
   onRead?: (orderId: string, supplierName: string) => void;
   isArchived?: boolean;
   onArchiveUpdate?: () => void;
-  threadRole?: 'OPERATOR' | 'MANAGER' | 'ADMIN'; 
 }
 
 const ChatImage = ({ src }: { src: string }) => {
@@ -42,7 +41,7 @@ const ChatImage = ({ src }: { src: string }) => {
     );
 };
 
-const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { messages: any[], currentUserRole: string, messagesEndRef: React.RefObject<HTMLDivElement | null> }) => {
+const MessagesList = memo(({ messages, currentUserId, messagesEndRef }: { messages: any[], currentUserId?: string, messagesEndRef: React.RefObject<HTMLDivElement | null> }) => {
     return (
         <div className="flex-grow p-4 overflow-y-auto space-y-4">
             {messages.length === 0 && (
@@ -50,29 +49,23 @@ const MessagesList = memo(({ messages, currentUserRole, messagesEndRef }: { mess
             )}
 
             {messages.map((msg) => {
-                // Определение "Я" или "Собеседник" для позиционирования
-                let isMe = false;
-                if (currentUserRole === 'SUPPLIER') isMe = msg.sender_role === 'SUPPLIER';
-                else if (currentUserRole === 'OPERATOR') isMe = msg.sender_role === 'OPERATOR' || (msg.sender_role === 'ADMIN' && msg.sender_name.includes('Оператор')); // Fallback для старых
-                else if (currentUserRole === 'ADMIN') isMe = msg.sender_role === 'ADMIN' || msg.sender_role === 'MANAGER';
+                const isMe = msg.sender_id === currentUserId;
 
                 // Определение цвета и имени на основе роли
                 let bubbleClass = 'bg-white text-slate-700 border border-slate-200';
                 let displayName = msg.sender_name;
 
-                if (msg.sender_role === 'SUPPLIER') {
-                    // Закупщик - Желтый
+                // Simple coloring based on sender_role stored in DB
+                const role = msg.sender_role?.toUpperCase();
+
+                if (role === 'SUPPLIER') {
                     bubbleClass = 'bg-amber-100 text-slate-800 border-amber-200';
-                } else if (msg.sender_role === 'OPERATOR') {
-                    // Оператор - Синий
+                } else if (role === 'OPERATOR') {
                     bubbleClass = 'bg-indigo-600 text-white border-indigo-600';
-                } else if (msg.sender_role === 'ADMIN' || msg.sender_role === 'MANAGER') {
-                    // Менеджер - Зеленый
+                } else if (role === 'ADMIN' || role === 'MANAGER') {
                     bubbleClass = 'bg-emerald-600 text-white border-emerald-600';
-                    if (msg.sender_name === 'ADMIN') displayName = 'Менеджер';
                 }
 
-                // Коррекция углов для "пузырька"
                 const roundedClass = isMe ? 'rounded-tr-none' : 'rounded-tl-none';
 
                 return (
@@ -219,7 +212,7 @@ const ChatInput = memo(({ onSend, loading, orderItems, itemName }: { onSend: (ms
 // -- Main Component --
 
 const ChatWindowComponent: React.FC<ChatWindowProps> = ({
-  orderId, offerId, supplierName, supplierId, currentUserRole, currentUserName, currentUserId, itemName, onNavigateToOrder, onRead, isArchived, onArchiveUpdate, threadRole
+  orderId, offerId, supplierName, supplierId, currentUserRole, currentUserName, currentUserId, itemName, onNavigateToOrder, onRead, isArchived, onArchiveUpdate
 }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -229,6 +222,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Load order items for tagging
   useEffect(() => {
       const loadItems = async () => {
           if (!orderId) return;
@@ -240,121 +234,70 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
       loadItems();
   }, [orderId]);
 
+  // Main Fetch Logic
   const fetchMessages = async () => {
-      if (!orderId || !supplierName) return;
+      if (!orderId || !currentUserId || !supplierId) return;
       try {
-          // Pass threadRole to filter messages
-          // If SUPPLIER, use own ID to find messages. If ADMIN/OP, use interlocutor ID.
-          const targetId = currentUserRole === 'SUPPLIER' ? currentUserId : supplierId;
-          // Fix for messages without ID: Search by MY name if Supplier, else by Interlocutor name
-          const nameToSearch = currentUserRole === 'SUPPLIER' ? currentUserName : supplierName;
-          
-          const data = await SupabaseService.getChatMessages(orderId, offerId || undefined, nameToSearch, targetId, threadRole, currentUserRole);
+          // Strict P2P Fetch
+          const data = await SupabaseService.getChatMessages(orderId, currentUserId, supplierId, offerId || undefined);
           setMessages(data);
       } catch (e) {
           console.error(e);
       }
   };
 
-        useEffect(() => {
+  // Mark Read Logic
+  useEffect(() => {
+        if (!messages.length || !currentUserId || !supplierId) return;
+        
+        // Find if there are unread messages from Interlocutor
+        const hasUnread = messages.some(m => !m.is_read && m.sender_id === supplierId);
 
-        if (!messages.length) return;
-
-  
-
-        // Mark Read logic
-
-        let shouldMark = false;
-
-        if (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') {
-
-            shouldMark = messages.some(m => !m.is_read && (m.sender_role === 'SUPPLIER' || (m.sender_role === 'ADMIN' && m.recipient_name === 'OPERATOR')));
-
-        } else if (currentUserRole === 'SUPPLIER') {
-
-            const targetSenderRoles = threadRole === 'OPERATOR' ? ['OPERATOR'] : ['ADMIN', 'MANAGER'];
-
-            shouldMark = messages.some(m => !m.is_read && targetSenderRoles.includes(m.sender_role));
-
-        }
-
-  
-
-        if (shouldMark) {
-
-  
+        if (hasUnread) {
           const markRead = async () => {
               if (onRead) onRead(orderId, supplierName);
-              // Pass role to service
-              const myRoleGroup = (currentUserRole === 'ADMIN' || currentUserRole === 'OPERATOR') ? 'ADMIN' : 'SUPPLIER';
-              await SupabaseService.markChatAsRead(orderId, supplierName, myRoleGroup, supplierId, currentUserId);
+              await SupabaseService.markChatAsRead(orderId, currentUserId, supplierId);
               
-              setMessages(prev => prev.map(m => (!m.is_read) ? { ...m, is_read: true } : m));
+              setMessages(prev => prev.map(m => (!m.is_read && m.sender_id === supplierId) ? { ...m, is_read: true } : m));
           };
           markRead();
       }
-  }, [messages, currentUserRole, orderId, supplierName, onRead]);
+  }, [messages, currentUserId, supplierId, orderId, supplierName, onRead]);
 
+  // Realtime Logic
   useEffect(() => {
       fetchMessages();
       const channel = SupabaseService.subscribeToChatMessages(orderId, (newMsg) => {
+          if (!currentUserId || !supplierId) return;
+          
           let isRelevant = false;
-
-          // 1. Check by UUID (Most reliable)
-          if (supplierId) {
-              isRelevant = newMsg.sender_id === supplierId || newMsg.recipient_id === supplierId;
-          }
-
-          // 2. Check by Role (For system chats: Operator <-> Manager)
-          if (!isRelevant) {
-              const isMsgFromManager = ['ADMIN', 'MANAGER'].includes(newMsg.sender_role);
-              const isMsgToManager = ['ADMIN', 'MANAGER', 'Менеджер', 'Manager'].includes(newMsg.recipient_name);
-              const isMsgFromOperator = newMsg.sender_role === 'OPERATOR';
-              const isMsgToOperator = ['OPERATOR', 'Оператор'].includes(newMsg.recipient_name);
-
-              if (threadRole === 'OPERATOR') {
-                  // Admin/Supplier <-> Operator
-                  // If I am Admin, I want to see (Admin -> Operator) or (Operator -> Admin)
-                  if (currentUserRole === 'ADMIN') {
-                      isRelevant = (isMsgFromManager && isMsgToOperator) || (isMsgFromOperator && isMsgToManager);
-                  } else {
-                      // Supplier <-> Operator
-                      isRelevant = newMsg.sender_role === 'OPERATOR' || isMsgToOperator;
-                  }
-              } else if (threadRole === 'MANAGER') {
-                  // Operator/Supplier <-> Manager
-                  if (currentUserRole === 'OPERATOR') {
-                      isRelevant = (isMsgFromOperator && isMsgToManager) || (isMsgFromManager && isMsgToOperator);
-                  } else {
-                      // Supplier <-> Manager
-                      isRelevant = isMsgFromManager || isMsgToManager;
-                  }
-              } else {
-                  // Fallback to Name (Legacy/Simple)
-                  isRelevant = newMsg.sender_name === supplierName || newMsg.recipient_name === supplierName;
-              }
-          }
+          // Check strict P2P match
+          const isFromInterlocutor = newMsg.sender_id === supplierId && newMsg.recipient_id === currentUserId;
+          const isFromMe = newMsg.sender_id === currentUserId && newMsg.recipient_id === supplierId;
+          
+          if (isFromInterlocutor || isFromMe) isRelevant = true;
           
           if (isRelevant) {
               setMessages(prev => {
                   if (prev.find(m => m.id === newMsg.id)) return prev;
                   // Remove optimistic message if real one arrived
-                  const optimisticMatch = prev.find(m => m.message === newMsg.message && m.sender_name === newMsg.sender_name && typeof m.id === 'number' && m.id > 1000000000000);
+                  const optimisticMatch = prev.find(m => m.message === newMsg.message && m.sender_id === newMsg.sender_id && typeof m.id === 'number' && m.id > 1000000000000);
                   if (optimisticMatch) return prev.map(m => m.id === optimisticMatch.id ? newMsg : m);
                   return [...prev, newMsg];
               });
           }
       });
       return () => { SupabaseService.unsubscribeFromChat(channel); };
-  }, [orderId, supplierName, supplierId, threadRole]);
+  }, [orderId, supplierId, currentUserId]);
 
   useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleDelete = async () => {
+      if (!currentUserId || !supplierId) return;
       try {
-          await SupabaseService.deleteChatHistory(orderId, supplierName, supplierId);
+          await SupabaseService.deleteChatHistory(orderId, currentUserId, supplierId);
           if (onArchiveUpdate) onArchiveUpdate();
           setToast({ message: 'Чат удален' });
           setMessages([]);
@@ -362,41 +305,21 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
   };
 
   const handleSend = useCallback(async (msgText: string, selectedItemNames?: string[], file?: File) => {
-      const tempId = Date.now();
-      let senderName = 'Менеджер';
-      let dbRole: 'MANAGER' | 'OPERATOR' | 'SUPPLIER' | 'ADMIN' = 'MANAGER';
-      let recipientName = supplierName;
-      let senderId = currentUserId;
-      let recipientId = supplierId; // ID собеседника (если я Админ - то ID закупщика, если я Закупщик - то NULL/АдминID)
-
-      if (currentUserRole === 'OPERATOR') {
-          senderName = currentUserName ? `${currentUserName}` : 'Оператор';
-          dbRole = 'OPERATOR';
-          recipientName = supplierName;
-          recipientId = supplierId;
-      } else if (currentUserRole === 'ADMIN') {
-          senderName = 'Менеджер';
-          dbRole = 'MANAGER'; // or ADMIN
-          recipientName = supplierName;
-          recipientId = supplierId;
-      } else {
-          // I AM SUPPLIER
-          senderName = currentUserName || 'Закупщик';
-          dbRole = 'SUPPLIER';
-          
-          if (threadRole === 'OPERATOR') {
-              recipientName = 'OPERATOR';
-          } else {
-              recipientName = 'ADMIN';
-          }
+      if (!currentUserId || !supplierId) {
+          setToast({ message: 'Ошибка: Пользователь не определен' });
+          return;
       }
 
+      const tempId = Date.now();
+      
       const optimisticMsg = {
           id: tempId,
           order_id: Number(orderId),
-          sender_role: dbRole,
-          sender_name: senderName,
-          recipient_name: recipientName,
+          sender_role: currentUserRole,
+          sender_name: currentUserName || 'Я',
+          recipient_name: supplierName,
+          sender_id: currentUserId,
+          recipient_id: supplierId,
           message: msgText,
           item_name: selectedItemNames?.join(', '), 
           file_url: file ? URL.createObjectURL(file) : undefined,
@@ -419,11 +342,11 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           const realMsg = await SupabaseService.sendChatMessage({
               order_id: orderId,
               offer_id: offerId || null,
-              sender_role: dbRole,
-              sender_name: senderName,
-              recipient_name: recipientName,
-              sender_id: senderId,
-              recipient_id: recipientId,
+              sender_role: currentUserRole,
+              sender_name: currentUserName,
+              recipient_name: supplierName,
+              sender_id: currentUserId,
+              recipient_id: supplierId,
               message: msgText,
               item_name: selectedItemNames?.join(', '),
               file_url: fileUrl || undefined,
@@ -442,7 +365,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
           console.error('Send error:', e);
           setMessages(prev => prev.filter(m => m.id !== tempId));
       }
-  }, [orderId, offerId, supplierName, currentUserRole, currentUserName, isArchived, onArchiveUpdate, supplierId, currentUserId]);
+  }, [orderId, offerId, supplierName, supplierId, currentUserRole, currentUserName, currentUserId, isArchived, onArchiveUpdate]);
 
     return (
       <div className="flex flex-col h-full overflow-hidden bg-slate-50 relative">
@@ -484,7 +407,7 @@ const ChatWindowComponent: React.FC<ChatWindowProps> = ({
 
         <MessagesList 
             messages={messages} 
-            currentUserRole={currentUserRole} 
+            currentUserId={currentUserId}
             messagesEndRef={messagesEndRef} 
         />
 

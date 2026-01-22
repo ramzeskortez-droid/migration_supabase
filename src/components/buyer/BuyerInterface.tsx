@@ -196,9 +196,9 @@ export const BuyerInterface: React.FC = () => {
   }, [buyerAuth]);
 
   const fetchUnreadCount = useCallback(async () => {
-      if (!buyerAuth?.name) return;
+      if (!buyerAuth?.id) return;
       try {
-          const { count } = await SupabaseService.getUnreadChatCountForSupplier(buyerAuth.name);
+          const count = await SupabaseService.getUserUnreadCount(buyerAuth.id);
           setUnreadChatCount(count);
       } catch (e) {}
   }, [buyerAuth]);

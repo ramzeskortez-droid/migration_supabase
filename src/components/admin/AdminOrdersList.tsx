@@ -339,7 +339,7 @@ const AdminOrderRow = memo(({
                                     )}</>
                                 )}
                                 <button 
-                                    onClick={() => onOpenChat(order.id, 'Оператор')}
+                                    onClick={() => onOpenChat(order.id, 'Оператор', order.ownerId)}
                                     className="px-4 py-3 rounded-xl border border-indigo-100 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase flex items-center gap-2 hover:bg-indigo-100 transition-colors"
                                 >
                                     <MessageCircle size={14}/> Чат с оператором

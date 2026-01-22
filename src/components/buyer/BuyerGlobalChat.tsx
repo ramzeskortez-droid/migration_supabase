@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, MessageCircle, ChevronRight, User, Hash, Package, Archive, Search } from 'lucide-react';
 import { ChatWindow } from '../shared/ChatWindow';
 import { SupabaseService } from '../../services/supabaseService';
+import { supabase } from '../../lib/supabaseClient';
 
 interface BuyerGlobalChatProps {
   isOpen: boolean;
@@ -31,15 +32,13 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
   // ... (useEffect for initialOrderId)
 
   const fetchThreads = async () => {
+      if (!currentSupplierId) return;
       setLoading(true);
       try {
-          const filter = currentUserRole === 'SUPPLIER' ? currentSupplierName : undefined;
-          const filterId = currentUserRole === 'SUPPLIER' ? currentSupplierId : undefined;
-          
-          // Загружаем данные для обоих табов параллельно
+          // Загружаем данные для обоих табов параллельно (P2P: передаем только ID)
           const [activeData, archiveData] = await Promise.all([
-              SupabaseService.getGlobalChatThreads(filter, false, currentUserRole, filterId),
-              SupabaseService.getGlobalChatThreads(filter, true, currentUserRole, filterId)
+              SupabaseService.getGlobalChatThreads(currentSupplierId, false),
+              SupabaseService.getGlobalChatThreads(currentSupplierId, true)
           ]);
 
           setThreads(activeTab === 'active' ? activeData : archiveData);
@@ -55,19 +54,52 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
               archive: countUnread(archiveData)
           });
           
-          // Auto-select logic
+          // Auto-select logic with P2P Resolution
           if (initialOrderId) {
               setSelectedOrder(initialOrderId);
-              if (currentUserRole === 'SUPPLIER') {
-                  console.log('Selecting thread for Buyer:', { initialTargetRole, currentSupplierName });
+              
+              if (currentUserRole === 'SUPPLIER' && initialTargetRole) {
+                  let targetId: string | null = null;
+                  let targetName = 'Собеседник';
+                  let targetRole = initialTargetRole;
+
+                  // 1. Try to find existing thread first (if we chatted before)
+                  // We don't know the ID yet, so we have to resolve it to check.
+                  
                   if (initialTargetRole === 'OPERATOR') {
-                      setSelectedSupplier('Оператор');
+                      try {
+                          const order = await SupabaseService.getOrderDetails(initialOrderId);
+                          targetId = order.ownerId || null;
+                          targetName = 'Оператор';
+                      } catch (e) { console.error('Error fetching order owner', e); }
                   } else if (initialTargetRole === 'MANAGER') {
-                      setSelectedSupplier('Менеджер');
-                  } else if (currentSupplierName) {
-                      // Fallback logic
-                      setSelectedSupplier(currentSupplierName);
+                      // Find ANY admin. Ideally, we should have a "Support" queue, but for now pick one.
+                      const { data } = await supabase.from('app_users').select('id, name').in('role', ['admin', 'manager']).limit(1).maybeSingle();
+                      targetId = data?.id || null;
+                      targetName = data?.name || 'Менеджер';
                   }
+
+                  if (targetId) {
+                      // Check if thread exists in activeData
+                      if (!activeData[initialOrderId]) activeData[initialOrderId] = {};
+                      
+                      if (!activeData[initialOrderId][targetId]) {
+                          // Create Virtual Thread
+                          activeData[initialOrderId][targetId] = {
+                              unread: 0,
+                              lastMessage: 'Начать диалог',
+                              supplierId: targetId,
+                              displayName: targetName,
+                              role: targetRole,
+                              virtual: true
+                          };
+                      }
+                      
+                      setSelectedSupplier(targetId);
+                  }
+              } else if (currentSupplierName) {
+                  // Fallback for non-supplier roles or linking
+                   // (Logic mostly handled by GlobalChatWindow for them, this component is specific for Buyer)
               }
           }
       } catch (e) {
@@ -205,7 +237,9 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
 
                                 {isExpanded && (
                                     <div className="border-t border-slate-100 bg-slate-50 p-1 space-y-1">
-                                        {Object.entries(suppliers).map(([supplier, info]: [string, any]) => (
+                                        {Object.entries(suppliers).map(([supplier, info]: [string, any]) => {
+                                            const role = info.role || 'UNKNOWN';
+                                            return (
                                             <div 
                                                 key={supplier}
                                                 onClick={() => {
@@ -219,8 +253,8 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                                                         <span className="flex items-center gap-1">
                                                             <User size={10}/> 
                                                             {currentUserRole === 'SUPPLIER' 
-                                                                ? (supplier === 'Оператор' ? 'Чат с Оператором' : 'Чат с Менеджером') 
-                                                                : supplier}
+                                                                ? (role === 'OPERATOR' ? 'Чат с Оператором' : 'Чат с Менеджером') 
+                                                                : (info.displayName || supplier)}
                                                         </span>
                                                         <div className="flex items-center gap-1">
                                                             {info.unread > 0 && (
@@ -235,7 +269,7 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                                                     </span>
                                                 </div>
                                             </div>
-                                        ))}
+                                        );})}
                                     </div>
                                 )}
                             </div>
@@ -251,28 +285,27 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                 {selectedOrder && selectedSupplier ? (
                     <div className="flex flex-col h-full">
                         {(() => {
-                            const isOperatorChat = selectedSupplier === 'Оператор';
-                            const threadRole = isOperatorChat ? 'OPERATOR' : 'MANAGER';
+                            const threadInfo = threads[selectedOrder]?.[selectedSupplier];
+                            const threadRole = threadInfo?.role || (initialTargetRole === 'OPERATOR' ? 'OPERATOR' : 'MANAGER');
+                            const displayName = threadInfo?.displayName || (threadRole === 'OPERATOR' ? 'Оператор' : 'Менеджер');
+                            
                             return (
                                 <>
                                     <div className="p-4 border-b border-slate-100 bg-white">
                                         <h3 className="font-black text-lg text-slate-800 uppercase">Заказ #{selectedOrder}</h3>
                                         <p className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                                             <User size={12}/> 
-                                            {currentUserRole === 'SUPPLIER' 
-                                                ? (isOperatorChat ? 'Оператор' : 'Менеджер') 
-                                                : selectedSupplier}
+                                            {displayName}
                                         </p>
                                     </div>
                                     <div className="flex-grow overflow-hidden">
                                         <ChatWindow 
                                             orderId={selectedOrder}
-                                            supplierName={selectedSupplier}
-                                            supplierId={threads[selectedOrder]?.[selectedSupplier]?.supplierId} 
+                                            supplierName={displayName}
+                                            supplierId={selectedSupplier} // This is UUID now
                                             currentUserRole={currentUserRole}
                                             currentUserName={currentSupplierName} 
                                             currentUserId={currentSupplierId} 
-                                            threadRole={threadRole} // Pass role
                                             onNavigateToOrder={handleNavigate}
                                             onRead={handleRead}
                                         />

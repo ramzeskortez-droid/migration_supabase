@@ -102,7 +102,7 @@ export const OperatorInterface: React.FC = () => {
 
       const fetchUnread = async () => {
           try {
-              const count = await SupabaseService.getOperatorUnreadCount();
+              const count = await SupabaseService.getUserUnreadCount(currentUser.id);
               setUnreadChatCount(count);
           } catch (e) {}
       };
@@ -112,20 +112,8 @@ export const OperatorInterface: React.FC = () => {
             const channel = SupabaseService.subscribeToUserChats((payload) => {
                 const msg = payload.new;
                 
-                // Проверяем, адресовано ли сообщение Оператору
-                const isToOperator = ['OPERATOR', 'Оператор'].includes(msg.recipient_name);
-
-                // 1. Сообщение от Поставщика
-                if (msg.sender_role === 'SUPPLIER' && isToOperator) {
-                    setUnreadChatCount(prev => prev + 1);
-                    setTimeout(() => playNotificationSound(0.75), 0);
-                    if (!isChatOpenRef.current) setChatNotifications(prev => [...prev, msg].slice(-3));
-                }
-
-                // 2. Сообщение от Менеджера
-                const isFromManager = ['ADMIN', 'MANAGER', 'Manager', 'Менеджер'].includes(msg.sender_role);
-                
-                if (isFromManager && isToOperator) {
+                // Strict P2P Check: Message addressed to ME
+                if (msg.recipient_id === currentUser.id) {
                     setUnreadChatCount(prev => prev + 1);
                     setTimeout(() => playNotificationSound(0.75), 0);
                     if (!isChatOpenRef.current) setChatNotifications(prev => [...prev, msg].slice(-3));
@@ -222,6 +210,7 @@ export const OperatorInterface: React.FC = () => {
         onClose={() => setIsGlobalChatOpen(false)}
         currentUserRole="OPERATOR"
         currentUserName={currentUser?.name}
+        currentUserId={currentUser?.id}
         onNavigateToOrder={handleNavigateToOrder}
         onMessageRead={handleMessageRead}
         initialSupplierId={undefined} // Пока не открываем конкретный чат по ID

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MessageCircle, ChevronRight, User, Hash, Archive, Search } from 'lucide-react';
+import { X, MessageCircle, ChevronRight, User, Hash, Archive, Search, Shield, ShoppingBag, Headset } from 'lucide-react';
 import { ChatWindow } from './ChatWindow';
 import { SupabaseService } from '../../services/supabaseService';
+import { supabase } from '../../lib/supabaseClient';
 
 interface GlobalChatWindowProps {
   isOpen: boolean;
@@ -10,40 +11,45 @@ interface GlobalChatWindowProps {
   onNavigateToOrder?: (orderId: string) => void;
   currentUserRole: 'ADMIN' | 'SUPPLIER' | 'OPERATOR';
   currentUserName?: string;
+  currentUserId: string;
   onMessageRead?: (count: number) => void;
   initialOrderId?: string;
-  initialSupplierFilter?: string;
-  initialSupplierId?: string; // UUID поставщика для выбора чата
+  initialSupplierId?: string; 
+  initialSupplierName?: string; // Passed name for new chats
 }
 
-export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, onMessageRead, initialOrderId, initialSupplierFilter, initialSupplierId }) => {
+export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onClose, onNavigateToOrder, currentUserRole, currentUserName, currentUserId, onMessageRead, initialOrderId, initialSupplierId, initialSupplierName }) => {
   const [threads, setThreads] = useState<Record<string, Record<string, any>>>({});
-  const [unreadCounts, setUnreadCounts] = useState({ active: 0, archive: 0 }); // NEW: Counts for tabs
+  const [unreadCounts, setUnreadCounts] = useState({ active: 0, archive: 0 }); 
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
-  const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+  const [selectedInterlocutorId, setSelectedInterlocutorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const processedIds = React.useRef(new Set<number>());
 
+  // Force selection on open
+  useEffect(() => {
+      if (isOpen && initialOrderId && initialSupplierId) {
+          setSelectedOrder(initialOrderId);
+          setSelectedInterlocutorId(initialSupplierId);
+      }
+  }, [isOpen, initialOrderId, initialSupplierId]);
+
   const fetchThreads = async () => {
+      if (!currentUserId) return;
       setLoading(true);
       try {
-          const filter = currentUserRole === 'SUPPLIER' ? currentUserName : undefined;
-          
-          // Загружаем данные для обоих табов параллельно для обновления счетчиков
           const [activeData, archiveData] = await Promise.all([
-              SupabaseService.getGlobalChatThreads(filter, false, currentUserRole),
-              SupabaseService.getGlobalChatThreads(filter, true, currentUserRole)
+              SupabaseService.getGlobalChatThreads(currentUserId, false),
+              SupabaseService.getGlobalChatThreads(currentUserId, true)
           ]);
 
-          // Устанавливаем тред для текущего таба
           setThreads(activeTab === 'active' ? activeData : archiveData);
 
-          // Считаем общее кол-во непрочитанных для каждого таба
           const countUnread = (data: Record<string, Record<string, any>>) => {
-              return Object.values(data).reduce((acc, suppliers) => 
-                  acc + Object.values(suppliers).reduce((sAcc, sInfo: any) => sAcc + sInfo.unread, 0), 0
+              return Object.values(data).reduce((acc, interlocutors) => 
+                  acc + Object.values(interlocutors).reduce((sAcc, sInfo: any) => sAcc + sInfo.unread, 0), 0
               );
           };
 
@@ -52,31 +58,45 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
               archive: countUnread(archiveData)
           });
           
-          // Handle Initial Selection (Link from Order)
-          if (initialOrderId) {
-              // 1. Create Virtual Thread if not exists (to allow starting new chat)
-              if (initialSupplierId || initialSupplierFilter) {
-                  // Use ID as key if available, else Name
-                  const threadKey = initialSupplierId || initialSupplierFilter!; 
-                  
-                  const existsActive = activeData[initialOrderId]?.[threadKey];
-                  const existsArchive = archiveData[initialOrderId]?.[threadKey];
-                  
-                  if (!existsActive && !existsArchive) {
-                      if (!activeData[initialOrderId]) activeData[initialOrderId] = {};
-                      activeData[initialOrderId][threadKey] = {
-                          unread: 0,
-                          lastMessage: 'Начать диалог',
-                          supplierId: initialSupplierId,
-                          displayName: initialSupplierFilter, // Display Name
-                          virtual: true
-                      };
-                  }
-                  
-                  // 2. Select Order & Thread
-                  setSelectedOrder(initialOrderId);
-                  setSelectedSupplier(threadKey);
-              }
+          // Virtual Thread Creation (if selected but missing)
+          if (initialOrderId && initialSupplierId) {
+             const exists = (activeData[initialOrderId]?.[initialSupplierId]) || (archiveData[initialOrderId]?.[initialSupplierId]);
+             
+             if (!exists && activeTab === 'active') {
+                 // Fetch name if not provided
+                 let displayName = initialSupplierName || 'Пользователь';
+                 let role = 'UNKNOWN';
+
+                 if (!initialSupplierName) {
+                     try {
+                         const { data: userData } = await supabase
+                            .from('app_users')
+                            .select('name, role')
+                            .eq('id', initialSupplierId)
+                            .maybeSingle();
+                         
+                         if (userData) {
+                             displayName = userData.name;
+                             role = userData.role;
+                         }
+                     } catch (e) { }
+                 }
+
+                 setThreads(prev => ({
+                     ...prev,
+                     [initialOrderId]: {
+                         ...prev[initialOrderId],
+                         [initialSupplierId]: {
+                             unread: 0,
+                             lastMessage: 'Начать диалог',
+                             supplierId: initialSupplierId,
+                             displayName: displayName,
+                             role: role,
+                             virtual: true
+                         }
+                     }
+                 }));
+             }
           }
       } catch (e) {
           console.error(e);
@@ -88,29 +108,22 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
   useEffect(() => {
       if (isOpen) {
           fetchThreads();
-          
+          // ... subscription ...
           const channel = SupabaseService.subscribeToUserChats((payload) => {
               const msg = payload.new;
               if (processedIds.current.has(msg.id)) return;
               processedIds.current.add(msg.id);
-              
-              const orderId = String(msg.order_id);
-              
-              // Перезагружаем всё при новом сообщении, чтобы сохранить точность счетчиков
-              // Это проще, чем инкрементировать сложные вложенные объекты
-              fetchThreads();
+              if (msg.sender_id === currentUserId || msg.recipient_id === currentUserId) {
+                  fetchThreads();
+              }
           }, 'global-chat-realtime');
-
-          return () => {
-              SupabaseService.unsubscribeFromChat(channel);
-          };
+          return () => { SupabaseService.unsubscribeFromChat(channel); };
       }
-  }, [isOpen, activeTab, initialOrderId, initialSupplierFilter, initialSupplierId]);
+  }, [isOpen, activeTab, currentUserId]); // Removed initial props from dep array to avoid loops
 
-
+  // ... handleNavigate, handleRead ...
   const handleNavigate = React.useCallback((oid: string) => {
       if (onNavigateToOrder) {
-          // Defer state update to avoid conflicts during render cycle
           setTimeout(() => {
               onNavigateToOrder(oid);
               onClose();
@@ -118,28 +131,31 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
       }
   }, [onNavigateToOrder, onClose]);
 
-  const handleRead = (orderId: string, supplierName: string) => {
+  const handleRead = (orderId: string, interlocutorId: string) => {
       setThreads(prev => {
           const newThreads = { ...prev };
-          if (newThreads[orderId] && newThreads[orderId][supplierName]) {
-              const currentUnread = newThreads[orderId][supplierName].unread;
-              if (currentUnread > 0 && onMessageRead) {
-                  // Фикс: оборачиваем в setTimeout для предотвращения ошибки рендера
-                  setTimeout(() => onMessageRead(currentUnread), 0);
-              }
-
-              newThreads[orderId][supplierName] = {
-                  ...newThreads[orderId][supplierName],
+          if (newThreads[orderId] && newThreads[orderId][interlocutorId]) {
+              newThreads[orderId][interlocutorId] = {
+                  ...newThreads[orderId][interlocutorId],
                   unread: 0
               };
           }
           return newThreads;
       });
-      // Обновляем счетчики табов
-      setUnreadCounts(prev => ({
-          ...prev,
-          [activeTab]: Math.max(0, prev[activeTab] - (threads[orderId]?.[supplierName]?.unread || 0))
-      }));
+      // API call logic...
+      SupabaseService.markChatAsRead(orderId, currentUserId, interlocutorId);
+  };
+
+  const getRoleIcon = (role: string) => {
+      if (role === 'admin' || role === 'manager' || role === 'MANAGER' || role === 'ADMIN') return <Shield size={10} className="text-emerald-600"/>;
+      if (role === 'operator' || role === 'OPERATOR') return <Headset size={10} className="text-indigo-600"/>;
+      return <ShoppingBag size={10} className="text-amber-600"/>;
+  };
+
+  const getRoleName = (role: string) => {
+      if (role === 'admin' || role === 'manager' || role === 'MANAGER' || role === 'ADMIN') return 'Менеджер';
+      if (role === 'operator' || role === 'OPERATOR') return 'Оператор';
+      return 'Закупщик';
   };
 
   if (!isOpen) return null;
@@ -148,8 +164,9 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[80vh] flex overflow-hidden animate-in zoom-in-95 duration-200">
             
-            {/* Sidebar: Orders List */}
+            {/* Sidebar */}
             <div className="w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col">
+                {/* ... Header and Search ... */}
                 <div className="p-4 border-b border-slate-200 bg-white">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="font-black uppercase text-slate-800 flex items-center gap-2">
@@ -159,102 +176,30 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
                             Обновить
                         </button>
                     </div>
-
-                    <div className="relative mb-3">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                        <input 
-                            type="text" 
-                            placeholder="Поиск по № заказа..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-8 pr-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 border-transparent focus:bg-white focus:border-indigo-500 rounded-md transition-all outline-none"
-                        />
-                    </div>
-
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
-                        <button 
-                            onClick={() => setActiveTab('active')}
-                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            <span>Активные</span>
-                            {unreadCounts.active > 0 && (
-                                <span className="bg-indigo-600 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
-                                    {unreadCounts.active}
-                                </span>
-                            )}
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('archive')}
-                            className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all flex items-center justify-center gap-2 ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            <span>Архив</span>
-                            {unreadCounts.archive > 0 && (
-                                <span className="bg-red-500 text-white text-[9px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-sm animate-pulse">
-                                    {unreadCounts.archive}
-                                </span>
-                            )}
-                        </button>
+                    {/* ... Tabs ... */}
+                     <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button onClick={() => setActiveTab('active')} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Активные {unreadCounts.active > 0 && `(${unreadCounts.active})`}</button>
+                        <button onClick={() => setActiveTab('archive')} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${activeTab === 'archive' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Архив {unreadCounts.archive > 0 && `(${unreadCounts.archive})`}</button>
                     </div>
                 </div>
                 
                 <div className="flex-grow overflow-y-auto p-2 space-y-2">
-                    {Object.keys(threads).length === 0 && (
-                        <div className="text-center text-slate-400 text-xs font-bold mt-10">Нет активных чатов</div>
-                    )}
-
-                    {Object.entries(threads)
-                        .filter(([orderId]) => orderId.includes(searchQuery.trim()))
-                        .map(([orderId, suppliers]) => {
-                        const totalUnread = Object.values(suppliers).reduce((acc: number, val: any) => acc + val.unread, 0);
+                    {Object.entries(threads).map(([orderId, interlocutors]) => {
                         const isExpanded = selectedOrder === orderId;
-
                         return (
                             <div key={orderId} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm group/order">
-                                <div 
-                                    className={`p-3 flex justify-between items-center cursor-pointer transition-colors ${isExpanded ? 'bg-slate-100' : 'hover:bg-slate-50'}`}
-                                    onClick={() => setSelectedOrder(isExpanded ? null : orderId)}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <Hash size={14} className="text-slate-400"/>
-                                        <span className="font-black text-xs text-slate-700">Заказ #{orderId}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {totalUnread > 0 && <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{totalUnread}</span>}
-                                        <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90' : ''}`}/>
-                                    </div>
+                                <div className={`p-3 flex justify-between items-center cursor-pointer ${isExpanded ? 'bg-slate-100' : 'hover:bg-slate-50'}`} onClick={() => setSelectedOrder(isExpanded ? null : orderId)}>
+                                    <div className="flex items-center gap-2"><Hash size={14} className="text-slate-400"/><span className="font-black text-xs text-slate-700">Заказ #{orderId}</span></div>
+                                    <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90' : ''}`}/>
                                 </div>
-
                                 {isExpanded && (
                                     <div className="border-t border-slate-100 bg-slate-50 p-1 space-y-1">
-                                        {Object.entries(suppliers).map(([supplierKey, info]: [string, any]) => {
-                                            const displayName = info.displayName || supplierKey;
-                                            return (
-                                            <div 
-                                                key={supplierKey}
-                                                onClick={() => {
-                                                    setSelectedSupplier(supplierKey);
-                                                    handleRead(orderId, supplierKey);
-                                                }}
-                                                className={`p-2 rounded-lg cursor-pointer flex justify-between items-center group/supplier ${selectedSupplier === supplierKey ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'}`}
-                                            >
-                                                <div className="flex flex-col overflow-hidden">
-                                                    <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1">
-                                                        <User size={10}/> 
-                                                        {currentUserRole === 'OPERATOR' && !['Менеджер', 'MANAGER', 'ADMIN'].includes(displayName) ? `Чат с закупщиком - ${displayName}` : displayName}
-                                                    </span>
-                                                    <span className={`text-[9px] truncate ${selectedSupplier === supplierKey ? 'text-indigo-200' : 'text-slate-400'}`}>
-                                                        {info.lastMessage}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    {info.unread > 0 && (
-                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${selectedSupplier === supplierKey ? 'bg-white text-indigo-600' : 'bg-red-100 text-red-600'}`}>
-                                                            +{info.unread}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                        {Object.entries(interlocutors).map(([iid, info]: [string, any]) => (
+                                            <div key={iid} onClick={() => { setSelectedInterlocutorId(iid); handleRead(orderId, iid); }} className={`p-2 rounded-lg cursor-pointer flex justify-between items-center ${selectedInterlocutorId === iid ? 'bg-indigo-600 text-white' : 'hover:bg-white text-slate-600'}`}>
+                                                <div className="flex flex-col"><span className="font-bold text-[10px] uppercase">{info.displayName}</span><span className={`text-[9px] truncate ${selectedInterlocutorId === iid ? 'text-indigo-200' : 'text-slate-400'}`}>{info.lastMessage}</span></div>
+                                                {info.unread > 0 && <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">+{info.unread}</span>}
                                             </div>
-                                        );})}
+                                        ))}
                                     </div>
                                 )}
                             </div>
@@ -267,48 +212,27 @@ export const GlobalChatWindow: React.FC<GlobalChatWindowProps> = ({ isOpen, onCl
             <div className="w-2/3 flex flex-col bg-white relative">
                 <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full z-10 transition-colors"><X size={20} className="text-slate-500"/></button>
                 
-                {selectedOrder && selectedSupplier ? (
+                {selectedOrder && selectedInterlocutorId ? (
                     <div className="flex flex-col h-full">
                         <div className="p-4 border-b border-slate-100 bg-white">
                             <h3 className="font-black text-lg text-slate-800 uppercase">Заказ #{selectedOrder}</h3>
                             <p className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
-                                <User size={12}/> {selectedSupplier}
+                                <User size={12}/> {threads[selectedOrder]?.[selectedInterlocutorId]?.displayName || initialSupplierName || '...'}
                             </p>
                         </div>
                         <div className="flex-grow overflow-hidden">
-                            {(() => {
-                                // Determine thread role for filtering
-                                let threadRole: 'OPERATOR' | 'MANAGER' | 'ADMIN' | undefined = undefined;
-                                const threadInfo = threads[selectedOrder]?.[selectedSupplier];
-                                
-                                if (threadInfo?.role === 'OPERATOR') threadRole = 'OPERATOR';
-                                else if (threadInfo?.role === 'MANAGER') threadRole = 'MANAGER';
-                                
-                                // Fallback logic (old) - using displayName
-                                if (!threadRole) {
-                                    const name = threadInfo?.displayName || selectedSupplier;
-                                    if (currentUserRole === 'OPERATOR') {
-                                        if (name === 'Менеджер') threadRole = 'MANAGER';
-                                    } else if (currentUserRole === 'ADMIN') {
-                                        if (name === 'OPERATOR' || name === 'Operator' || name === 'Оператор') threadRole = 'OPERATOR';
-                                    }
-                                }
-                                
-                                return (
-                                    <ChatWindow 
-                                        orderId={selectedOrder}
-                                        supplierName={threadInfo?.displayName || selectedSupplier} 
-                                        supplierId={threadInfo?.supplierId || (selectedSupplier.length > 20 ? selectedSupplier : undefined)} 
-                                        currentUserRole={currentUserRole}
-                                        currentUserName={currentUserName}
-                                        threadRole={threadRole} 
-                                        onNavigateToOrder={handleNavigate}
-                                        onRead={handleRead}
-                                        isArchived={activeTab === 'archive'}
-                                        onArchiveUpdate={fetchThreads}
-                                    />
-                                );
-                            })()}
+                             <ChatWindow 
+                                 orderId={selectedOrder}
+                                 supplierName={threads[selectedOrder]?.[selectedInterlocutorId]?.displayName || initialSupplierName || 'Собеседник'} 
+                                 supplierId={selectedInterlocutorId} 
+                                 currentUserRole={currentUserRole}
+                                 currentUserName={currentUserName}
+                                 currentUserId={currentUserId}
+                                 onNavigateToOrder={handleNavigate}
+                                 onRead={(oid, name) => handleRead(oid, selectedInterlocutorId)}
+                                 isArchived={activeTab === 'archive'}
+                                 onArchiveUpdate={fetchThreads}
+                             />
                         </div>
                     </div>
                 ) : (

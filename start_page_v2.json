@@ -1,0 +1,6 @@
+uid=2_0 RootWebArea "CHINA-NAI | Market Platform" url="http://localhost:2026/"
+  uid=2_1 heading "Добро пожаловать" level="1"
+  uid=2_2 StaticText "Выберите вашу роль для входа"
+  uid=2_3 button "Я оператор →"
+  uid=2_4 button "Я закупщик →"
+  uid=2_5 button "Я менеджер →"

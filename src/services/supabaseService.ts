@@ -85,9 +85,7 @@ export class SupabaseService {
   static unsubscribeFromChat = chatRealtimeApi.unsubscribeFromChat;
   static getChatMessages = chatCoreApi.getChatMessages;
   static sendChatMessage = chatCoreApi.sendChatMessage;
-  static getUnreadChatCount = chatStatsApi.getUnreadChatCount;
-  static getOperatorUnreadCount = chatStatsApi.getOperatorUnreadCount; // NEW
-  static getUnreadChatCountForSupplier = chatStatsApi.getUnreadChatCountForSupplier;
+  static getUserUnreadCount = chatStatsApi.getUserUnreadCount; // NEW UNIVERSAL
   static markChatAsRead = chatManagementApi.markChatAsRead;
   static deleteChatHistory = chatManagementApi.deleteChatHistory;
   static getGlobalChatThreads = chatManagementApi.getGlobalChatThreads;

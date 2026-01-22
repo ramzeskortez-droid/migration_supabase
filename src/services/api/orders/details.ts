@@ -1,11 +1,11 @@
 import { supabase } from '../../../lib/supabaseClient';
 import { OrderItem, Order, RowType, Currency } from '../../../types';
 
-export const getOrderDetails = async (orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[], refusalReason?: string, linkedOrders?: {id: string, createdAt: string}[] }> => {
+export const getOrderDetails = async (orderId: string): Promise<{ items: OrderItem[], offers: Order[], orderFiles?: any[], refusalReason?: string, linkedOrders?: {id: string, createdAt: string}[], ownerId?: string }> => {
     const { data, error } = await supabase
         .from('orders')
         .select(`
-          id, order_files, is_manual_processing, refusal_reason, email_message_id, created_at,
+          id, order_files, is_manual_processing, refusal_reason, email_message_id, created_at, owner_id,
           order_items (*),
           offers (id, status, created_at, supplier_name, supplier_phone, supplier_files, created_by, locked_at, offer_items (*))
         `)
@@ -59,7 +59,7 @@ export const getOrderDetails = async (orderId: string): Promise<{ items: OrderIt
       }))
     } as any));
 
-    return { items, offers, orderFiles: data.order_files, refusalReason: data.refusal_reason, linkedOrders };
+    return { items, offers, orderFiles: data.order_files, refusalReason: data.refusal_reason, linkedOrders, ownerId: data.owner_id };
 };
 
 export const getOrderStatus = async (orderId: string): Promise<{ status_admin: string, supplier_names: string[] }> => {

@@ -170,22 +170,26 @@ export const AdminInterface: React.FC = () => {
 
   // Загрузка счетчика непрочитанных
   const fetchUnreadCount = async () => {
+      if (!adminUser?.id) return;
       try {
-          const count = await SupabaseService.getUnreadChatCount();
+          const count = await SupabaseService.getUserUnreadCount(adminUser.id);
           setUnreadChatCount(count);
       } catch (e) {}
   };
 
   useEffect(() => {
       fetchUnreadCount();
+      if (!adminUser?.id) return;
+      
       // Подписка на новые сообщения (глобально)
       const channel = SupabaseService.subscribeToUserChats((payload) => {
           const msg = payload.new;
-          if (msg.sender_role === 'SUPPLIER' || (msg.sender_role === 'OPERATOR' && ['ADMIN', 'MANAGER', 'Менеджер', 'Manager'].includes(msg.recipient_name))) {
+          // Strict P2P check: Message addressed to ME
+          if (msg.recipient_id === adminUser.id) {
               setUnreadChatCount(prev => prev + 1);
               setTimeout(() => playNotificationSound(0.75), 0);
           }
-      }, 'admin-global-notifications');
+      }, `admin-notifications-${adminUser.id}`);
 
       // ПОДПИСКА НА БЛОКИРОВКИ ОФФЕРОВ (REAL-TIME)
       const lockChannel = supabase
@@ -200,7 +204,7 @@ export const AdminInterface: React.FC = () => {
           SupabaseService.unsubscribeFromChat(channel); 
           supabase.removeChannel(lockChannel);
       };
-  }, []);
+  }, [adminUser?.id]);
   
   // Сортировка
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'desc' });
@@ -543,8 +547,9 @@ export const AdminInterface: React.FC = () => {
                   onClose={() => setChatTarget(null)}
                   currentUserRole="ADMIN"
                   currentUserName={adminUser?.name || 'Manager'}
+                  currentUserId={adminUser?.id || ''}
                   initialOrderId={chatTarget.orderId}
-                  initialSupplierFilter={chatTarget.supplierName}
+                  initialSupplierName={chatTarget.supplierName} // Pass name too
                   initialSupplierId={chatTarget.supplierId}
                   onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
                   onNavigateToOrder={handleNavigateToOrder}
@@ -557,6 +562,7 @@ export const AdminInterface: React.FC = () => {
                   onClose={() => setIsGlobalChatOpen(false)}
                   currentUserRole="ADMIN"
                   currentUserName={adminUser?.name || 'Manager'}
+                  currentUserId={adminUser?.id || ''}
                   onMessageRead={(count) => setUnreadChatCount(prev => Math.max(0, prev - count))}
                   onNavigateToOrder={handleNavigateToOrder}
               />
