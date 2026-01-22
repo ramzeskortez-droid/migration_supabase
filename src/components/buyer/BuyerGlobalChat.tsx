@@ -252,9 +252,7 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                                                     <span className="font-bold text-[10px] uppercase truncate flex items-center gap-1 justify-between">
                                                         <span className="flex items-center gap-1">
                                                             <User size={10}/> 
-                                                            {currentUserRole === 'SUPPLIER' 
-                                                                ? (role === 'OPERATOR' ? 'Чат с Оператором' : 'Чат с Менеджером') 
-                                                                : (info.displayName || supplier)}
+                                                            {info.displayName || supplier}
                                                         </span>
                                                         <div className="flex items-center gap-1">
                                                             {info.unread > 0 && (
@@ -286,8 +284,7 @@ export const BuyerGlobalChat: React.FC<BuyerGlobalChatProps> = ({
                     <div className="flex flex-col h-full">
                         {(() => {
                             const threadInfo = threads[selectedOrder]?.[selectedSupplier];
-                            const threadRole = threadInfo?.role || (initialTargetRole === 'OPERATOR' ? 'OPERATOR' : 'MANAGER');
-                            const displayName = threadInfo?.displayName || (threadRole === 'OPERATOR' ? 'Оператор' : 'Менеджер');
+                            const displayName = threadInfo?.displayName || selectedSupplier;
                             
                             return (
                                 <>

@@ -37,8 +37,9 @@ export const getGlobalChatThreads = async (
         .select('id, order_id, sender_id, recipient_id, sender_role, recipient_name, message, created_at, is_read, is_archived')
         .eq('is_archived', isArchived)
         .or(`sender_id.eq.${currentUserId},recipient_id.eq.${currentUserId}`)
-        .order('created_at', { ascending: false })
-        .limit(1000); // Increased limit for better coverage
+        .order('is_read', { ascending: true }) // Unread first
+        .order('created_at', { ascending: false }) // Then newest
+        .limit(2000); // Increased limit for better coverage
 
     if (error) throw error;
     
