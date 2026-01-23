@@ -7,10 +7,11 @@ interface OperatorOrdersViewProps {
     ownerId: string | undefined;
     refreshTrigger: number;
     initialSearch?: string;
+    onNavigateComplete?: () => void;
     onLog: (msg: string) => void;
 }
 
-export const OperatorOrdersView: React.FC<OperatorOrdersViewProps> = ({ ownerId, refreshTrigger, initialSearch, onLog }) => {
+export const OperatorOrdersView: React.FC<OperatorOrdersViewProps> = ({ ownerId, refreshTrigger, initialSearch, onNavigateComplete, onLog }) => {
     const [searchQuery, setSearchQuery] = useState(initialSearch || '');
     const [debouncedQuery, setDebouncedQuery] = useState(initialSearch || '');
     const [activeTab, setActiveTab] = useState<'processing' | 'manual' | 'processed' | 'archive'>('processing');
@@ -27,13 +28,42 @@ export const OperatorOrdersView: React.FC<OperatorOrdersViewProps> = ({ ownerId,
 
     // Обработка внешнего перехода
     useEffect(() => {
-        if (initialSearch && initialSearch !== searchQuery) {
+        if (initialSearch) {
             handleNavigateToOrder(initialSearch);
         }
     }, [initialSearch]);
 
     const handleNavigateToOrder = async (orderId: string) => {
-        // ... (без изменений)
+        try {
+            const { status_admin, supplier_names } = await SupabaseService.getOrderStatus(orderId);
+            let targetTab: 'processing' | 'trading' | 'manual' | 'processed' | 'archive' = 'archive';
+
+            if (status_admin === 'В обработке') {
+                targetTab = (supplier_names && supplier_names.length > 0) ? 'trading' : 'processing';
+            }
+            else if (status_admin === 'Ручная обработка') targetTab = 'manual';
+            else if (status_admin === 'КП готово' || status_admin === 'КП отправлено') targetTab = 'processed';
+            
+            setActiveTab(targetTab);
+            setSearchQuery(orderId);
+            setDebouncedQuery(orderId);
+            setScrollToId(orderId);
+            
+            // Scroll container to view
+            setTimeout(() => {
+                listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+
+            setTimeout(() => {
+                setScrollToId(null);
+                onNavigateComplete?.(); // Reset parent state
+            }, 2000);
+        } catch (e) {
+            console.error('Error navigating:', e);
+            setSearchQuery(orderId);
+            setDebouncedQuery(orderId);
+            onNavigateComplete?.();
+        }
     };
 
     return (

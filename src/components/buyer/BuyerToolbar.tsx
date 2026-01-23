@@ -25,6 +25,11 @@ export const BuyerToolbar: React.FC<BuyerToolbarProps> = ({
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Sync local search with prop (for external navigation)
+  useEffect(() => {
+      setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
       setLocalSearch(val);

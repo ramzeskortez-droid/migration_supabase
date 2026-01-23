@@ -7,6 +7,9 @@ import { Toast } from '../shared/Toast';
 import { OperatorClientInfo } from './OperatorClientInfo(ИнформацияОКлиенте)';
 import { OperatorOrderItems } from './OperatorOrderItems(СписокТоваров)';
 
+import { useQuery } from '@tanstack/react-query';
+import { SupabaseService } from '../../services/supabaseService';
+
 interface OperatorOrderRowProps {
   order: Order;
   isExpanded: boolean;
@@ -17,6 +20,20 @@ interface OperatorOrderRowProps {
 export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange }) => {
   const [datePart] = order.createdAt.split(', ');
   const [toast, setToast] = useState<{message: string} | null>(null);
+  
+  const { data: details, isLoading } = useQuery({
+      queryKey: ['order-details', order.id],
+      queryFn: () => SupabaseService.getOrderDetails(order.id),
+      enabled: isExpanded,
+      staleTime: 0
+  });
+
+  const fullOrder = {
+      ...order,
+      items: details?.items || order.items || [],
+      offers: details?.offers || order.offers || [],
+      order_files: details?.orderFiles || order.order_files
+  };
   
   // Состояние для копирования
   const [copyModal, setCopyModal] = useState<{isOpen: boolean, title: string, content: string}>({

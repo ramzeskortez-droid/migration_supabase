@@ -42,14 +42,19 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
       if (scrollToId && orders.length > 0) {
           const index = orders.findIndex(o => o.id === scrollToId);
           if (index !== -1) {
-              setExpandedId(scrollToId); // Сразу разворачиваем
-              setTimeout(() => {
+              setExpandedId(scrollToId); 
+              
+              const scroll = () => {
                   virtuosoRef.current?.scrollToIndex({
                       index,
                       align: 'start',
-                      behavior: 'smooth'
+                      behavior: 'auto'
                   });
-              }, 150);
+              };
+
+              // Двойная попытка скролла
+              setTimeout(scroll, 100);
+              setTimeout(scroll, 600);
           }
       }
   }, [scrollToId, orders]);
@@ -131,24 +136,8 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
           : <ArrowDown size={10} className="text-indigo-600 ml-1" />;
   };
 
-  const handleToggle = async (id: string) => {
-      if (expandedId === id) {
-          setExpandedId(null);
-      } else {
-          setExpandedId(id);
-          const order = orders.find(o => o.id === id);
-          if (order && (!order.items || order.items.length === 0 || !order.offers)) {
-              try {
-                  const details = await SupabaseService.getOrderDetails(id);
-                  setOrders(prev => prev.map(o => o.id === id ? { 
-                      ...o, 
-                      items: details.items as any,
-                      offers: details.offers as any,
-                      order_files: details.orderFiles
-                  } : o));
-              } catch (e) { console.error(e); }
-          }
-      }
+  const handleToggle = (id: string) => {
+      setExpandedId(expandedId === id ? null : id);
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {

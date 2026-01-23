@@ -146,30 +146,17 @@ export const OperatorInterface: React.FC = () => {
       setIsGlobalChatOpen(false); // Закрываем чат при переходе
   };
 
+  const handleNavigateComplete = () => {
+      setNavigateToOrderId(undefined);
+  };
+
   if (isAuthChecking) {
       return <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-black uppercase text-xs tracking-widest">Загрузка профиля...</div>;
   }
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden relative">
-      {toast && (
-          <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
-              <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type} duration={1000} />
-          </div>
-      )}
-
-      {chatNotifications.map((msg, idx) => (
-            <ChatNotification 
-                key={msg.id}
-                index={idx}
-                message={msg} 
-                onClose={() => setChatNotifications(prev => prev.filter(m => m.id !== msg.id))}
-                onClick={() => {
-                    setIsGlobalChatOpen(true);
-                    setChatNotifications(prev => prev.filter(m => m.id !== msg.id));
-                }}
-            />
-      ))}
+      {/* ... toasts ... */}
       
       <div className={`flex flex-1 overflow-hidden transition-opacity duration-300 ${!currentUser ? 'opacity-30 pointer-events-none blur-sm' : 'opacity-100'}`}>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -185,6 +172,7 @@ export const OperatorInterface: React.FC = () => {
                 ownerId={currentUser?.id} 
                 refreshTrigger={refreshTrigger} 
                 initialSearch={navigateToOrderId}
+                onNavigateComplete={handleNavigateComplete}
                 onLog={addLog}
             />
           </div>

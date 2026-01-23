@@ -273,26 +273,27 @@ export const BuyerInterface: React.FC = () => {
   const handleNavigateToOrder = async (orderId: string) => {
       if (!buyerAuth?.name) return;
       try {
-          const { status_manager, supplier_names } = await SupabaseService.getOrderStatus(orderId);
+          const { status_admin, supplier_names } = await SupabaseService.getOrderStatus(orderId);
           const hasMyOffer = supplier_names.some(name => name.trim().toUpperCase() === buyerAuth.name.trim().toUpperCase());
           
-          if (hasMyOffer) setActiveTab('history');
-          else if (status_manager === 'В обработке') {
-              const threeDaysAgo = new Date();
-              threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-              const order = orders.find(o => o.id === orderId); // Пытаемся найти в текущих если загружено
-              // Здесь логика даты на сервере уже есть, поэтому просто переключаем таб
-              setActiveTab(status_manager === 'В обработке' ? 'new' : 'history');
+          if (hasMyOffer) {
+              setActiveTab('history');
+          } else if (status_admin === 'В обработке') {
+              setActiveTab('new');
+          } else {
+              setActiveTab('archive');
           }
           
-          setSearchQuery(orderId);
-          setExpandedId(orderId);
-          setScrollToId(orderId);
+          setSearchQuery(orderId); // Форсируем поиск
+          setExpandedId(orderId); // Форсируем раскрытие
+          setScrollToId(orderId); // Форсируем скролл
+          
           setTimeout(() => {
               setScrollToId(null);
               listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 500);
+          }, 1000);
       } catch (e) {
+          console.error('Nav error:', e);
           setSearchQuery(orderId);
           setExpandedId(orderId);
       }

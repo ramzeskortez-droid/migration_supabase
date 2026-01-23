@@ -156,7 +156,9 @@ export const getOrders = async (
         query = query.in('id', ids.length > 0 ? ids : [0]);
     }
 
-    if (statusFilter && !buyerTab) {
+    const isIdSearch = q && !isNaN(Number(q));
+
+    if (statusFilter && !buyerTab && !isIdSearch) {
         if (statusFilter.includes(',')) {
             query = query.in('status_manager', statusFilter.split(',').map(s => s.trim()));
         } else {
@@ -276,6 +278,7 @@ export const getOrders = async (
         } as unknown as Order;
     })
     .filter(o => {
+        if (q && !isNaN(Number(q))) return true;
         if (operatorTab === 'processing') return o.statusManager !== 'Идут торги';
         return true;
     });
