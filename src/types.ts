@@ -117,6 +117,7 @@ export interface Order {
   ownerToken?: string; // Legacy support (optional)
   deadline?: string;
   buyerLabels?: BuyerLabel[];
+  assigned_buyer_ids?: string[] | null;
   order_files?: { name: string; url: string; size?: number; type?: string }[];
   supplier_files?: { name: string; url: string; size?: number; type?: string }[]; // Файлы поставщика (общие)
   

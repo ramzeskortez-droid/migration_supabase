@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronRight, TrendingUp, 
   FileText, Send, ShoppingCart, CheckCircle2, CreditCard, Truck, PackageCheck, Ban, 
@@ -9,10 +9,11 @@ import { AdminItemsTable } from './AdminItemsTable';
 import { Virtuoso } from 'react-virtuoso';
 import { useQuery } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
+import { AssignedBuyersBadge } from '../shared/AssignedBuyersBadge';
 
 // Updated Columns: 
-// ID (80), Subject (1.5fr), Deadline (110), Date (130), Time (100), Offers (100), Stats (100), Status (1.2fr), Arrow (40)
-const GRID_COLS = "grid-cols-[80px_1.5fr_110px_130px_100px_100px_100px_1.2fr_40px]";
+// ID (80), Subject (1.5fr), Buyers (120), Deadline (110), Date (130), Time (100), Offers (100), Stats (100), Status (1.2fr), Arrow (40)
+const GRID_COLS = "grid-cols-[80px_1.5fr_120px_110px_130px_100px_100px_100px_1.2fr_40px]";
 
 const STATUS_STEPS = [
   { id: 'В обработке', label: 'В обработке', icon: FileText, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
@@ -34,7 +35,7 @@ const AdminOrderRow = memo(({
     startEditing, saveEditing, handleFormCP, isSubmitting,
     editForm, setEditForm, handleItemChange, handleLocalUpdateRank,
     openRegistry, toggleRegistry, exchangeRates, offerEdits, onOpenChat, debugMode,
-    handleRepeatOrder
+    handleRepeatOrder, buyersMap
 }: any) => {
     const isEditing = editingOrderId === order.id;
     const [isManual, setIsManual] = useState(false); // Локальный флаг ручной обработки
@@ -109,6 +110,11 @@ const AdminOrderRow = memo(({
                 
                 {/* 2. Subject (Longest) */}
                 <div className="font-bold text-slate-600 truncate" title={subject}>{subject}</div>
+
+                {/* 3. Buyers Badge */}
+                <div className="flex items-center">
+                    <AssignedBuyersBadge buyerIds={order.assigned_buyer_ids} buyersMap={buyersMap} showLabel={false} />
+                </div>
 
                 {/* 4.5 Deadline */}
                 <div className="text-left font-black text-red-500 bg-red-50 px-2 py-1 rounded truncate mr-2">
@@ -402,10 +408,18 @@ interface AdminOrdersListProps {
 export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   orders, sortConfig, handleSort, expandedId, setExpandedId,
   onLoadMore, hasMore, isLoading, exchangeRates, offerEdits, onOpenChat, debugMode,
-  offerEditTimeout, activeTab, subStatusFilter, setSubStatusFilter,
+  subStatusFilter, setSubStatusFilter, activeTab, offerEditTimeout,
   ...rowProps
 }) => {
   const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
+  const [buyersMap, setBuyersMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    SupabaseService.getBuyersList().then(users => {
+        const map = users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+        setBuyersMap(map);
+    });
+  }, []);
 
   const SortIcon = ({ column }: { column: string }) => {
       if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 transition-opacity" />;
@@ -447,6 +461,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
         <div className={`hidden md:grid ${GRID_COLS} gap-3 p-4 border-b border-slate-100 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider select-none shrink-0 z-[300] border-l-4 border-transparent`}>
              <div className="cursor-pointer flex items-center group" onClick={() => handleSort('id')}>№ ЗАКАЗА <SortIcon column="id"/></div>
              <div className="flex items-center">ТЕМА ПИСЬМА</div>
+             <div className="flex items-center">ЗАКУПЩИК(И)</div>
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('deadline')}>СРОК ДО <SortIcon column="deadline"/></div>
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('date')}>ДАТА СОЗДАНИЯ <SortIcon column="date"/></div>
              <div className="text-left cursor-pointer group flex items-center gap-1" onClick={() => handleSort('statusUpdatedAt')}>ВРЕМЯ <SortIcon column="statusUpdatedAt"/></div>
@@ -516,6 +531,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
                         onOpenChat={onOpenChat}
                         debugMode={debugMode}
                         offerEditTimeout={offerEditTimeout}
+                        buyersMap={buyersMap}
                         {...rowProps}
                     />
                 )}

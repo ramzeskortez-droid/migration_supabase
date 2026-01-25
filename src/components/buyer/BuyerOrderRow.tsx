@@ -1,9 +1,10 @@
 import React, { memo, useState } from 'react';
 import { ChevronRight, Loader2, Tag, Clock, X } from 'lucide-react';
-import { Order } from '../../types';
+import { Order, AppUser } from '../../types';
 import { BuyerOrderDetails } from './BuyerOrderDetails';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
+import { AssignedBuyersBadge } from '../shared/AssignedBuyersBadge';
 
 interface BuyerOrderRowProps {
   order: Order;
@@ -17,8 +18,10 @@ interface BuyerOrderRowProps {
   onSubmit: (orderId: string, items: any[]) => Promise<void>;
   isSubmitting: boolean;
   buyerToken?: string;
+  buyerId?: string;
   gridCols?: string;
   onOpenChat: (orderId: string, targetRole?: 'OPERATOR' | 'MANAGER') => void;
+  buyersMap?: Record<string, AppUser>;
 }
 
 const STICKER_COLORS = [
@@ -39,7 +42,7 @@ const COLOR_MAP: Record<string, string> = {
 
 export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({ 
   order, isExpanded, onToggle, statusInfo, myOffer,
-  editingItems, setEditingItems, onSubmit, isSubmitting, buyerToken, gridCols, onOpenChat
+  editingItems, setEditingItems, onSubmit, isSubmitting, buyerToken, buyerId, gridCols, onOpenChat, buyersMap = {}
 }) => {
   const queryClient = useQueryClient();
   const [showStickerPicker, setShowStickerPicker] = useState(false);
@@ -67,9 +70,17 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
       refusalReason: details?.refusalReason || order.refusalReason
   }), [order, details]);
 
-  const containerStyle = isExpanded 
-    ? "border-l-4 border-l-indigo-600 ring-1 ring-indigo-600/10 shadow-xl bg-white relative z-10 rounded-none md:rounded-xl my-2 md:my-3 mx-0 md:mx-4" 
-    : "hover:bg-slate-50 border-l-transparent border-b-4 md:border-b border-slate-200 last:border-0";
+  const isAssignedToMe = buyerId && order.assigned_buyer_ids?.includes(buyerId);
+  const isExclusiveToMe = buyerId && order.assigned_buyer_ids?.length === 1 && String(order.assigned_buyer_ids[0]) === String(buyerId);
+  const isHighlighted = isExclusiveToMe && !myOffer && !isExpanded;
+
+  let containerStyle = "hover:bg-slate-50 border-l-transparent border-b-4 md:border-b border-slate-200 last:border-0";
+  if (isExpanded) {
+      containerStyle = "border-l-4 border-l-indigo-600 ring-1 ring-indigo-600/10 shadow-xl bg-white relative z-10 rounded-none md:rounded-xl my-2 md:my-3 mx-0 md:mx-4";
+  } else if (isHighlighted) {
+      // Усиленный стиль: более яркий фон и явная тень
+      containerStyle = "border-l-4 border-l-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] bg-emerald-100/50 relative z-20 rounded-xl my-2 mx-1 transition-all duration-500";
+  }
 
   const displayItems = (editingItems && editingItems.length > 0) ? editingItems : (details?.items || []);
 
@@ -90,7 +101,15 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
   const datePart = order.createdAt.split(',')[0];
 
   return (
-    <div className={`transition-all duration-500 border-l-4 ${containerStyle}`}>
+    <div 
+        className={`transition-all duration-500 border-l-4 ${containerStyle}`}
+        style={isHighlighted ? { backgroundColor: '#ecfdf5', borderColor: '#10b981' } : undefined} // Fallback inline style
+    >
+      {/* Animated Outline Overlay for Targeted Orders */}
+      {isHighlighted && (
+          <div className="absolute inset-0 rounded-xl animate-pulse pointer-events-none z-50 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+      )}
+
       <div 
         onClick={onToggle}
         className="p-3 select-none cursor-pointer group"
@@ -188,6 +207,11 @@ export const BuyerOrderRow: React.FC<BuyerOrderRowProps> = memo(({
                     {showStickerPicker && <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowStickerPicker(false); }}></div>}
                 </div>
                 <div className="text-[11px] font-black text-indigo-600 truncate group-hover:text-indigo-700">#{order.id}</div>
+            </div>
+
+            {/* 1.5 Badge */}
+            <div className="flex items-center">
+                <AssignedBuyersBadge buyerIds={order.assigned_buyer_ids} buyersMap={buyersMap} showLabel={false} />
             </div>
             
             {/* 2. Deadline */}

@@ -376,6 +376,7 @@ export const BuyerInterface: React.FC = () => {
                         sortConfig={sortConfig} onSort={handleSort}
                         getOfferStatus={getOfferStatus} getMyOffer={getMyOffer}
                         buyerToken={buyerAuth?.token}
+                        buyerId={buyerAuth?.id}
                         onOpenChat={handleOpenChat}
                         scrollToId={scrollToId}
                         activeTab={activeTab}

@@ -1,44 +1,42 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { Order } from '../../types';
 import { BuyerOrderRow } from './BuyerOrderRow';
 import { Virtuoso } from 'react-virtuoso';
 import { ArrowUpDown, ArrowUp, ArrowDown, ListFilter, Check, Loader2 } from 'lucide-react';
+import { AssignedBuyersBadge } from '../shared/AssignedBuyersBadge';
+import { SupabaseService } from '../../services/supabaseService';
 
 interface BuyerOrdersListProps {
   orders: Order[];
   expandedId: string | null;
   onToggle: (id: string | null) => void;
-  // State for editing items
-  editingItemsMap: Record<string, any[]>;
-  setEditingItemsMap: React.Dispatch<React.SetStateAction<Record<string, any[]>>>;
-  onSubmit: (orderId: string, items: any[]) => Promise<void>;
-  isSubmitting: boolean;
-  // Sorting
-  sortConfig: { key: string, direction: 'asc' | 'desc' } | null;
-  onSort: (key: string) => void;
-  // Helpers
-  getOfferStatus: (order: Order) => { label: string, color: string, icon: React.ReactNode };
-  getMyOffer: (order: Order) => any;
-  buyerToken?: string;
-  onOpenChat: (orderId: string, targetRole?: 'OPERATOR' | 'MANAGER') => void;
-  scrollToId?: string | null;
-  // Pagination
   onLoadMore: () => void;
   hasMore: boolean;
   isLoading: boolean;
-  // Filter
+  editingItemsMap: Record<string, any[]>;
+  setEditingItemsMap: React.Dispatch<React.SetStateAction<Record<string, any[]>>>;
+  onSubmit: (orderId: string, items: any[], supplierFiles?: any[], status?: string) => Promise<void>;
+  isSubmitting: boolean;
+  sortConfig: { key: string, direction: 'asc' | 'desc' };
+  onSort: (key: string) => void;
+  getOfferStatus: (order: Order) => any;
+  getMyOffer: (order: Order) => any;
+  buyerToken?: string;
+  buyerId?: string;
+  onOpenChat: (orderId: string, targetRole?: 'OPERATOR' | 'MANAGER') => void;
+  scrollToId?: string | null;
   activeTab?: string;
   subStatusFilter?: string;
   setSubStatusFilter?: (status: string | undefined) => void;
 }
 
-// Columns: ID+Sticker (80), Deadline (90), Subject (1.5fr), Item (1fr), Status (110), Date (80), Arrow (30)
-const GRID_COLS = "grid-cols-[80px_90px_1.5fr_1fr_110px_80px_30px]";
+// Columns: ID+Sticker (80), To (80), Deadline (90), Subject (1.5fr), Item (1fr), Status (110), Date (80), Arrow (30)
+const GRID_COLS = "grid-cols-[80px_80px_90px_1.5fr_1fr_110px_80px_30px]";
 
 const MemoizedBuyerOrderRow = memo(({
     order, isExpanded, onToggle,
     editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
-    statusInfo, myOffer, buyerToken, onOpenChat
+    statusInfo, myOffer, buyerToken, buyerId, onOpenChat, buyersMap
 }: any) => {
     
     // Инициализация пустых полей для нового оффера или загрузка существующих
@@ -104,8 +102,10 @@ const MemoizedBuyerOrderRow = memo(({
             statusInfo={statusInfo}
             myOffer={myOffer}
             buyerToken={buyerToken}
+            buyerId={buyerId}
             gridCols={GRID_COLS} 
             onOpenChat={onOpenChat}
+            buyersMap={buyersMap}
         />
     );
 });
@@ -113,12 +113,20 @@ const MemoizedBuyerOrderRow = memo(({
 export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
   orders, expandedId, onToggle, 
   editingItemsMap, setEditingItemsMap, onSubmit, isSubmitting,
-  sortConfig, onSort, getOfferStatus, getMyOffer, buyerToken, onOpenChat,
+  sortConfig, onSort, getOfferStatus, getMyOffer, buyerToken, buyerId, onOpenChat,
   scrollToId, onLoadMore, hasMore, isLoading,
   activeTab, subStatusFilter, setSubStatusFilter
 }) => {
   const virtuosoRef = React.useRef<any>(null);
   const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
+  const [buyersMap, setBuyersMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+      SupabaseService.getBuyersList().then(users => {
+          const map = users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+          setBuyersMap(map);
+      });
+  }, []);
 
   // Эффект скролла
   React.useEffect(() => {
@@ -168,6 +176,7 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
         <div className="hidden md:block border-b border-slate-50 border-l-4 border-transparent shrink-0 z-20 bg-slate-50">
             <div className={`p-3 grid ${GRID_COLS} gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider text-left select-none`}>
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('id')}>№ заказа <SortIcon column="id"/></div>
+               <div>Адресовано</div>
                <div className="cursor-pointer flex items-center group" onClick={() => onSort('deadline')}>Срок до <SortIcon column="deadline"/></div>
                <div>Тема письма</div>
                <div>Первая позиция</div>
@@ -238,7 +247,9 @@ export const BuyerOrdersList: React.FC<BuyerOrdersListProps> = ({
                         statusInfo={getOfferStatus(order)}
                         myOffer={getMyOffer(order)}
                         buyerToken={buyerToken}
+                        buyerId={buyerId}
                         onOpenChat={onOpenChat}
+                        buyersMap={buyersMap}
                     />
                 )}
                 components={{

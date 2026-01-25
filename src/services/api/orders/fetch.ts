@@ -59,7 +59,14 @@ export const getOrders = async (
     if (buyerToken) {
         const { data: u } = await supabase.from('app_users').select('id').eq('token', buyerToken).maybeSingle();
         if (u) {
-            query = query.or(`assigned_buyer_ids.is.null,assigned_buyer_ids.cs.{${u.id}}`);
+            // Фильтр по назначенным применяем ТОЛЬКО для вкладки 'new' (активные),
+            // чтобы закупщик не видел чужие приватные заказы в общем списке.
+            // Для вкладок истории (won, lost, history) проверка идет через offers.supplier_name (я участвовал),
+            // поэтому там этот фильтр не нужен (или даже вреден, если меня сняли с назначения, но оффер остался).
+            
+            if (buyerTab === 'new' || !buyerTab) { 
+                 query = query.or(`assigned_buyer_ids.is.null,assigned_buyer_ids.eq.{},assigned_buyer_ids.cs.{${u.id}}`);
+            }
         }
     }
 
@@ -258,6 +265,7 @@ export const getOrders = async (
             isManualProcessing: order.is_manual_processing,
             refusalReason: order.refusal_reason,
             order_files: order.order_files,
+            assigned_buyer_ids: order.assigned_buyer_ids,
             buyerLabels: labelsMap[order.id] ? [labelsMap[order.id]] : [],
             items: (order.order_items as any[])?.sort((a, b) => a.id - b.id).map((i: any) => ({
                 id: i.id, name: i.name, quantity: i.quantity, comment: i.comment, brand: i.brand, article: i.article, uom: i.uom, opPhotoUrl: i.photo_url, adminPrice: i.admin_price,
