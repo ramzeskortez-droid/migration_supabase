@@ -423,8 +423,8 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   ...rowProps
 }) => {
   const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
-<<<<<<< HEAD
   const [buyersMap, setBuyersMap] = useState<Record<string, any>>({});
+  const virtuosoRef = React.useRef<VirtuosoHandle>(null);
 
   useEffect(() => {
     SupabaseService.getBuyersList().then(users => {
@@ -432,8 +432,6 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
         setBuyersMap(map);
     });
   }, []);
-=======
-  const virtuosoRef = React.useRef<VirtuosoHandle>(null);
 
   // Auto-scroll to top when a new order is created (expandedId is set and tab is 'new')
   React.useEffect(() => {
@@ -446,7 +444,6 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
           }, 100);
       }
   }, [activeTab, expandedId, orders]);
->>>>>>> ccddaf9 (ВЕРСИЯ 1.18.136 - UX: Advanced Repeat & Edit Workflow)
 
   const SortIcon = ({ column }: { column: string }) => {
       if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 transition-opacity" />;
