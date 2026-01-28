@@ -218,6 +218,7 @@ export const OperatorOrdersList: React.FC<OperatorOrdersListProps> = ({ refreshT
                           isExpanded={expandedId === order.id}
                           onToggle={() => handleToggle(order.id)}
                           onStatusChange={handleStatusChange}
+                          onOrderUpdate={() => loadOrders()} // Trigger list refresh
                           buyersMap={buyersMap}
                       />
                   )}

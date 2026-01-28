@@ -16,10 +16,11 @@ interface OperatorOrderRowProps {
   isExpanded: boolean;
   onToggle: () => void;
   onStatusChange?: (orderId: string, status: string) => void;
+  onOrderUpdate?: () => void; // NEW
   buyersMap?: Record<string, any>;
 }
 
-export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange, buyersMap = {} }) => {
+export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExpanded, onToggle, onStatusChange, onOrderUpdate, buyersMap = {} }) => {
   const [datePart] = order.createdAt.split(', ');
   const [toast, setToast] = useState<{message: string} | null>(null);
   
@@ -58,9 +59,6 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
                   (i.order_item_id && String(i.order_item_id) === String(item.id)) || 
                   (i.name?.trim().toLowerCase() === item.name?.trim().toLowerCase())
               );
-              // В ручном режиме показываем ВСЕХ (даже если is_winner не проставился, хотя должен)
-              // Или строго по is_winner?
-              // Давайте показывать всех, если статус ручной. Это надежнее.
               if (matching) {
                   if (order.statusManager === 'Ручная обработка' || matching.is_winner || matching.rank === 'ЛИДЕР' || matching.rank === 'LEADER') {
                       winners.push(matching);
@@ -229,7 +227,7 @@ export const OperatorOrderRow: React.FC<OperatorOrderRowProps> = ({ order, isExp
       {isExpanded && (
         <div className="p-6 bg-slate-50 border-t border-slate-100 animate-in slide-in-from-top-1 duration-200">
             {/* 1. Информация о клиенте */}
-            <OperatorClientInfo order={order} subject={subject} />
+            <OperatorClientInfo order={order} subject={subject} onUpdate={onOrderUpdate} />
 
             {/* 2. Состав заявки */}
             <OperatorOrderItems order={order} onCopyItem={handleCopyItem} />
