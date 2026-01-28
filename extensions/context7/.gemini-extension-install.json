@@ -1,0 +1,6 @@
+{
+  "source": "https://github.com/upstash/context7",
+  "type": "github-release",
+  "autoUpdate": true,
+  "releaseTag": "@upstash/context7-mcp@2.1.0"
+}

@@ -49,6 +49,7 @@ export const AdminInterface: React.FC = () => {
   const [seedProgress, setSeedProgress] = useState<number | null>(null);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
+  const [pendingRepeatId, setPendingRepeatId] = useState<string | null>(null); // NEW: To handle repeat order logic
   const [offerEdits, setOfferEdits] = useState<Record<string, { adminComment?: string, adminPrice?: number, clientDeliveryWeeks?: number, comment?: string, supplierSku?: string }>>({});
   const [debugMode, setDebugMode] = useState(false);
   const [offerEditTimeout, setOfferEditTimeout] = useState(5);
@@ -104,7 +105,17 @@ export const AdminInterface: React.FC = () => {
           const newId = await SupabaseService.repeatOrder(orderId);
           setSuccessToast({ message: `Заказ скопирован: #${newId}`, id: Date.now().toString() });
           setTimeout(() => setSuccessToast(null), 3000);
-          refetch(); // Обновляем список
+          
+          // 1. Ставим флаг ожидания
+          setPendingRepeatId(newId);
+          
+          // 2. Переходим в таб "Новые" и сбрасываем поиск
+          setActiveTab('new');
+          setSearchQuery('');
+          
+          // 3. Обновляем список (это загрузит новые данные)
+          refetch();
+          
       } catch (e: any) {
           alert('Ошибка: ' + (e.message || e));
       }
@@ -243,6 +254,18 @@ export const AdminInterface: React.FC = () => {
   }, [activeTab]);
 
   const orders = useMemo(() => data?.pages.flatMap(page => page.data) || [], [data]);
+
+  // Effect: Watch for pending repeated order to appear in the list
+  useEffect(() => {
+      if (pendingRepeatId && orders.length > 0) {
+          const targetOrder = orders.find(o => o.id === pendingRepeatId);
+          if (targetOrder) {
+              setExpandedId(pendingRepeatId);
+              startEditing(targetOrder);
+              setPendingRepeatId(null); // Reset flag
+          }
+      }
+  }, [orders, pendingRepeatId]);
 
   // Принудительное обновление при смене таба
   useEffect(() => {
@@ -411,6 +434,7 @@ export const AdminInterface: React.FC = () => {
       form[`client_phone`] = order.clientPhone || '';
       form[`client_email`] = order.clientEmail || '';
       form[`location`] = order.location || '';
+      form[`deadline`] = order.deadline || ''; // NEW: Init deadline
       
       order.items.forEach((item) => { 
           form[`${item.id}_name`] = item.AdminName || item.name; 
@@ -446,7 +470,8 @@ export const AdminInterface: React.FC = () => {
               client_name: editForm['client_name'],
               client_phone: editForm['client_phone'],
               client_email: editForm['client_email'],
-              location: editForm['location']
+              location: editForm['location'],
+              deadline: editForm['deadline'] || null // NEW: Save deadline
           });
 
           // 2. Сохранение изменений в Offers (OfferItems)

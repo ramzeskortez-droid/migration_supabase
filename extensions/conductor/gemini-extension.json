@@ -1,0 +1,22 @@
+{
+  "name": "conductor",
+  "version": "0.2.0",
+  "contextFileName": "GEMINI.md",
+  "commands": [
+    {
+      "path": "commands/conductor/implement.toml"
+    },
+    {
+      "path": "commands/conductor/newTrack.toml"
+    },
+    {
+      "path": "commands/conductor/revert.toml"
+    },
+    {
+      "path": "commands/conductor/setup.toml"
+    },
+    {
+      "path": "commands/conductor/status.toml"
+    }
+  ]
+}

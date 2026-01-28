@@ -1,8 +1,19 @@
 import { supabase } from '../../../lib/supabaseClient';
 
-export const updateOrderMetadata = async (orderId: string, metadata: { client_name?: string, client_phone?: string, client_email?: string, location?: string }): Promise<void> => {
-    const { error } = await supabase.from('orders').update(metadata).eq('id', orderId);
+export const updateOrderMetadata = async (orderId: string, metadata: { client_name?: string, client_phone?: string, client_email?: string, location?: string, deadline?: string | null }): Promise<void> => {
+
+    const { error } = await supabase
+
+        .from('orders')
+
+        .update(metadata)
+
+        .eq('id', orderId);
+
+
+
     if (error) throw error;
+
 };
 
 export const updateOrderJson = async (orderId: string, newItems: any[]): Promise<void> => {

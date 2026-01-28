@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Order, OrderStatus, RankType, Currency } from '../../types';
 import { AdminItemsTable } from './AdminItemsTable';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { useQuery } from '@tanstack/react-query';
 import { SupabaseService } from '../../services/supabaseService';
 import { AssignedBuyersBadge } from '../shared/AssignedBuyersBadge';
@@ -117,9 +117,20 @@ const AdminOrderRow = memo(({
                 </div>
 
                 {/* 4.5 Deadline */}
-                <div className="text-left font-black text-red-500 bg-red-50 px-2 py-1 rounded truncate mr-2">
-                    {order.deadline || '-'}
-                </div>
+                {isEditing ? (
+                    <div className="mr-2" onClick={e => e.stopPropagation()}>
+                        <input 
+                            type="date"
+                            value={editForm['deadline'] || ''}
+                            onChange={(e) => setEditForm({...editForm, deadline: e.target.value})}
+                            className="w-[110px] text-[10px] font-black text-slate-700 bg-white border border-indigo-300 rounded px-1 py-0.5 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                        />
+                    </div>
+                ) : (
+                    <div className="text-left font-black text-red-500 bg-red-50 px-2 py-1 rounded truncate mr-2">
+                        {order.deadline || '-'}
+                    </div>
+                )}
 
                 {/* 5. Date */}
                 <div className="text-left font-bold text-slate-400">{order.createdAt.split(',')[0]}</div>
@@ -412,6 +423,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
   ...rowProps
 }) => {
   const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
+<<<<<<< HEAD
   const [buyersMap, setBuyersMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -420,6 +432,21 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
         setBuyersMap(map);
     });
   }, []);
+=======
+  const virtuosoRef = React.useRef<VirtuosoHandle>(null);
+
+  // Auto-scroll to top when a new order is created (expandedId is set and tab is 'new')
+  React.useEffect(() => {
+      // Logic: if we are in 'new' tab and an order is expanded (likely the new one), scroll to top.
+      // We check if orders[0] matches the expandedId to be sure it's the new one at the top.
+      if (activeTab === 'new' && expandedId && orders.length > 0 && orders[0].id === expandedId) {
+          // Small delay to let the list render layout
+          setTimeout(() => {
+              virtuosoRef.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' });
+          }, 100);
+      }
+  }, [activeTab, expandedId, orders]);
+>>>>>>> ccddaf9 (ВЕРСИЯ 1.18.136 - UX: Advanced Repeat & Edit Workflow)
 
   const SortIcon = ({ column }: { column: string }) => {
       if (sortConfig?.key !== column) return <ArrowUpDown size={10} className="text-slate-300 ml-1 opacity-50 transition-opacity" />;
@@ -513,6 +540,7 @@ export const AdminOrdersList: React.FC<AdminOrdersListProps> = ({
          {/* Virtualized List */}
          <div className="flex-grow">
             <Virtuoso
+                ref={virtuosoRef}
                 style={{ height: '100%' }}
                 data={sortedOrders}
                 endReached={() => {

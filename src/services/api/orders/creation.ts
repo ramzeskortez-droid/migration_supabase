@@ -44,14 +44,8 @@ export const repeatOrder = async (sourceOrderId: string, operatorId?: string): P
 
     if (itemsFetchError) throw itemsFetchError;
 
-    // 3. Расчет deadline
-    let newDeadline = null;
-    if (sourceOrder.deadline) {
-        const deadlineDate = new Date(sourceOrder.deadline);
-        if (deadlineDate > new Date()) {
-            newDeadline = sourceOrder.deadline;
-        }
-    }
+    // 3. Расчет deadline (Копируем исходный, даже если прошел)
+    const newDeadline = sourceOrder.deadline;
 
     // 4. Создаем новый заказ
     const newOwnerId = operatorId || sourceOrder.owner_id;
@@ -76,15 +70,22 @@ export const repeatOrder = async (sourceOrderId: string, operatorId?: string): P
 
     if (createError) throw createError;
 
-    // 4.1 Архивируем исходный заказ
-    await supabase
-        .from('orders')
-        .update({ 
-            status_manager: 'Архив', 
-            is_archived: true,
-            refusal_reason: `Повторен в заказе #${newOrder.id}` 
-        })
-        .eq('id', sourceOrderId);
+    // 4.1 Архивируем исходный заказ (только если он еще активен)
+    const isAlreadyArchived = sourceOrder.status_manager === 'Архив' || 
+                              sourceOrder.status_manager === 'Аннулирован' || 
+                              sourceOrder.status_manager === 'Отказ' ||
+                              sourceOrder.status_manager === 'Выполнен';
+
+    if (!isAlreadyArchived) {
+        await supabase
+            .from('orders')
+            .update({ 
+                status_manager: 'Архив', 
+                is_archived: true,
+                refusal_reason: `Повторен в заказе #${newOrder.id}` 
+            })
+            .eq('id', sourceOrderId);
+    }
 
     // 5. Копируем позиции
     if (sourceItems && sourceItems.length > 0) {
