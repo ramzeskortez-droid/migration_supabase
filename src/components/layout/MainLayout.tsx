@@ -33,7 +33,7 @@ export const MainLayout: React.FC = () => {
           {/* Left Side: Logo */}
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={handleLogoClick}>
-              <img src="https://i.vgy.me/0lR7Mt.png" alt="logo" className="w-7 h-7 object-contain" />
+              <img src="/header-logo.jpg" alt="logo" className="w-7 h-7 object-cover rounded-full" />
               <span className="font-black tracking-tighter uppercase text-sm text-slate-900">
                 CHINA-<span className="text-indigo-600">NAI</span>
               </span>

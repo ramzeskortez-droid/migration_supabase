@@ -429,12 +429,28 @@ export const AdminInterface: React.FC = () => {
   const startEditing = (order: Order) => { 
       setEditingOrderId(order.id); 
       const form: any = {}; 
+      
+      const toIsoDate = (dateStr?: string) => {
+          if (!dateStr) return '';
+          const clean = dateStr.trim();
+          if (clean.match(/^\d{4}-\d{2}-\d{2}$/)) return clean;
+          
+          const parts = clean.split('.');
+          if (parts.length === 3) {
+             const y = parts[2];
+             const m = parts[1].padStart(2, '0');
+             const d = parts[0].padStart(2, '0');
+             return `${y}-${m}-${d}`;
+          }
+          return '';
+      };
+
       // Initialize client fields
       form[`client_name`] = order.clientName || '';
       form[`client_phone`] = order.clientPhone || '';
       form[`client_email`] = order.clientEmail || '';
       form[`location`] = order.location || '';
-      form[`deadline`] = order.deadline || ''; // NEW: Init deadline
+      form[`deadline`] = toIsoDate(order.deadline); // NEW: Init deadline (ISO)
       
       order.items.forEach((item) => { 
           form[`${item.id}_name`] = item.AdminName || item.name; 
