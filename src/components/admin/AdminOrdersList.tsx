@@ -39,6 +39,7 @@ const AdminOrderRow = memo(({
 }: any) => {
     const isEditing = editingOrderId === order.id;
     const [isManual, setIsManual] = useState(false); // Локальный флаг ручной обработки
+    const [isClientInfoExpanded, setIsClientInfoExpanded] = useState(false); // NEW: State for client info section
     // ... rest of logic
     const currentStatus = order.statusManager || order.workflowStatus || 'В обработке';
     const isCancelled = currentStatus === 'Аннулирован' || currentStatus === 'Отказ';
@@ -167,13 +168,19 @@ const AdminOrderRow = memo(({
                         <div className="flex items-center justify-center py-12"><Loader2 className="animate-spin text-indigo-500" size={24}/></div>
                     ) : (
                         <>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
-                                <div className="flex items-center gap-2 mb-3"><FileText size={14} className="text-slate-400"/><span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span></div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px]">
-                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
+                                                        <div className="bg-white rounded-xl border border-slate-200 mb-6 shadow-sm">
+                                                            <div
+                                                                className="flex items-center gap-2 p-3 cursor-pointer select-none" // Added p-3 here
+                                                                onClick={(e) => { e.stopPropagation(); setIsClientInfoExpanded(prev => !prev); }}
+                                                            >
+                                                                {isClientInfoExpanded ? <ChevronDown size={14} className="text-slate-500"/> : <ChevronRight size={14} className="text-slate-500"/>}
+                                                                <span className="text-[10px] font-black uppercase text-slate-500">Информация о клиенте</span>
+                                                            </div>
+                                                            {isClientInfoExpanded && (
+                                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-[10px] p-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-1 duration-200">                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Имя</span><span className="font-black text-indigo-600 uppercase text-sm">{order.clientName}</span></div>
                                     <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Телефон</span><span className="font-bold text-slate-700">{order.clientPhone || "-"}</span></div>
-                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
-                                    <div><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
+                                    <div className="md:col-span-2"><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Почта</span><span className="font-bold text-slate-700 lowercase">{order.clientEmail || "-"}</span></div>
+                                    <div className="col-span-2 md:col-span-4"><span className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Адрес</span><span className="font-black text-slate-800 uppercase">{order.location || "-"}</span></div>
                                     
                                     {/* Linked Orders */}
                                     {details?.linkedOrders && details.linkedOrders.length > 0 && (
@@ -312,7 +319,8 @@ const AdminOrderRow = memo(({
                                             );
                                         })()}
                                     </div>
-                                </div>
+                                    </div>
+                                )}
                             </div>
 
                             <AdminItemsTable 
