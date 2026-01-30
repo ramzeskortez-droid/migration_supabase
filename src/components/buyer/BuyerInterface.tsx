@@ -237,19 +237,25 @@ export const BuyerInterface: React.FC = () => {
       try {
           const order = orders.find(o => o.id === orderId);
           const existingOffer = order ? getMyOffer(order) : null;
+          let resultId = existingOffer?.id;
 
           if (existingOffer) {
               await SupabaseService.editOffer(existingOffer.id, items, supplierFiles, status);
           } else {
-              await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id, supplierFiles, status);
+              resultId = await SupabaseService.createOffer(orderId, buyerAuth.name, items, buyerAuth.phone, buyerAuth.id, supplierFiles, status);
           }
 
-          setExpandedId(null);
-          setUiToast({ message: status === 'Отказ' ? `Вы отказались от заказа № ${orderId}` : `Предложение к заказу № ${orderId} отправлено!`, type: 'success', id: Date.now().toString() });
+          if (status !== 'Черновик') {
+              setExpandedId(null);
+              setUiToast({ message: status === 'Отказ' ? `Вы отказались от заказа № ${orderId}` : `Предложение к заказу № ${orderId} отправлено!`, type: 'success', id: Date.now().toString() });
+          }
+          
           refetch();
           fetchCounts();
           SupabaseService.getSupplierUsedBrands(buyerAuth.name).then(setHistoryBrands);
           SupabaseService.getBuyerQuickBrands(buyerAuth.name).then(setQuickBrands);
+          
+          return resultId;
       } catch (e: any) {
           setUiToast({ message: 'Ошибка при отправке: ' + (e.message || JSON.stringify(e)), type: 'error', id: Date.now().toString() });
       } finally {
@@ -303,6 +309,8 @@ export const BuyerInterface: React.FC = () => {
     const myOffer = getMyOffer(order);
     if (!myOffer) return { label: 'Сбор офферов', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: null };
     
+    if (myOffer.status === 'Черновик') return { label: 'ЧЕРНОВИК', color: 'bg-slate-100 text-slate-600 border-slate-300', icon: null };
+
     // 1. Приоритет: Отказ закупщика или Аннулирование менеджером
     if (myOffer.status === 'Отказ') return { label: 'ОТКАЗ', color: 'bg-slate-200 text-slate-500 border-slate-300', icon: null };
     if (order.statusManager === 'Аннулирован' || order.statusManager === 'Отказ') return { label: 'АННУЛИРОВАН', color: 'bg-red-50 text-red-600 border-red-100', icon: null };

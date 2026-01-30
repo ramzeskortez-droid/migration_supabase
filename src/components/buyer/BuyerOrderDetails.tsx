@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X, UploadCloud, Plus, Edit2, Menu, MoreHorizontal } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Send, CheckCircle, FileText, Copy, ShieldCheck, XCircle, MessageCircle, Folder, Paperclip, X, UploadCloud, Plus, Edit2, Menu, MoreHorizontal, Loader2, Save } from 'lucide-react';
 import { BuyerItemCard } from './BuyerItemCard';
 import { Order } from '../../types';
 import { Toast } from '../shared/Toast';
@@ -14,7 +14,7 @@ interface BuyerOrderDetailsProps {
   order: Order;
   editingItems: any[];
   setEditingItems: (items: any[]) => void;
-  onSubmit: (orderId: string, items: any[], supplierFiles?: any[], status?: string) => Promise<void>;
+  onSubmit: (orderId: string, items: any[], supplierFiles?: any[], status?: string) => Promise<string | void>;
   isSubmitting: boolean;
   myOffer: any;
   statusInfo: any;
@@ -37,9 +37,37 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   const [supplierFiles, setSupplierFiles] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editTimeout, setEditTimeout] = useState(5);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'idle'>('idle');
+  const [isDirty, setIsDirty] = useState(false); // NEW
+  const hasMounted = useRef(false);
 
+  const isDraft = myOffer?.status === 'Черновик';
   const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
-  const isDisabled = (order.isProcessed === true || (!!myOffer && !isEditing));
+  const isDisabled = (order.isProcessed === true || (!!myOffer && !isDraft && !isEditing));
+
+  // --- AUTOSAVE ---
+  useEffect(() => {
+      if (!hasMounted.current) {
+          hasMounted.current = true;
+          return;
+      }
+      // Не автосохранять, если это не черновик (или новый), если идет сабмит или нет изменений
+      if (isDisabled || isSubmitting || !isDirty) return;
+
+      const handler = setTimeout(async () => {
+          setSaveStatus('saving');
+          try {
+             await onSubmit(order.id, editingItems, supplierFiles, 'Черновик');
+             setSaveStatus('saved');
+             setIsDirty(false); // Сброс флага изменений
+             setTimeout(() => setSaveStatus('idle'), 3000);
+          } catch (e) {
+             setSaveStatus('error');
+          }
+      }, 2000);
+
+      return () => clearTimeout(handler);
+  }, [editingItems, supplierFiles, isDirty]);
 
   // --- GLOBAL DROPZONE LOGIC ---
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -58,6 +86,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
           try {
              const publicUrl = await SupabaseService.uploadFile(f.file, 'offers');
              setSupplierFiles(prev => [...prev, { name: f.name, url: publicUrl, type: f.type, size: f.size }]);
+             setIsDirty(true);
           } catch (e) {
              setToast({ message: `Ошибка загрузки ${f.name}`, type: 'error' });
           }
@@ -81,7 +110,8 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       });
 
       // Sync editingItems with existing offer data when not in active edit mode
-      if (myOffer && !isEditing) {
+      // Skip sync for drafts to prevent overwriting local work
+      if (myOffer && !isDraft && !isEditing) {
           const mappedItems = order.items.map(oi => {
               const match = myOffer.items?.find((mi: any) => 
                   (mi.order_item_id && String(mi.order_item_id) === String(oi.id)) || 
@@ -254,6 +284,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       const newItems = [...editingItems];
       newItems[idx] = { ...newItems[idx], [field]: value };
       setEditingItems(newItems);
+      setIsDirty(true);
   };
 
   const handleToggleItemStatus = (index: number) => {
@@ -281,6 +312,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       newFiles.splice(fileIdx, 1);
       newItems[itemIdx] = { ...newItems[idx], itemFiles: newFiles };
       setEditingItems(newItems);
+      setIsDirty(true);
   };
 
   const removeGeneralFile = (fileIdx: number) => {
@@ -288,6 +320,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
       const newFiles = [...supplierFiles];
       newFiles.splice(fileIdx, 1);
       setSupplierFiles(newFiles);
+      setIsDirty(true);
   };
 
   const formatItemText = (item: any, idx?: number) => {
@@ -631,8 +664,18 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
             </div>
 
             <div className="flex items-center gap-4 flex-1 justify-end md:flex-none">
-                {/* Кнопка ИЗМЕНИТЬ / ДОПОЛНИТЬ */}
-                {!!myOffer && !order.isProcessed && !isEditing && (
+                {/* Индикатор автосохранения */}
+                {saveStatus !== 'idle' && (
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mr-2 animate-in fade-in transition-opacity duration-500">
+                        {saveStatus === 'saving' && <Loader2 size={12} className="animate-spin"/>}
+                        {saveStatus === 'saved' && <CheckCircle size={12} className="text-emerald-500"/>}
+                        {saveStatus === 'error' && <XCircle size={12} className="text-red-500"/>}
+                        {saveStatus === 'saving' ? 'Сохранение...' : (saveStatus === 'error' ? 'Ошибка' : 'Сохранено')}
+                    </div>
+                )}
+
+                {/* Кнопка ИЗМЕНИТЬ / ДОПОЛНИТЬ (Только для отправленных) */}
+                {!!myOffer && !isDraft && !order.isProcessed && !isEditing && (
                     <button 
                         onClick={handleStartEdit}
                         className="w-full md:w-auto px-6 py-4 rounded-xl bg-white border-2 border-indigo-600 text-indigo-600 font-black text-xs uppercase shadow-lg hover:bg-indigo-50 transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -641,18 +684,39 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                     </button>
                 )}
 
-                {/* Основная кнопка ОТПРАВИТЬ / СОХРАНИТЬ */}
-                {(!myOffer || isEditing) && !order.isProcessed && !isAllDeclined && (
-                    <button 
-                        disabled={!isValid || isSubmitting} 
-                        onClick={isEditing ? handleSaveEdit : handlePreSubmit} 
-                        className={`w-full md:w-auto px-6 md:px-10 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center justify-center gap-3 active:scale-95 ${isValid && !isSubmitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
-                    >
-                        <span className="truncate">
-                            {isEditing ? 'Сохранить' : (isValid ? 'Отправить КП' : 'Заполните поля')}
-                        </span> 
-                        <CheckCircle size={18} className="shrink-0"/>
-                    </button>
+                {/* КНОПКИ ДЕЙСТВИЙ */}
+                {(!myOffer || isDraft || isEditing) && !order.isProcessed && !isAllDeclined && (
+                    <div className="flex gap-2">
+                        {/* 1. Сохранить (Черновик) - Всегда доступно */}
+                        <button 
+                            disabled={isSubmitting} 
+                            onClick={() => {
+                                if (isEditing) handleSaveEdit(); // В режиме редактирования опубликованного - сохраняем изменения
+                                else onSubmit(order.id, editingItems, supplierFiles, 'Черновик');
+                            }}
+                            className="px-4 py-4 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95"
+                            title="Сохранить без отправки"
+                        >
+                            <Save size={18} />
+                            <span className="hidden sm:inline">Сохранить</span>
+                        </button>
+
+                        {/* 2. Отправить КП - Требует валидации */}
+                        <button 
+                            disabled={!isValid || isSubmitting} 
+                            onClick={isEditing ? handleSaveEdit : handlePreSubmit} 
+                            className={`px-6 py-4 rounded-xl font-black text-xs uppercase shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95 ${
+                                isValid && !isSubmitting 
+                                    ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300' 
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                            }`}
+                        >
+                            <span className="truncate">
+                                {isEditing ? 'Сохранить изменения' : 'Отправить КП'}
+                            </span> 
+                            <CheckCircle size={18} className="shrink-0"/>
+                        </button>
+                    </div>
                 )}
             </div>
         </div>

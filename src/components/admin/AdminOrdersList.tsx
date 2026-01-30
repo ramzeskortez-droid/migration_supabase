@@ -52,18 +52,26 @@ const AdminOrderRow = memo(({
         staleTime: 0
     });
 
+    // Filter out drafts for Admin
+    const visibleOffers = React.useMemo(() => {
+        const rawOffers = details?.offers || order.offers || [];
+        return rawOffers.filter((o: any) => o.status !== 'Черновик');
+    }, [details?.offers, order.offers]);
+
     const fullOrder = { 
         ...order, 
         items: details?.items || order.items || [], 
-        offers: details?.offers || order.offers || [],
+        offers: visibleOffers,
         order_files: details?.orderFiles || order.order_files
     };
-    const offersCount = order.offers?.length || 0; 
+    
+    // Count ONLY visible offers (excluding drafts)
+    const offersCount = visibleOffers.length;
 
     // Stats: Total Items / Covered (Has at least one offer)
     const totalItems = order.items?.length || 0;
     const itemsWithOffers = new Set();
-    order.offers?.forEach((o: any) => {
+    visibleOffers.forEach((o: any) => { // Use visibleOffers here too
         o.items?.forEach((i: any) => {
             // Count item if it has a price (valid offer)
             if (i.name && (i.price > 0 || i.sellerPrice > 0)) itemsWithOffers.add(i.name);
