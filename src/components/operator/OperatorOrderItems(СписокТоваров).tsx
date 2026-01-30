@@ -321,17 +321,30 @@ export const OperatorOrderItems: React.FC<OperatorOrderItemsProps> = ({ order, o
                                                                 </div>
                                                                 <div className="text-orange-600 text-center font-black text-[11px] leading-none">{win.clientDeliveryWeeks || win.deliveryWeeks || '-'} нед.</div>
                                                             </div>
-                                                            {/* Комментарий (если есть) */}
-                                                            {(win.comment || win.adminComment) && (
-                                                                <div className="px-6 pb-3 flex items-start gap-2">
-                                                                    <div className="w-1.5 h-1.5 mt-1.5 opacity-0"></div> {/* Spacer to align with bullet if needed */}
-                                                                    <div className="text-[10px] text-slate-600 bg-white/40 px-2 py-1 rounded border border-emerald-100/50 w-full">
-                                                                        <span className="font-bold text-slate-400 uppercase mr-2 text-[9px]">Комментарий:</span>
-                                                                        {win.comment || win.adminComment}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                                                        {/* Комментарий и WeChat ID */}
+                                                                                        {(win.comment || win.adminComment || win.supplierSku) && (
+                                                                                            <div className="px-6 pb-3 flex flex-col md:flex-row gap-2 md:gap-4 items-start">
+                                                                                                {/* Комментарий */}
+                                                                                                {(win.comment || win.adminComment) && (
+                                                                                                    <div className="flex-grow flex items-start gap-2 max-w-full">
+                                                                                                        <div className="w-1.5 h-1.5 mt-1.5 opacity-0 shrink-0"></div>
+                                                                                                        <div className="text-[10px] text-slate-600 bg-white/40 px-2 py-1 rounded border border-emerald-100/50 w-full md:w-auto">
+                                                                                                            <span className="font-bold text-slate-400 uppercase mr-2 text-[9px]">Комментарий:</span>
+                                                                                                            {win.comment || win.adminComment}
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                )}
+                                                            
+                                                                                                {/* WeChat ID */}
+                                                                                                {win.supplierSku && (
+                                                                                                    <div className="shrink-0 text-[10px] text-slate-600 bg-white/40 px-2 py-1 rounded border border-emerald-100/50 flex items-center gap-2 md:ml-auto">
+                                                                                                        <span className="font-bold text-slate-400 uppercase text-[9px]">WeChat ID:</span>
+                                                                                                        <span className="font-mono font-bold select-all">{win.supplierSku}</span>
+                                                                                                        <CopyButton text={win.supplierSku} iconSize={12} className="text-slate-400 hover:text-indigo-600" />
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        )}                                                        </div>
                                                     );
                                                 })}
                                             </div>

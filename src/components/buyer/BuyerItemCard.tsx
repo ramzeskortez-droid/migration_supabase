@@ -424,6 +424,11 @@ export const BuyerItemCard: React.FC<BuyerItemCardProps> = ({ item, sourceItem, 
                             className={getInputClass('supplierSku', item.supplierSku)}
                             placeholder="18510860570 / +86-XX-XXXX-XXX" 
                         />
+                        {item.supplierSku && !isDisabled && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                <CopyButton text={item.supplierSku} iconSize={14} className="text-slate-400 hover:text-indigo-600" />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
