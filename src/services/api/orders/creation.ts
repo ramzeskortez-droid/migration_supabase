@@ -61,6 +61,7 @@ export const repeatOrder = async (sourceOrderId: string, operatorId?: string): P
             deadline: newDeadline,
             order_files: sourceOrder.order_files, // Копируем общие файлы
             email_message_id: sourceOrder.email_message_id, // Связываем с тем же письмом
+            assigned_buyer_ids: sourceOrder.assigned_buyer_ids, // Копируем назначенных закупщиков
             status_manager: 'В обработке', // Явно задаем статус
             status_client: 'В обработке',
             status_supplier: 'В обработке'

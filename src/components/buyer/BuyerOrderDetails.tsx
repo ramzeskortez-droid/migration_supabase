@@ -45,29 +45,19 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
   const isAllDeclined = editingItems.every(item => item.offeredQuantity === 0);
   const isDisabled = (order.isProcessed === true || (!!myOffer && !isDraft && !isEditing));
 
-  // --- AUTOSAVE ---
-  useEffect(() => {
-      if (!hasMounted.current) {
-          hasMounted.current = true;
-          return;
+  // --- MANUAL SAVE ---
+  const handleManualSave = async () => {
+      setSaveStatus('saving');
+      try {
+          await onSubmit(order.id, editingItems, supplierFiles, 'Черновик');
+          setSaveStatus('saved');
+          setIsDirty(false);
+          setTimeout(() => setSaveStatus('idle'), 3000);
+      } catch (e) {
+          setSaveStatus('error');
+          setTimeout(() => setSaveStatus('idle'), 3000);
       }
-      // Не автосохранять, если это не черновик (или новый), если идет сабмит или нет изменений
-      if (isDisabled || isSubmitting || !isDirty) return;
-
-      const handler = setTimeout(async () => {
-          setSaveStatus('saving');
-          try {
-             await onSubmit(order.id, editingItems, supplierFiles, 'Черновик');
-             setSaveStatus('saved');
-             setIsDirty(false); // Сброс флага изменений
-             setTimeout(() => setSaveStatus('idle'), 3000);
-          } catch (e) {
-             setSaveStatus('error');
-          }
-      }, 2000);
-
-      return () => clearTimeout(handler);
-  }, [editingItems, supplierFiles, isDirty]);
+  };
 
   // --- GLOBAL DROPZONE LOGIC ---
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -692,7 +682,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
                             disabled={isSubmitting} 
                             onClick={() => {
                                 if (isEditing) handleSaveEdit(); // В режиме редактирования опубликованного - сохраняем изменения
-                                else onSubmit(order.id, editingItems, supplierFiles, 'Черновик');
+                                else handleManualSave();
                             }}
                             className="px-4 py-4 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95"
                             title="Сохранить без отправки"
