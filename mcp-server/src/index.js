@@ -123,6 +123,10 @@ app.get('/health', (req, res) => {
     res.send('OK');
 });
 
+app.get('/', (req, res) => {
+    res.send('Supabase MCP Server is running. Use /sse for connection.');
+});
+
 app.listen(PORT, () => {
   console.log(`Supabase MCP Server running on port ${PORT}`);
 });

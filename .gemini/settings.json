@@ -1,12 +1,7 @@
 {
   "mcpServers": {
-    "my-db": {
-      "type": "sse",
-      "url": "https://1688.broker/mcp/sse"
-    },
-    "ComputerUse": {
-      "type": "stdio", 
-      "command": "F:\\3. 2code\\1. China-Nai\\перевод на supabase (dev)\\extensions\\ComputerUse\\servers\\run.bat"
+    "supabase": {
+      "httpUrl": "https://1688.broker/mcp/sse"
     }
   },
   "context": {
