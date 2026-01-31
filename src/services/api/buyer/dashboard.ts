@@ -16,7 +16,7 @@ export const getBuyerDashboardStats = async (userId: string): Promise<any> => {
   return data;
 };
 
-export const getBuyerTabCounts = async (supplierName: string): Promise<{ new: number, hot: number, history: number, won: number, lost: number, cancelled: number, archive: number }> => {
+export const getBuyerTabCounts = async (supplierName: string, buyerId?: string): Promise<{ new: number, hot: number, history: number, won: number, lost: number, cancelled: number, archive: number }> => {
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     const isoDate = threeDaysAgo.toISOString();
@@ -31,6 +31,12 @@ export const getBuyerTabCounts = async (supplierName: string): Promise<{ new: nu
         let q = supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status_manager', 'В обработке');
         if (myOfferIds.length > 0) {
             q = q.not('id', 'in', `(${myOfferIds.join(',')})`);
+        }
+        // Фильтр приватности: (assigned IS NULL) OR (assigned contains buyerId)
+        if (buyerId) {
+             q = q.or(`assigned_buyer_ids.is.null,assigned_buyer_ids.cs.{${buyerId}}`);
+        } else {
+             q = q.is('assigned_buyer_ids', null);
         }
         return q;
     };

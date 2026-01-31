@@ -190,7 +190,7 @@ export const BuyerInterface: React.FC = () => {
   const fetchCounts = useCallback(async () => {
       if (!buyerAuth?.name) return;
       try {
-          const counts = await SupabaseService.getBuyerTabCounts(buyerAuth.name);
+          const counts = await SupabaseService.getBuyerTabCounts(buyerAuth.name, buyerAuth.id);
           setTabCounts(counts);
       } catch (e) {}
   }, [buyerAuth]);
