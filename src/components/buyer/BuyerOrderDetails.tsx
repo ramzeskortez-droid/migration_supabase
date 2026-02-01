@@ -52,7 +52,7 @@ export const BuyerOrderDetails: React.FC<BuyerOrderDetailsProps> = ({
           await onSubmit(order.id, editingItems, supplierFiles, 'Черновик');
           setSaveStatus('saved');
           setIsDirty(false);
-          setToast({ message: 'Черновик сохранен', type: 'success' });
+          setToast({ message: `Черновик по заказу #${order.id} сохранен`, type: 'success' });
           setTimeout(() => setSaveStatus('idle'), 3000);
       } catch (e) {
           setSaveStatus('error');

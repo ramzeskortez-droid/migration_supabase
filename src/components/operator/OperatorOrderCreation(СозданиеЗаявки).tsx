@@ -143,35 +143,28 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
     };
 
     const handleQuickFill = async () => {
-        const names = ['Иван', 'Петр', 'Алексей', 'Сергей', 'Максим'];
-        const cities = ['Москва', 'СПб', 'Екб', 'Казань'];
-        const subjects = ['Запчасти на ТО', 'Срочный заказ', 'Детали подвески', 'Расходники'];
-        
-        const randomName = names[Math.floor(Math.random() * names.length)];
-        const randomCity = cities[Math.floor(Math.random() * cities.length)];
-        const randomSubject = subjects[Math.floor(Math.random() * subjects.length)];
-        const randomPhone = `+7 (9${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}) ${Math.floor(100 + Math.random() * 900)}-${Math.floor(10 + Math.random() * 90)}-${Math.floor(10 + Math.random() * 90)}`;
+        const randomId = Math.floor(1000 + Math.random() * 9000);
         
         setOrderInfo({
             deadline: new Date().toISOString().split('T')[0],
             region: 'РФ',
-            city: randomCity,
+            city: 'Тестовый Город',
             email: '',
-            clientEmail: `client${Math.floor(Math.random() * 1000)}@mail.ru`,
-            emailSubject: randomSubject,
-            clientName: randomName,
-            clientPhone: randomPhone
+            clientEmail: `test_client_${randomId}@example.com`,
+            emailSubject: `Тестовая заявка #${randomId}`,
+            clientName: `Тест Клиент ${randomId}`,
+            clientPhone: `+7 (999) 000-${randomId}`
         });
 
         const dbBrands = await SupabaseService.getBrandsList();
         const safeBrands = dbBrands.length > 0 ? dbBrands : ['Toyota', 'BMW', 'Mercedes'];
         
-        const partsPool = ['Фильтр масляный', 'Колодки тормозные', 'Свеча зажигания', 'Амортизатор', 'Рычаг подвески'];
+        const partsPool = ['Тестовая деталь', 'Пробный вал', 'Образец фильтра', 'Макет подшипника'];
         const newParts: Part[] = [];
         for(let i=0; i<2; i++) {
             const partName = partsPool[Math.floor(Math.random() * partsPool.length)];
             const brandName = safeBrands[Math.floor(Math.random() * safeBrands.length)];
-            const randomArticle = Math.random().toString(36).substring(2, 10).toUpperCase();
+            const randomArticle = `TEST-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
             newParts.push({
                 id: Date.now() + i,
@@ -179,12 +172,12 @@ export const OperatorOrderCreation: React.FC<OperatorOrderCreationProps> = ({ cu
                 brand: brandName,
                 article: randomArticle,
                 uom: 'шт',
-                quantity: Math.floor(Math.random() * 4) + 1
+                quantity: Math.floor(Math.random() * 5) + 1
             });
         }
         setParts(newParts);
         setIsBrandsValid(true);
-        setToast({ message: 'Данные заполнены (2 позиции)', type: 'success' });
+        setToast({ message: 'Тестовые данные заполнены', type: 'success' });
     };
 
     const validateForm = () => {
