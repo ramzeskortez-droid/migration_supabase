@@ -47,3 +47,11 @@ correct_msg.txt
 "ДОСТУПЫ access.md"
 "ДОСТУПЫ/access.md"
 access.md
+
+# mcp-server scripts
+mcp-server/check_*.js
+mcp-server/get_func_def.js
+mcp-server/list_tables.js
+mcp-server/ssh_*.js
+mcp-server/test_tenant_id.js
+mcp-server/*.log

@@ -204,6 +204,7 @@ export const getOrders = async (
         'date': 'created_at',
         'deadline': 'deadline',
         'status': 'status_manager',
+        'status_manager': 'status_manager', // Added for Operator compatibility
         'statusUpdatedAt': 'status_updated_at',
         'client_name': 'client_name',
         'offers': 'offers_count'

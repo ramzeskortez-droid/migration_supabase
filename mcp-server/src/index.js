@@ -111,7 +111,7 @@ app.get('/sse', async (req, res) => {
   await server.connect(transport);
 });
 
-app.post('/messages', async (req, res) => {
+app.post('/mcp/messages', async (req, res) => {
   if (!transport) {
     res.status(400).send("No active connection");
     return;

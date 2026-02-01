@@ -244,6 +244,7 @@ export const AdminInterface: React.FC = () => {
   } = useOrdersInfinite({
       searchQuery,
       statusFilter: subStatusFilter || getStatusFilter(activeTab),
+      sortBy: sortConfig?.key, // FIX: Pass sort key
       sortDirection: sortConfig?.direction || 'desc',
       limit: 50
   });
